@@ -2335,4 +2335,150 @@
   box-shadow: 0 0 25px rgba(34, 197, 94, 0.5);
 }
 
+/* ==========================================================================
+   Interactive Video Chapters Timeline (Premium Theme Alignment)
+   ========================================================================== */
+.video-chapters-box {
+  margin-top: 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  transition: all var(--transition-normal);
+}
+
+.video-chapters-box h4 {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chapters-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chapter-timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.chapter-timeline-item:hover {
+  background: rgba(236, 72, 153, 0.08);
+  border-color: rgba(236, 72, 153, 0.25);
+  transform: translateX(6px);
+  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.05);
+}
+
+.chapter-timeline-item.active {
+  background: rgba(236, 72, 153, 0.12);
+  border-color: var(--neon-pink);
+  box-shadow: 0 0 15px rgba(236, 72, 153, 0.2);
+}
+
+.chapter-badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--neon-pink);
+  background: rgba(236, 72, 153, 0.12);
+  border: 1px solid rgba(236, 72, 153, 0.25);
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+}
+
+.chapter-timeline-item:hover .chapter-badge,
+.chapter-timeline-item.active .chapter-badge {
+  background: var(--neon-pink);
+  color: #fff;
+  border-color: var(--neon-pink);
+}
+
+.chapter-badge i {
+  font-size: 0.65rem;
+}
+
+.chapter-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--transition-fast);
+}
+
+.chapter-timeline-item:hover .chapter-label,
+.chapter-timeline-item.active .chapter-label {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Client Authentication and Subscriber Profile Aesthetics
+   ========================================================================== */
+.auth-tab-btn {
+  flex: 1;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.auth-tab-btn.active {
+  background: var(--primary-gradient);
+  color: white;
+  box-shadow: var(--neon-glow-pink);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Avatares Gradientes HSL */
+.user-avatar, .mobile-user-avatar {
+  background: var(--primary-gradient);
+  box-shadow: 0 0 10px rgba(236, 72, 153, 0.3);
+  transition: all var(--transition-normal);
+}
+
+/* Insignias de Suscriptores y Administradores */
+.user-badge-premium {
+  background: linear-gradient(135deg, #fde047 0%, #f97316 100%);
+  color: #000;
+  box-shadow: 0 0 10px rgba(253, 224, 71, 0.4);
+  font-weight: 800;
+  font-size: 0.6rem;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  text-transform: uppercase;
+}
+
+
+
 

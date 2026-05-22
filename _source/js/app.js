@@ -6,42 +6,422 @@
  * y la renderización en móvil/desktop.
  */
 
-import { videosData } from '../data/videos.js';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 import { initNavigation, switchView, triggerLikeAnimation } from './ui.js';
 
-// Estado global de la aplicación
+// 1. CONEXIÓN A SUPABASE
+const supabaseUrl = 'https://qtrcutddajulnwyzdwtc.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0cmN1dGRkYWp1bG53eXpkd3RjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NjE2MTYsImV4cCI6MjA5NTAzNzYxNn0.d7Pfif2JYI9UJzNdDUAtFTEoYFGWmwFQuCq_b3ZNIWM';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Estado global de la aplicación (se cargará dinámicamente de Supabase)
 const state = {
-  videos: [...videosData],
+  videos: [],
   activeVideoId: 1,
   isMuted: true, // Muted por defecto debido a políticas de navegadores
   currentFilter: 'all',
-  comments: {
-    1: [
-      { user: "Facundo_2026", text: "¡La mejor noche de mi vida lejos! By Pass explota mal 🔥", time: "Hace 5m" },
-      { user: "Sofi.R", text: "Quiero volver yaaaa, no se comparen con nadie", time: "Hace 2h" }
-    ],
-    2: [
-      { user: "Lucas_Cba", text: "Qué golpazo me di en esa bajada jajaja, el mejor día 🏂", time: "Hace 1h" },
-      { user: "Marti_G", text: "Faltó la toma de los culipatines al final!", time: "Hace 4h" }
-    ],
-    3: [
-      { user: "Nacho.Tuc", text: "El agua estaba helada pero la adrenalina fue total! 🌊", time: "Hace 20m" }
-    ],
-    4: [
-      { user: "Cande_Nac", text: "Esos chocolates de Rapanui son de otro planeta 🤤🍫", time: "Hace 3h" }
-    ],
-    5: [
-      { user: "Gaby_Viajes", text: "¡Qué postal por favor! Lagrimón con este video 🌲", time: "Hace 30m" }
-    ]
-  }
+  comments: {}
 };
+
+// Variable para almacenar la sesión del cliente
+let clientSession = null;
+
+// Helper de hashing para avatares HSL
+function getHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash);
+}
+
+function generateAvatarStyle(name) {
+  const h = getHash(name) % 360;
+  return `linear-gradient(135deg, hsl(${h}, 80%, 60%) 0%, hsl(${(h + 40) % 360}, 85%, 50%) 100%)`;
+}
+
+// Cargar la sesión del cliente al inicio
+async function loadClientSession() {
+  const local = localStorage.getItem('tr_client_session');
+  if (local) {
+    clientSession = JSON.parse(local);
+  }
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+      if (profile) {
+        clientSession = profile;
+        localStorage.setItem('tr_client_session', JSON.stringify(profile));
+      }
+    }
+  } catch (err) {
+    console.error("Error al cargar la sesión de Supabase:", err);
+  }
+  updateUserUI();
+}
+
+// Actualizar la interfaz de usuario en base a la sesión
+function updateUserUI() {
+  const sidebarBtnLogin = document.getElementById('sidebar-btn-login');
+  const sidebarUserLogged = document.getElementById('sidebar-user-logged');
+  const sidebarUserAvatar = document.getElementById('sidebar-user-avatar');
+  const sidebarUserName = document.getElementById('sidebar-user-name');
+  const sidebarRoleBadge = sidebarUserLogged ? sidebarUserLogged.querySelector('span[style*="font-size: 0.65rem"]') : null;
+
+  const mobileAuthBtn = document.getElementById('mobile-btn-login');
+  const mobileUserAvatar = document.getElementById('mobile-user-avatar');
+  const premiumSidebarCard = document.querySelector('.sidebar-premium-card');
+  const mobileHeaderPremiumBtn = document.getElementById('mobile-header-premium-btn');
+
+  if (clientSession) {
+    // Usuario Logueado
+    if (sidebarBtnLogin) sidebarBtnLogin.classList.add('hidden');
+    if (sidebarUserLogged) sidebarUserLogged.classList.remove('hidden');
+    
+    const dispName = clientSession.user_name || clientSession.email.split('@')[0];
+    
+    if (sidebarUserName) sidebarUserName.textContent = dispName;
+    if (sidebarUserAvatar) {
+      sidebarUserAvatar.textContent = dispName.charAt(0).toUpperCase();
+      sidebarUserAvatar.style.background = generateAvatarStyle(dispName);
+    }
+    
+    if (mobileAuthBtn) mobileAuthBtn.classList.add('hidden');
+    if (mobileUserAvatar) {
+      mobileUserAvatar.classList.remove('hidden');
+      mobileUserAvatar.textContent = dispName.charAt(0).toUpperCase();
+      mobileUserAvatar.style.background = generateAvatarStyle(dispName);
+    }
+
+    if (clientSession.is_premium) {
+      if (sidebarRoleBadge) {
+        sidebarRoleBadge.innerHTML = 'PRO 👑';
+        sidebarRoleBadge.className = 'user-badge-premium';
+      }
+      if (premiumSidebarCard) premiumSidebarCard.style.display = 'none';
+      if (mobileHeaderPremiumBtn) {
+        mobileHeaderPremiumBtn.style.color = '#fde047';
+        mobileHeaderPremiumBtn.style.textShadow = '0 0 10px rgba(253, 224, 71, 0.6)';
+      }
+    } else {
+      if (sidebarRoleBadge) {
+        sidebarRoleBadge.innerHTML = clientSession.role === 'admin' ? 'Admin ⚙️' : 'Egresado 🎓';
+        sidebarRoleBadge.className = '';
+      }
+      if (premiumSidebarCard) premiumSidebarCard.style.display = 'block';
+      if (mobileHeaderPremiumBtn) {
+        mobileHeaderPremiumBtn.style.color = '';
+        mobileHeaderPremiumBtn.style.textShadow = '';
+      }
+    }
+  } else {
+    // Invitado (No Logueado)
+    if (sidebarBtnLogin) sidebarBtnLogin.classList.remove('hidden');
+    if (sidebarUserLogged) sidebarUserLogged.classList.add('hidden');
+    
+    if (mobileAuthBtn) mobileAuthBtn.classList.remove('hidden');
+    if (mobileUserAvatar) mobileUserAvatar.classList.add('hidden');
+    if (premiumSidebarCard) premiumSidebarCard.style.display = 'block';
+    if (mobileHeaderPremiumBtn) {
+      mobileHeaderPremiumBtn.style.color = '';
+      mobileHeaderPremiumBtn.style.textShadow = '';
+    }
+  }
+}
+
+// Abrir modal de autenticación
+function openAuthModal(defaultTab = 'login') {
+  const modal = document.getElementById('client-auth-modal');
+  if (modal) {
+    modal.classList.add('active');
+    switchAuthTab(defaultTab);
+  }
+}
+
+// Cerrar modal de autenticación
+function closeAuthModal() {
+  const modal = document.getElementById('client-auth-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+// Cambiar de pestaña (Login / Registro)
+function switchAuthTab(tab) {
+  const btnTabLogin = document.getElementById('btn-tab-login');
+  const btnTabRegister = document.getElementById('btn-tab-register');
+  const groupUsername = document.getElementById('group-auth-username');
+  const btnSubmitText = document.getElementById('btn-auth-text');
+  const btnSubmitIcon = document.getElementById('btn-auth-icon');
+  const modalSubtitle = document.getElementById('auth-modal-subtitle');
+  const alertContainer = document.getElementById('auth-alert-container');
+  
+  if (alertContainer) alertContainer.innerHTML = '';
+  
+  if (tab === 'login') {
+    btnTabLogin.classList.add('active');
+    btnTabLogin.style.background = 'var(--primary-gradient)';
+    btnTabLogin.style.boxShadow = 'var(--neon-glow-pink)';
+    btnTabLogin.style.color = 'white';
+    
+    btnTabRegister.classList.remove('active');
+    btnTabRegister.style.background = 'transparent';
+    btnTabRegister.style.boxShadow = 'none';
+    btnTabRegister.style.color = 'var(--text-secondary)';
+    
+    if (groupUsername) groupUsername.classList.add('hidden');
+    if (btnSubmitText) btnSubmitText.textContent = 'Ingresar ahora';
+    if (btnSubmitIcon) btnSubmitIcon.className = 'fa-solid fa-right-to-bracket';
+    if (modalSubtitle) modalSubtitle.textContent = 'Inicia sesión para guardar favoritos y chatear';
+  } else {
+    btnTabRegister.classList.add('active');
+    btnTabRegister.style.background = 'var(--primary-gradient)';
+    btnTabRegister.style.boxShadow = 'var(--neon-glow-pink)';
+    btnTabRegister.style.color = 'white';
+    
+    btnTabLogin.classList.remove('active');
+    btnTabLogin.style.background = 'transparent';
+    btnTabLogin.style.boxShadow = 'none';
+    btnTabLogin.style.color = 'var(--text-secondary)';
+    
+    if (groupUsername) groupUsername.classList.remove('hidden');
+    if (btnSubmitText) btnSubmitText.textContent = 'Registrarse y comenzar';
+    if (btnSubmitIcon) btnSubmitIcon.className = 'fa-solid fa-user-plus';
+    if (modalSubtitle) modalSubtitle.textContent = 'Unite al Club Egresados y viví la experiencia';
+  }
+}
+
+// Procesar el formulario de inicio de sesión o registro
+async function handleClientAuthSubmit() {
+  const isLogin = document.getElementById('btn-tab-login').classList.contains('active');
+  const emailInput = document.getElementById('auth-email');
+  const passInput = document.getElementById('auth-password');
+  const userinput = document.getElementById('auth-username');
+  const alertContainer = document.getElementById('auth-alert-container');
+  const submitBtn = document.getElementById('btn-auth-submit');
+  
+  if (!emailInput.value || !passInput.value || (!isLogin && !userinput.value)) {
+    showAlert('Por favor, completa todos los campos requeridos.', 'danger');
+    return;
+  }
+
+  submitBtn.disabled = true;
+  const originalHtml = submitBtn.innerHTML;
+  submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Procesando...`;
+
+  function showAlert(msg, type = 'danger') {
+    if (!alertContainer) return;
+    alertContainer.innerHTML = `
+      <div class="glassmorphism" style="padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 600; border-color: ${type === 'danger' ? 'var(--neon-pink)' : '#22c55e'}; background: ${type === 'danger' ? 'rgba(236, 72, 153, 0.1)' : 'rgba(34, 197, 94, 0.1)'}; color: #fff; margin-top: 10px;">
+        <i class="fa-solid ${type === 'danger' ? 'fa-triangle-exclamation' : 'fa-circle-check'}" style="color: ${type === 'danger' ? 'var(--neon-pink)' : '#22c55e'}; margin-right: 8px;"></i>
+        ${msg}
+      </div>
+    `;
+  }
+
+  try {
+    if (isLogin) {
+      // 1. Iniciar sesión en Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: emailInput.value.trim(),
+        password: passInput.value
+      });
+      
+      if (error) {
+        // Fallback local por si el usuario no tiene correo validado pero se registró localmente
+        const fallbackData = localStorage.getItem(`tr_local_auth_${emailInput.value.trim().toLowerCase()}`);
+        if (fallbackData) {
+          const user = JSON.parse(fallbackData);
+          if (user.password === passInput.value) {
+            clientSession = {
+              id: user.id,
+              email: user.email,
+              user_name: user.user_name,
+              role: user.role,
+              is_premium: user.is_premium
+            };
+            localStorage.setItem('tr_client_session', JSON.stringify(clientSession));
+            showAlert('¡Inicio de sesión exitoso!', 'success');
+            setTimeout(() => {
+              closeAuthModal();
+              updateUserUI();
+            }, 1000);
+            return;
+          }
+        }
+        throw error;
+      }
+      
+      // 2. Traer perfil
+      const { data: profile, error: pError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+        
+      if (pError) throw pError;
+      
+      clientSession = profile;
+      localStorage.setItem('tr_client_session', JSON.stringify(profile));
+      showAlert('¡Bienvenido de nuevo, ' + profile.user_name + '! 🎉', 'success');
+      setTimeout(() => {
+        closeAuthModal();
+        updateUserUI();
+      }, 1000);
+    } else {
+      // Registro
+      const email = emailInput.value.trim();
+      const password = passInput.value;
+      const username = userinput.value.trim();
+      
+      // 1. Registrar en Supabase
+      const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password
+      });
+      
+      if (error) throw error;
+      
+      const userId = data.user ? data.user.id : 'local_' + Date.now();
+      const newProfile = {
+        id: userId,
+        email: email,
+        user_name: username,
+        role: 'user',
+        is_premium: false
+      };
+
+      // 2. Guardar en tabla profiles de Supabase
+      try {
+        await supabase
+          .from('profiles')
+          .insert([newProfile]);
+      } catch (pErr) {
+        console.error("Falla guardando perfil en base de datos:", pErr);
+      }
+      
+      // 3. Registrar localmente para fallback inmediato
+      localStorage.setItem(`tr_local_auth_${email.toLowerCase()}`, JSON.stringify({
+        id: userId,
+        email: email,
+        password: password,
+        user_name: username,
+        role: 'user',
+        is_premium: false
+      }));
+
+      clientSession = newProfile;
+      localStorage.setItem('tr_client_session', JSON.stringify(clientSession));
+
+      showAlert('¡Cuenta creada con éxito! Bienvenido al club. 🎉', 'success');
+      setTimeout(() => {
+        closeAuthModal();
+        updateUserUI();
+      }, 1500);
+    }
+  } catch (err) {
+    console.error("Error en Auth:", err);
+    showAlert(err.message || 'Error de autenticación.', 'danger');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalHtml;
+  }
+}
+
+// Helper para calcular tiempos relativos de comentarios
+function getRelativeTime(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  
+  if (diffMins < 1) return "Ahora";
+  if (diffMins < 60) return `Hace ${diffMins}m`;
+  if (diffHours < 24) return `Hace ${diffHours}h`;
+  return `Hace ${diffDays}d`;
+}
+
+// Cargar dinámicamente videos y comentarios desde Supabase
+async function fetchVideosAndComments() {
+  try {
+    // 1. Consultar todos los videos
+    const { data: videos, error: vErr } = await supabase
+      .from('videos')
+      .select('*')
+      .order('id', { ascending: false });
+    if (vErr) throw vErr;
+    
+    // Mapear campos de Postgres a nombres de claves esperados en el JS del frontend
+    state.videos = (videos || []).map(v => ({
+      id: v.id,
+      title: v.title,
+      category: v.category,
+      categoryLabel: v.category_label,
+      school: v.school,
+      description: v.description,
+      videoUrl: v.video_url,
+      thumbnailUrl: v.thumbnail_url,
+      likes: v.likes,
+      duration: v.duration,
+      date: v.date,
+      collection_name: v.collection_name,
+      episode_number: v.episode_number,
+      province: v.province,
+      chapters: v.chapters
+    }));
+
+    // 2. Consultar todos los comentarios
+    const { data: comments, error: cErr } = await supabase
+      .from('comments')
+      .select('*')
+      .order('id', { ascending: false });
+    if (cErr) throw cErr;
+
+    // Agrupar comentarios por ID de video
+    state.comments = {};
+    (comments || []).forEach(c => {
+      if (!state.comments[c.video_id]) {
+        state.comments[c.video_id] = [];
+      }
+      
+      const relative = getRelativeTime(new Date(c.created_at));
+      
+      state.comments[c.video_id].push({
+        id: c.id,
+        user: c.user_name,
+        text: c.text,
+        time: relative
+      });
+    });
+
+    // Establecer video inicial activo si está disponible
+    if (state.videos.length > 0) {
+      const cachedRecentlyPlayed = JSON.parse(localStorage.getItem('tr_recently_played') || '[]');
+      if (cachedRecentlyPlayed.length > 0 && state.videos.some(v => v.id === cachedRecentlyPlayed[0])) {
+        state.activeVideoId = cachedRecentlyPlayed[0];
+      } else {
+        state.activeVideoId = state.videos[0].id;
+      }
+    }
+
+  } catch (err) {
+    console.error("Error al cargar la base de datos Supabase:", err);
+  }
+}
 
 // Contenedores del DOM
 const feedContainer = document.getElementById('shorts-feed-view');
 const netflixContainer = document.getElementById('netflix-rows-container');
 
 // Inicialización de la Aplicación
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Carga asíncrona robusta de Supabase antes de renderizar
+  await fetchVideosAndComments();
+
   renderFeed();
   renderNetflixRows();
   renderNetflixGrid(state.videos); // Renderizar grilla de catálogo inicial
@@ -84,6 +464,80 @@ document.addEventListener('DOMContentLoaded', () => {
   // Inicializar sidebar de "Continuar Viendo"
   updateKeepWatchingSidebar();
 
+  // Cargar sesión del cliente
+  await loadClientSession();
+
+  // Configurar Modal de Autenticación de Clientes
+  const sidebarBtnLogin = document.getElementById('sidebar-btn-login');
+  const mobileBtnLogin = document.getElementById('mobile-btn-login');
+  const btnCloseAuthModal = document.getElementById('btn-close-auth-modal');
+  const btnTabLogin = document.getElementById('btn-tab-login');
+  const btnTabRegister = document.getElementById('btn-tab-register');
+  const clientAuthForm = document.getElementById('client-auth-form');
+
+  if (sidebarBtnLogin) {
+    sidebarBtnLogin.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openAuthModal('login');
+    });
+  }
+  if (mobileBtnLogin) {
+    mobileBtnLogin.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openAuthModal('login');
+    });
+  }
+  if (btnCloseAuthModal) {
+    btnCloseAuthModal.addEventListener('click', () => {
+      closeAuthModal();
+    });
+  }
+  if (btnTabLogin) {
+    btnTabLogin.addEventListener('click', () => {
+      switchAuthTab('login');
+    });
+  }
+  if (btnTabRegister) {
+    btnTabRegister.addEventListener('click', () => {
+      switchAuthTab('register');
+    });
+  }
+  if (clientAuthForm) {
+    clientAuthForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleClientAuthSubmit();
+    });
+  }
+
+  // Logout en sidebar
+  const btnSidebarLogout = document.getElementById('btn-sidebar-logout');
+  if (btnSidebarLogout) {
+    btnSidebarLogout.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {}
+      clientSession = null;
+      localStorage.removeItem('tr_client_session');
+      updateUserUI();
+      location.reload();
+    });
+  }
+
+  // Logout en móvil
+  const mobileUserAvatar = document.getElementById('mobile-user-avatar');
+  if (mobileUserAvatar) {
+    mobileUserAvatar.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm('¿Deseas cerrar tu sesión del Club Egresados?')) {
+        localStorage.removeItem('tr_client_session');
+        clientSession = null;
+        updateUserUI();
+        location.reload();
+      }
+    });
+  }
+
   // Configurar Simulación de Checkout Premium (Shorta.com Checkout)
   const btnCheckoutSubmit = document.getElementById('btn-checkout-submit');
   const btnCheckoutSuccessClose = document.getElementById('btn-checkout-success-close');
@@ -99,12 +553,39 @@ document.addEventListener('DOMContentLoaded', () => {
       step2.classList.remove('hidden');
 
       // Simular la comunicación con la pasarela de pagos segura (2 segundos)
-      setTimeout(() => {
+      setTimeout(async () => {
         step2.classList.add('hidden');
         step3.classList.remove('hidden');
 
         // Disparar lluvia mágica de confeti de éxito premium
         triggerConfetti();
+
+        // Si hay una sesión de cliente activa, actualizar su estado a PREMIUM en Supabase
+        if (clientSession) {
+          clientSession.is_premium = true;
+          localStorage.setItem('tr_client_session', JSON.stringify(clientSession));
+          
+          try {
+            // Guardar en la base de datos Supabase profiles
+            await supabase
+              .from('profiles')
+              .update({ is_premium: true })
+              .eq('id', clientSession.id);
+
+            // También actualizar cualquier registro local de fallback
+            const localAuthKey = `tr_local_auth_${clientSession.email.toLowerCase()}`;
+            const localAuth = localStorage.getItem(localAuthKey);
+            if (localAuth) {
+              const uObj = JSON.parse(localAuth);
+              uObj.is_premium = true;
+              localStorage.setItem(localAuthKey, JSON.stringify(uObj));
+            }
+          } catch (err) {
+            console.error("Error actualizando estado premium del usuario en la base de datos:", err);
+          }
+          
+          updateUserUI();
+        }
       }, 2000);
     });
   }
@@ -128,6 +609,38 @@ document.addEventListener('DOMContentLoaded', () => {
 // RENDERIZACIÓN DINÁMICA DE ELEMENTOS
 // ----------------------------------------------------------------------
 
+// Helper robusto para parsear capítulos de video en marcas de tiempo
+function parseChapters(chaptersText) {
+  if (!chaptersText) return [];
+  // Separar por comas o saltos de línea
+  const lines = chaptersText.split(/[,\n]/);
+  const chapters = [];
+  lines.forEach(line => {
+    // Expresión regular que busca MM:SS o H:MM:SS
+    const match = line.match(/(?:(\d+):)?(\d+):(\d+)\s*[-–—]\s*(.+)/);
+    if (match) {
+      const hrs = match[1] ? parseInt(match[1]) : 0;
+      const mins = parseInt(match[2]);
+      const secs = parseInt(match[3]);
+      const label = match[4].trim();
+      const timeInSecs = hrs * 3600 + mins * 60 + secs;
+      chapters.push({ time: timeInSecs, label });
+    }
+  });
+  return chapters.sort((a, b) => a.time - b.time);
+}
+
+// Formatear segundos en formato de capítulo
+function formatChapterTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 // A. Renderizar el Feed de Videos (Estructura móvil y desktop híbrida)
 function renderFeed() {
   feedContainer.innerHTML = '';
@@ -147,6 +660,16 @@ function renderFeed() {
   filtered.forEach((video, index) => {
     const isFirst = index === 0;
     
+    // Calcular episodios de la misma colección (Configurables en Supabase) o escuela
+    const episodes = video.collection_name
+      ? state.videos.filter(v => v.collection_name === video.collection_name).sort((a, b) => (a.episode_number || 0) - (b.episode_number || 0))
+      : state.videos.filter(v => v.school === video.school || v.category === video.category);
+      
+    // Calcular sugerencias del catálogo que no correspondan a la colección activa
+    const suggested = video.collection_name
+      ? state.videos.filter(v => v.collection_name !== video.collection_name)
+      : state.videos.filter(v => v.id !== video.id);
+      
     // Crear contenedor del short-card
     const card = document.createElement('div');
     card.className = `short-card ${isFirst ? 'active-desktop' : ''}`;
@@ -208,7 +731,7 @@ function renderFeed() {
 
           <!-- Info Flotante (badge, título y descripción) -->
           <div class="video-info-panel">
-            <span class="school-badge"><i class="fa-solid fa-graduation-cap"></i> ${video.school}</span>
+            <span class="school-badge"><i class="fa-solid fa-graduation-cap"></i> ${video.school}${video.province ? ` (${video.province})` : ''}</span>
             <h3 class="video-title-text">${video.title}</h3>
             <p class="video-desc-text">${video.description}</p>
           </div>
@@ -258,7 +781,7 @@ function renderFeed() {
               <img class="showcard-poster" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
               <div class="showcard-info">
                 <div>
-                  <span class="showcard-tags">${video.categoryLabel} · ${video.school.split(' - ')[0]}</span>
+                  <span class="showcard-tags">${video.categoryLabel} · ${video.school.split(' - ')[0]}${video.province ? ` (${video.province})` : ''}</span>
                   <h2 class="showcard-title">${video.title}</h2>
                 </div>
                 <div class="showcard-actions">
@@ -288,22 +811,41 @@ function renderFeed() {
               </p>
             </div>
 
-            <!-- Bloque 3: Carrusel A (Episodios de Bariloche) -->
+            <!-- Bloque 2.5: Capítulos del Video (Timeline Interactivo) -->
+            ${(function() {
+              const chs = parseChapters(video.chapters);
+              if (chs.length === 0) return '';
+              return `
+                <div class="video-chapters-box">
+                  <h4>Capítulos del Video 🎬</h4>
+                  <div class="chapters-timeline">
+                    ${chs.map(ch => `
+                      <div class="chapter-timeline-item" data-time="${ch.time}">
+                        <span class="chapter-badge"><i class="fa-solid fa-play"></i> ${formatChapterTime(ch.time)}</span>
+                        <span class="chapter-label">${ch.label}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              `;
+            })()}
+
+            <!-- Bloque 3: Carrusel A (Episodios del Tema/Colección) -->
             <div class="side-panel-carousel">
               <div class="carousel-header">
-                <h3>Episodios <span class="episode-count">${state.videos.length}</span></h3>
+                <h3>${video.collection_name ? `Colección: ${video.collection_name}` : 'Episodios'} <span class="episode-count">${episodes.length}</span></h3>
                 <div class="carousel-arrows">
                   <button class="btn-carousel-prev" data-target="episodes-track-${video.id}"><i class="fa-solid fa-chevron-left"></i></button>
                   <button class="btn-carousel-next" data-target="episodes-track-${video.id}"><i class="fa-solid fa-chevron-right"></i></button>
                 </div>
               </div>
               <div class="carousel-track" id="episodes-track-${video.id}">
-                ${state.videos.map((ep, epIdx) => {
+                ${episodes.map((ep, epIdx) => {
                   const isActive = ep.id === video.id;
                   return `
                     <div class="carousel-card ${isActive ? 'active' : ''}" data-video-id="${ep.id}">
                       <img src="${ep.thumbnailUrl}" alt="${ep.title}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=300&auto=format&fit=crop&q=60';">
-                      <span class="carousel-card-badge">M${epIdx + 1}</span>
+                      <span class="carousel-card-badge">M${ep.episode_number || (epIdx + 1)}</span>
                       ${isActive ? '<div class="active-badge"><i class="fa-solid fa-play"></i></div>' : ''}
                     </div>
                   `;
@@ -311,21 +853,21 @@ function renderFeed() {
               </div>
             </div>
 
-            <!-- Bloque 4: Carrusel B (Sugerencias Recomendados) -->
+            <!-- Bloque 4: Carrusel B (Sugerencias Recomendados del Catálogo) -->
             <div class="side-panel-carousel">
               <div class="carousel-header">
-                <h3>Sugeridos <span class="episode-count">${state.videos.filter(v => v.id !== video.id).length}</span></h3>
+                <h3>Sugeridos <span class="episode-count">${suggested.length}</span></h3>
                 <div class="carousel-arrows">
                   <button class="btn-carousel-prev" data-target="suggested-track-${video.id}"><i class="fa-solid fa-chevron-left"></i></button>
                   <button class="btn-carousel-next" data-target="suggested-track-${video.id}"><i class="fa-solid fa-chevron-right"></i></button>
                 </div>
               </div>
               <div class="carousel-track" id="suggested-track-${video.id}">
-                ${state.videos.filter(v => v.id !== video.id).map((sug) => {
+                ${suggested.map((sug) => {
                   return `
                     <div class="carousel-card" data-video-id="${sug.id}">
                       <img src="${sug.thumbnailUrl}" alt="${sug.title}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=300&auto=format&fit=crop&q=60';">
-                      <span class="carousel-card-badge tag-badge">${sug.categoryLabel.split(' ')[0]}</span>
+                      <span class="carousel-card-badge tag-badge">${sug.categoryLabel ? sug.categoryLabel.split(' ')[0] : 'Short'}</span>
                     </div>
                   `;
                 }).join('')}
@@ -391,7 +933,7 @@ function renderNetflixRows() {
           <div class="netflix-card" data-video-id="${video.id}">
             <img class="netflix-card-img" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
             <div class="netflix-card-overlay">
-              <span class="netflix-card-school">${video.school.split(' - ')[0]}</span>
+              <span class="netflix-card-school">${video.school.split(' - ')[0]}${video.province ? ` (${video.province})` : ''}</span>
               <h4 class="netflix-card-title">${video.title}</h4>
             </div>
           </div>
@@ -605,6 +1147,23 @@ function setupVideoControls(card, videoData) {
       }
 
       ctrlTimeText.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+      
+      // Resaltado dinámico del capítulo activo basado en el tiempo actual de reproducción
+      let activeChapter = null;
+      chapterItems.forEach(item => {
+        const itemTime = parseFloat(item.getAttribute('data-time'));
+        if (video.currentTime >= itemTime) {
+          activeChapter = item;
+        }
+      });
+      
+      chapterItems.forEach(item => {
+        if (item === activeChapter) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
     }
   });
 
@@ -753,7 +1312,11 @@ function setupVideoControls(card, videoData) {
   const likeCountTextDesktop = card.querySelector('.desktop-like-count');
 
   // Acción de Dar Like
-  function giveLike() {
+  async function giveLike() {
+    if (!clientSession) {
+      openAuthModal('login');
+      return;
+    }
     const videoObj = state.videos.find(v => v.id === videoData.id);
     if (!videoObj.hasLiked) {
       videoObj.likes += 1;
@@ -771,6 +1334,16 @@ function setupVideoControls(card, videoData) {
       }
       
       triggerLikeAnimation(likeBtnMobile);
+
+      // Persistir like de forma inmediata en Supabase
+      try {
+        await supabase
+          .from('videos')
+          .update({ likes: videoObj.likes })
+          .eq('id', videoData.id);
+      } catch (err) {
+        console.error("Error al persistir like en Supabase:", err);
+      }
     }
   }
 
@@ -874,33 +1447,58 @@ function setupVideoControls(card, videoData) {
   const commentSubmitBtn = card.querySelector('.btn-comment-submit');
   const commentsMobileBtn = card.querySelector('.btn-comments-mobile');
 
-  function addComment() {
+  async function addComment() {
+    if (!clientSession) {
+      openAuthModal('login');
+      return;
+    }
     const text = commentInput.value.trim();
     if (!text) return;
 
-    const newComment = {
-      user: "Egresado_TR",
-      text: text,
-      time: "Ahora"
-    };
+    const defaultUser = clientSession.user_name || clientSession.email.split('@')[0];
 
-    if (!state.comments[videoData.id]) {
-      state.comments[videoData.id] = [];
+    try {
+      // Inyectar comentario en Supabase de forma persistente
+      const { data, error } = await supabase
+        .from('comments')
+        .insert([
+          {
+            video_id: videoData.id,
+            user_name: defaultUser,
+            text: text
+          }
+        ])
+        .select();
+
+      if (error) throw error;
+
+      const newComment = {
+        user: defaultUser,
+        text: text,
+        time: "Ahora"
+      };
+
+      if (!state.comments[videoData.id]) {
+        state.comments[videoData.id] = [];
+      }
+
+      state.comments[videoData.id].unshift(newComment);
+      commentInput.value = '';
+
+      // Renderizar
+      commentsList.innerHTML = renderCommentsHtml(videoData.id);
+      
+      // Actualizar conteos
+      const commentCountElements = card.querySelectorAll('.comment-count-text');
+      commentCountElements.forEach(el => el.textContent = state.comments[videoData.id].length);
+
+      // Animación de envío
+      commentSubmitBtn.style.transform = 'scale(0.8)';
+      setTimeout(() => commentSubmitBtn.style.transform = '', 150);
+
+    } catch (err) {
+      console.error("Error al publicar comentario en Supabase:", err);
     }
-
-    state.comments[videoData.id].unshift(newComment);
-    commentInput.value = '';
-
-    // Renderizar
-    commentsList.innerHTML = renderCommentsHtml(videoData.id);
-    
-    // Actualizar conteos
-    const commentCountElements = card.querySelectorAll('.comment-count-text');
-    commentCountElements.forEach(el => el.textContent = state.comments[videoData.id].length);
-
-    // Animación de envío
-    commentSubmitBtn.style.transform = 'scale(0.8)';
-    setTimeout(() => commentSubmitBtn.style.transform = '', 150);
   }
 
   if (commentSubmitBtn) {
@@ -912,7 +1510,16 @@ function setupVideoControls(card, videoData) {
 
   // En móvil, click en comentarios abre un alert o simulación rápida
   commentsMobileBtn.addEventListener('click', () => {
-    alert(`Anécdotas en Bariloche:\n\n` + state.comments[videoData.id].map(c => `• ${c.user}: ${c.text}`).join('\n'));
+    if (!clientSession) {
+      openAuthModal('login');
+      return;
+    }
+    const cList = state.comments[videoData.id] || [];
+    if (cList.length === 0) {
+      alert("Aún no hay comentarios. ¡Sé el primero!");
+    } else {
+      alert(`Anécdotas en Bariloche:\n\n` + cList.map(c => `• ${c.user}: ${c.text}`).join('\n'));
+    }
   });
 
   // 1. Botón Replay de Show Card
@@ -981,6 +1588,26 @@ function setupVideoControls(card, videoData) {
       
       // Reproducir
       setTimeout(playActiveVideo, 100);
+    });
+  });
+
+  // 5. Configurar click en capítulos del video para saltar de tiempo (seek)
+  const chapterItems = card.querySelectorAll('.chapter-timeline-item');
+  chapterItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const seekTime = parseFloat(item.getAttribute('data-time'));
+      if (!isNaN(seekTime)) {
+        video.currentTime = seekTime;
+        video.play().catch(err => console.log("Autoplay post-seek bloqueado:", err));
+        
+        // Reset controls display/timer
+        resetMobileControlsTimer();
+        
+        // Highlight active chapter
+        chapterItems.forEach(ci => ci.classList.remove('active'));
+        item.classList.add('active');
+      }
     });
   });
 }
@@ -1175,7 +1802,7 @@ function renderNetflixGrid(filteredVideos) {
     <div class="netflix-card" data-video-id="${video.id}">
       <img class="netflix-card-img" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
       <div class="netflix-card-overlay">
-        <span class="netflix-card-school">${video.school.split(' - ')[0]}</span>
+        <span class="netflix-card-school">${video.school.split(' - ')[0]}${video.province ? ` (${video.province})` : ''}</span>
         <h4 class="netflix-card-title">${video.title}</h4>
       </div>
     </div>

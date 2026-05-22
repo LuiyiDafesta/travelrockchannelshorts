@@ -64,6 +64,28 @@
       </button>
     </nav>
 
+    <!-- Sección de Autenticación de Clientes -->
+    <div class="sidebar-auth-wrapper" id="sidebar-auth-wrapper" style="margin: 15px 0; padding: 0 10px;">
+      <!-- Para Invitado -->
+      <button class="sidebar-menu-item" id="sidebar-btn-login" style="width: 100%; border: 1px dashed rgba(255,255,255,0.1); border-radius: var(--radius-sm); margin-bottom: 0;">
+        <i class="fa-solid fa-circle-user" style="color: var(--neon-pink);"></i>
+        <span>Iniciar Sesión</span>
+      </button>
+      <!-- Para Logueado (Oculto al inicio) -->
+      <div class="sidebar-user-logged hidden" id="sidebar-user-logged" style="display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); padding: 10px 14px; border-radius: var(--radius-sm);">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="user-avatar" id="sidebar-user-avatar" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-family: var(--font-display); font-weight: 700; font-size: 0.9rem;">U</div>
+          <div style="display: flex; flex-direction: column;">
+            <span class="user-name" id="sidebar-user-name" style="font-size: 0.8rem; font-weight: 600; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Usuario</span>
+            <span style="font-size: 0.65rem; color: var(--text-muted);">Egresado 🎓</span>
+          </div>
+        </div>
+        <button class="btn-user-logout" id="btn-sidebar-logout" style="background: transparent; border: none; color: var(--text-muted); cursor: pointer; transition: color var(--transition-fast);" title="Cerrar Sesión">
+          <i class="fa-solid fa-power-off"></i>
+        </button>
+      </div>
+    </div>
+
     <!-- Sección "Continuar Viendo" -->
     <div class="keep-watching-section">
       <h4 class="sidebar-section-title">Continuar viendo</h4>
@@ -120,9 +142,15 @@
       </div>
     </div>
     
-    <button class="mobile-premium-btn" id="mobile-header-premium-btn">
-      <i class="fa-solid fa-crown"></i>
-    </button>
+    <div class="mobile-auth-container" style="display: flex; align-items: center; gap: 8px;">
+      <button class="mobile-premium-btn" id="mobile-header-premium-btn">
+        <i class="fa-solid fa-crown"></i>
+      </button>
+      <button class="mobile-auth-btn" id="mobile-btn-login" style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: #fff; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; cursor: pointer; transition: all var(--transition-fast);" title="Iniciar Sesión">
+        <i class="fa-solid fa-circle-user" style="color: var(--neon-pink);"></i>
+      </button>
+      <div class="mobile-user-avatar hidden" id="mobile-user-avatar" style="width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; cursor: pointer;" title="Ver Perfil">U</div>
+    </div>
   </header>
 
   <!-- C. BARRA DE PESTAÑAS MÓVIL INFERIOR (Estilo Shorta.com App) -->
@@ -271,6 +299,58 @@
           <p>Tu cuenta ha sido activada con éxito. Ya tenés acceso completo e ilimitado.</p>
           <button class="premium-success-btn" id="btn-checkout-success-close">Comenzar a disfrutar</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- E. MODAL DE AUTENTICACIÓN DE CLIENTES (Iniciar Sesión / Registro) -->
+  <div class="premium-modal-overlay" id="client-auth-modal">
+    <div class="premium-modal-card glassmorphism" style="max-width: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 45px rgba(168, 85, 247, 0.15);">
+      <button class="premium-modal-close" id="btn-close-auth-modal">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      
+      <div class="premium-modal-body" style="padding: 35px 28px 28px;">
+        <div class="premium-modal-header" style="margin-bottom: 20px;">
+          <div class="modal-crown-container" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%); border-color: rgba(236, 72, 153, 0.3); width: 56px; height: 56px;">
+            <i class="fa-solid fa-circle-user animate-pulse-crown" style="color: var(--neon-pink); filter: drop-shadow(0 0 8px rgba(236, 72, 153, 0.6)); font-size: 1.6rem;"></i>
+          </div>
+          <h2 style="font-size: 1.6rem;"><span class="text-gradient-effect">Club Egresados</span></h2>
+          <p class="modal-subtitle" id="auth-modal-subtitle">Inicia sesión para guardar favoritos y chatear</p>
+        </div>
+        
+        <!-- Pestañas de Login / Registro -->
+        <div class="auth-tabs-wrapper" style="display: flex; gap: 8px; width: 100%; margin-bottom: 20px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); padding: 4px; border-radius: var(--radius-full);">
+          <button class="auth-tab-btn active" id="btn-tab-login" style="flex: 1; padding: 10px; background: var(--primary-gradient); border: none; border-radius: var(--radius-full); color: white; font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all var(--transition-fast); box-shadow: var(--neon-glow-pink);">Iniciar Sesión</button>
+          <button class="auth-tab-btn" id="btn-tab-register" style="flex: 1; padding: 10px; background: transparent; border: none; border-radius: var(--radius-full); color: var(--text-secondary); font-family: var(--font-display); font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all var(--transition-fast);">Registrarse</button>
+        </div>
+
+        <!-- Alertas de Error/Éxito en Modal -->
+        <div id="auth-alert-container" style="width: 100%; margin-bottom: 15px;"></div>
+
+        <!-- Formulario de Autenticación -->
+        <form id="client-auth-form" onsubmit="return false;" style="width: 100%; display: flex; flex-direction: column; gap: 16px;">
+          <!-- Campo Nickname (Oculto en Login por defecto) -->
+          <div class="form-group hidden" id="group-auth-username" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 0.75rem; margin-bottom: 6px;" for="auth-username"><i class="fa-solid fa-signature"></i> Nombre / Apodo (Egresado)</label>
+            <input class="form-input" style="padding: 10px 14px; font-size: 0.85rem;" type="text" id="auth-username" placeholder="Ej: Sofi_Ramos_2026">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 0.75rem; margin-bottom: 6px;" for="auth-email"><i class="fa-solid fa-envelope"></i> Correo Electrónico</label>
+            <input class="form-input" style="padding: 10px 14px; font-size: 0.85rem;" type="email" id="auth-email" required placeholder="tu-correo@gmail.com">
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 0.75rem; margin-bottom: 6px;" for="auth-password"><i class="fa-solid fa-lock"></i> Contraseña</label>
+            <input class="form-input" style="padding: 10px 14px; font-size: 0.85rem;" type="password" id="auth-password" required placeholder="••••••••">
+          </div>
+
+          <button class="premium-checkout-btn" type="submit" id="btn-auth-submit" style="padding: 12px 24px; font-size: 0.9rem; margin-top: 10px;">
+            <span id="btn-auth-text">Ingresar ahora</span>
+            <i class="fa-solid fa-right-to-bracket" id="btn-auth-icon"></i>
+          </button>
+        </form>
       </div>
     </div>
   </div>

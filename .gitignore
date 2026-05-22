@@ -35,3 +35,7 @@ out/
 .eslintcache
 .parcel-cache
 .turbo/
+
+# Temporales de desarrollo y pruebas locales
+scratch/
+.gemini/

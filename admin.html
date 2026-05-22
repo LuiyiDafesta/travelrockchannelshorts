@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TravelRock Channel Shorts - Panel de Administración Premium</title>
+  
+  <!-- Icono de Pestaña -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  
+  <!-- FontAwesome para Iconos -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Estilos del Sistema Principal -->
+  <link rel="stylesheet" href="assets/css/app.min.css?v=1.0.1">
+
+  <style>
+    /* Estilos Específicos del Administrador con Acentuación Aurora */
+    body {
+      overflow-y: auto !important; /* Permitir scroll vertical en panel admin */
+      scrollbar-width: thin;
+    }
+    
+    .admin-container {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 20px 80px 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Pantalla de Login Premium */
+    .login-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: calc(100vh - 100px);
+      padding: 20px;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 450px;
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      border-color: rgba(236, 72, 153, 0.2);
+      box-shadow: var(--shadow-premium), var(--neon-glow-purple);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-logo {
+      font-size: 2.2rem;
+      font-family: var(--font-display);
+      font-weight: 800;
+      margin-bottom: 30px;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .login-logo span {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+      text-align: left;
+    }
+
+    .form-label {
+      display: block;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      transition: all var(--transition-fast);
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--neon-pink);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 12px rgba(236, 72, 153, 0.25);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 1rem;
+      margin-top: 10px;
+    }
+
+    /* Dashboard Header */
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 40px;
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: 20px;
+    }
+
+    .admin-title h1 {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 2.2rem;
+    }
+
+    .admin-title p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-top: 4px;
+    }
+
+    .admin-profile {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .admin-badge {
+      background: var(--primary-gradient);
+      color: white;
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+    }
+
+    .btn-logout {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+      border-radius: var(--radius-full);
+      padding: 8px 16px;
+      cursor: pointer;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: all var(--transition-fast);
+    }
+
+    .btn-logout:hover {
+      background: #ef4444;
+      color: white;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    }
+
+    /* Estadísticas en Tarjetas */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      border-radius: var(--radius-md);
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .stat-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+    }
+
+    .stat-card:nth-child(1) .stat-icon { color: var(--neon-purple); border-color: rgba(168, 85, 247, 0.3); }
+    .stat-card:nth-child(2) .stat-icon { color: var(--neon-pink); border-color: rgba(236, 72, 153, 0.3); }
+    .stat-card:nth-child(3) .stat-icon { color: var(--neon-orange); border-color: rgba(249, 115, 22, 0.3); }
+    .stat-card:nth-child(4) .stat-icon { color: #10b981; border-color: rgba(16, 185, 129, 0.3); }
+    .stat-card:nth-child(5) .stat-icon { color: #3b82f6; border-color: rgba(59, 130, 246, 0.3); }
+    .stat-card:nth-child(6) .stat-icon { color: #fde047; border-color: rgba(253, 224, 71, 0.3); }
+
+    .stat-info h3 {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-info .stat-value {
+      font-size: 1.8rem;
+      font-family: var(--font-display);
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-top: 4px;
+    }
+
+    /* Pestañas de Navegación */
+    .admin-tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 30px;
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: 12px;
+    }
+
+    .tab-trigger {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.05rem;
+      padding: 8px 18px;
+      cursor: pointer;
+      position: relative;
+      transition: all var(--transition-fast);
+    }
+
+    .tab-trigger:hover {
+      color: var(--text-primary);
+    }
+
+    .tab-trigger.active {
+      color: var(--neon-pink);
+    }
+
+    .tab-trigger.active::after {
+      content: '';
+      position: absolute;
+      bottom: -13px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--primary-gradient);
+      box-shadow: var(--neon-glow-pink);
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Layout Panel Principal */
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 30px;
+    }
+
+    @media (min-width: 992px) {
+      .dashboard-layout {
+        grid-template-columns: 1.2fr 0.8fr;
+      }
+    }
+
+    .glass-panel {
+      border-radius: var(--radius-md);
+      padding: 30px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow-premium);
+    }
+
+    .panel-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.3rem;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-primary);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 12px;
+    }
+
+    /* Selector de Archivos Personalizado */
+    .file-drop-area {
+      border: 2px dashed var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      transition: all var(--transition-fast);
+      background: rgba(255, 255, 255, 0.01);
+      margin-bottom: 20px;
+    }
+
+    .file-drop-area:hover, .file-drop-area.dragover {
+      border-color: var(--neon-pink);
+      background: rgba(236, 72, 153, 0.03);
+      box-shadow: 0 0 15px rgba(236, 72, 153, 0.1);
+    }
+
+    .file-drop-icon {
+      font-size: 2.5rem;
+      color: var(--text-secondary);
+      margin-bottom: 15px;
+      transition: all var(--transition-fast);
+    }
+
+    .file-drop-area:hover .file-drop-icon {
+      color: var(--neon-pink);
+      transform: scale(1.1);
+    }
+
+    .file-drop-text h4 {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      margin-bottom: 6px;
+    }
+
+    .file-drop-text p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .file-input {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    /* Previsualizador de Carga con canvas oculto */
+    .preview-container {
+      display: none;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      margin-bottom: 24px;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .preview-video-thumb {
+      width: 60px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--glass-border);
+      background: #000;
+    }
+
+    .preview-info {
+      flex: 1;
+    }
+
+    .preview-info h5 {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 250px;
+    }
+
+    .preview-info p {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .btn-clear-file {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.2rem;
+      padding: 8px;
+      transition: all var(--transition-fast);
+    }
+
+    .btn-clear-file:hover {
+      color: #ef4444;
+      transform: scale(1.1);
+    }
+
+    /* Barra de Progreso de Subida */
+    .upload-progress-wrapper {
+      display: none;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--primary-gradient);
+      box-shadow: var(--neon-glow-pink);
+      transition: width 0.1s ease;
+    }
+
+    /* Alertas y Notificaciones */
+    .alert {
+      padding: 14px 20px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-10px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .alert-error {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .alert-info {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #60a5fa;
+    }
+
+    /* Tabla de Gestión de Videos */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      background: rgba(255, 255, 255, 0.01);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-sm);
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .admin-table th, .admin-table td {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.85rem;
+    }
+
+    .admin-table th {
+      font-family: var(--font-display);
+      font-weight: 700;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.02);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+    }
+
+    .admin-table tbody tr {
+      transition: background var(--transition-fast);
+    }
+
+    .admin-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .table-thumb {
+      width: 40px;
+      height: 65px;
+      object-fit: cover;
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--glass-border);
+      background: #000;
+    }
+
+    .table-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      max-width: 250px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .table-meta {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .btn-delete-row {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border-radius: var(--radius-xs);
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all var(--transition-fast);
+    }
+
+    .btn-delete-row:hover {
+      background: #ef4444;
+      color: white;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-delete-row:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Comentarios y Moderación */
+    .comments-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .mod-comment-card {
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.01);
+      display: flex;
+      gap: 15px;
+      align-items: flex-start;
+      transition: all var(--transition-fast);
+    }
+
+    .mod-comment-card:hover {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(236, 72, 153, 0.15);
+    }
+
+    .mod-comment-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .user-avatar-circle {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.05rem;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .mod-comment-body {
+      flex: 1;
+    }
+
+    .mod-comment-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .mod-comment-user {
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .mod-comment-video-ref {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .mod-comment-text {
+      font-size: 0.85rem;
+      line-height: 1.4;
+      color: var(--text-secondary);
+    }
+
+    .mod-comment-actions {
+      align-self: center;
+    }
+
+    .no-data-card {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+    }
+
+    .no-data-card i {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+      color: var(--text-muted);
+    }
+
+    /* Cuadrícula de 2 columnas para el formulario */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    @media (min-width: 576px) {
+      .form-row {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* Modal de confirmación */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .modal-card {
+      width: 90%;
+      max-width: 450px;
+      padding: 30px;
+      border-radius: var(--radius-md);
+      text-align: center;
+      animation: modalScale 0.3s cubic-bezier(0.1, 0.8, 0.3, 1);
+    }
+
+    @keyframes modalScale {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 24px;
+    }
+
+    .btn-confirm-delete {
+      background: #ef4444;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      border-radius: var(--radius-full);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-cancel {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--glass-border);
+      color: var(--text-primary);
+      padding: 10px 20px;
+      border-radius: var(--radius-full);
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Fondos Ambientales Aurora Glow -->
+  <div class="aurora-bg">
+    <div class="aurora-glow aurora-glow-1"></div>
+    <div class="aurora-glow aurora-glow-2"></div>
+    <div class="aurora-glow aurora-glow-3"></div>
+  </div>
+
+  <!-- A. PANTALLA DE LOGIN INICIAL -->
+  <div class="login-wrapper" id="login-section">
+    <div class="login-card glassmorphism">
+      <div class="login-logo">
+        <div class="text-gradient-effect">TR CHANNEL</div>
+        <span>Administrador Shorts</span>
+      </div>
+      
+      <div id="login-alert-container"></div>
+      
+      <form id="login-form" onsubmit="return false;">
+        <div class="form-group">
+          <label class="form-label" for="login-email">Email de Administrador</label>
+          <input class="form-input" type="email" id="login-email" required placeholder="tu-email@gmail.com" value="lsnetinformatica2024@gmail.com">
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="login-password">Contraseña</label>
+          <input class="form-input" type="password" id="login-password" required placeholder="••••••••" value="Luiyi260879@">
+        </div>
+        
+        <button class="premium-btn login-btn" type="submit" id="btn-login-submit">
+          <span>Ingresar al Dashboard</span>
+          <i class="fa-solid fa-right-to-bracket"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- B. CONTENEDOR PRINCIPAL DEL DASHBOARD (Oculto al inicio) -->
+  <div class="admin-container" id="dashboard-section" style="display: none;">
+    
+    <!-- Header de Administración -->
+    <header class="admin-header">
+      <div class="admin-title">
+        <h1>TravelRock <span class="text-gradient-effect">PRO Admin</span></h1>
+        <p>Base de Datos y Centro de Control de Videos</p>
+      </div>
+      <div class="admin-profile">
+        <span class="admin-badge"><i class="fa-solid fa-crown"></i> SUPERADMIN</span>
+        <button class="btn-logout" id="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Salir</button>
+      </div>
+    </header>
+
+    <!-- Tarjetas de Estadísticas -->
+    <section class="stats-grid">
+      <div class="stat-card glassmorphism">
+        <div class="stat-icon"><i class="fa-solid fa-clapperboard"></i></div>
+        <div class="stat-info">
+          <h3>Total Videos</h3>
+          <div class="stat-value" id="stat-videos-count">0</div>
+        </div>
+      </div>
+      
+      <div class="stat-card glassmorphism">
+        <div class="stat-icon"><i class="fa-solid fa-heart"></i></div>
+        <div class="stat-info">
+          <h3>Total Likes</h3>
+          <div class="stat-value" id="stat-likes-count">0</div>
+        </div>
+      </div>
+      
+      <div class="stat-card glassmorphism">
+        <div class="stat-icon"><i class="fa-solid fa-comments"></i></div>
+        <div class="stat-info">
+          <h3>Total Comentarios</h3>
+          <div class="stat-value" id="stat-comments-count">0</div>
+        </div>
+      </div>
+
+      <div class="stat-card glassmorphism">
+        <div class="stat-icon"><i class="fa-solid fa-database"></i></div>
+        <div class="stat-info">
+          <h3>Almacenamiento</h3>
+          <div class="stat-value" id="stat-storage-size">0.0 MB</div>
+        </div>
+      </div>
+
+      <div class="stat-card glassmorphism">
+        <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+        <div class="stat-info">
+          <h3>Chicos Registrados</h3>
+          <div class="stat-value" id="stat-users-count">0</div>
+        </div>
+      </div>
+
+      <div class="stat-card glassmorphism">
+        <div class="stat-icon"><i class="fa-solid fa-crown"></i></div>
+        <div class="stat-info">
+          <h3>Miembros PRO</h3>
+          <div class="stat-value" id="stat-pro-users-count">0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pestañas de Navegación del Panel -->
+    <nav class="admin-tabs">
+      <button class="tab-trigger active" data-tab="tab-upload"><i class="fa-solid fa-cloud-arrow-up"></i> Cargar Momentos</button>
+      <button class="tab-trigger" data-tab="tab-videos" id="trigger-tab-videos"><i class="fa-solid fa-list-check"></i> Gestionar Catálogo</button>
+      <button class="tab-trigger" data-tab="tab-comments" id="trigger-tab-comments"><i class="fa-solid fa-comments"></i> Comentarios</button>
+      <button class="tab-trigger" data-tab="tab-users" id="trigger-tab-users"><i class="fa-solid fa-users"></i> Gestión de Usuarios</button>
+    </nav>
+
+    <!-- Pestaña 1: Carga de Videos (Uploader) -->
+    <div class="tab-content active" id="tab-upload">
+      <div class="dashboard-layout">
+        
+        <!-- Formulario e Inserción -->
+        <div class="glass-panel glassmorphism">
+          <div class="panel-title">
+            <i class="fa-solid fa-photo-film" style="color:var(--neon-pink);"></i>
+            Subir Nuevo Short Vertical
+          </div>
+          
+          <div id="upload-alert-container"></div>
+          
+          <form id="upload-form" onsubmit="return false;">
+            
+            <!-- Selector de Archivo de Video -->
+            <div class="file-drop-area" id="file-drop-area">
+              <i class="fa-solid fa-video file-drop-icon"></i>
+              <div class="file-drop-text">
+                <h4>Arrastra tu video vertical aquí</h4>
+                <p>O haz clic para explorar tus archivos (Solo formato MP4)</p>
+              </div>
+              <input class="file-input" type="file" id="video-file" accept="video/mp4" required>
+            </div>
+
+            <!-- Previsualizador de Video y Aspect Ratio -->
+            <div class="preview-container" id="video-preview-box">
+              <video class="preview-video-thumb" id="aux-preview-video" muted></video>
+              <div class="preview-info">
+                <h5 id="preview-file-name">video.mp4</h5>
+                <p id="preview-file-dimensions">Dimensiones: Leyendo...</p>
+                <p id="preview-file-duration">Duración: Leyendo...</p>
+              </div>
+              <button class="btn-clear-file" id="btn-clear-file" type="button" title="Quitar archivo">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+
+            <!-- Barra de Progreso de Subida -->
+            <div class="upload-progress-wrapper" id="upload-progress-box">
+              <div class="progress-info">
+                <span id="upload-status-text">Subiendo video al Storage...</span>
+                <span id="upload-percent-text">0%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="upload-progress-bar"></div>
+              </div>
+            </div>
+
+            <!-- Campos de Información General -->
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="video-title">Título del Short</label>
+                <input class="form-input" type="text" id="video-title" required placeholder="¡Noche épica en By Pass! 🎧🔥">
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label" for="video-school">Colegio / Grupo</label>
+                <input class="form-input" type="text" id="video-school" required placeholder="Colegio San Martín - BsAs">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="video-category">Categoría del Catálogo</label>
+                <select class="form-select" id="video-category" required>
+                  <option value="boliche">Noche de Boliche (Boliches)</option>
+                  <option value="aventura">Aventura Extrema (Aventura)</option>
+                  <option value="lifestyle">Lifestyle & Relax (Lifestyle)</option>
+                  <option value="emociones">Momentos Mágicos (Emociones)</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label" for="video-date">Fecha del Momento</label>
+                <input class="form-input" type="text" id="video-date" required placeholder="22 May 2026">
+              </div>
+            </div>
+
+            <!-- Campos para Provincia y Capítulos (Configurables) -->
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="video-province"><i class="fa-solid fa-map-pin"></i> Provincia del Momento</label>
+                <input class="form-input" type="text" id="video-province" placeholder="Ej: Buenos Aires, Córdoba, Río Negro">
+                <span style="font-size: 0.7rem; color: var(--text-secondary); display: block; margin-top: 4px;">Configura la provincia de origen del video.</span>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label" for="video-chapters"><i class="fa-solid fa-circle-play"></i> Capítulos del Video (Opcional)</label>
+                <input class="form-input" type="text" id="video-chapters" placeholder="Ej: 0:00 - Salida, 0:05 - Descenso, 0:10 - Llegada">
+                <span style="font-size: 0.7rem; color: var(--text-secondary); display: block; margin-top: 4px;">Formatos válidos: `MM:SS - Detalle` separados por comas o saltos de línea.</span>
+              </div>
+            </div>
+
+            <!-- Campos para Temas y Episodios (Sugerido por el Usuario) -->
+            <div class="form-row" style="background: rgba(236, 72, 153, 0.05); padding: 15px; border-radius: var(--radius-sm); border: 1px solid rgba(236,72,153,0.15); margin-bottom: 20px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="video-collection" style="color:var(--neon-pink);"><i class="fa-solid fa-folder-open"></i> Colección / Tema (Opcional)</label>
+                <input class="form-input" type="text" id="video-collection" placeholder="Ej: Viaje a Bariloche, Buenos Aires, etc.">
+                <span style="font-size: 0.7rem; color: var(--text-secondary); display: block; margin-top: 4px;">Permite agrupar videos en el mismo carrusel de episodios.</span>
+              </div>
+              
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="video-episode" style="color:var(--neon-pink);"><i class="fa-solid fa-list-ol"></i> N° de Episodio (Opcional)</label>
+                <input class="form-input" type="number" id="video-episode" placeholder="1" min="1">
+                <span style="font-size: 0.7rem; color: var(--text-secondary); display: block; margin-top: 4px;">Orden del video dentro de la colección.</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="video-description">Descripción / Anécdota</label>
+              <textarea class="form-textarea" id="video-description" rows="3" required placeholder="Describe lo que pasó en el video, las risas, quién se cayó o qué DJ estaba tocando..."></textarea>
+            </div>
+
+            <button class="premium-btn" type="submit" id="btn-upload-submit" style="width: 100%; padding: 14px; font-size: 1.05rem;">
+              <span>Publicar Short al Instante</span>
+              <i class="fa-solid fa-circle-check"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Instrucciones y Panel Informativo Lateral -->
+        <div class="glass-panel glassmorphism" style="height: fit-content;">
+          <div class="panel-title">
+            <i class="fa-solid fa-shield-halved" style="color:var(--neon-purple);"></i>
+            Instrucciones de Publicación
+          </div>
+          
+          <div style="font-size: 0.88rem; line-height: 1.6; color: var(--text-secondary);">
+            <p style="margin-bottom: 12px;">Bienvenido al sistema CMS inteligente de **TravelRock Channel**. Sigue las directrices para mantener la calidad premium:</p>
+            
+            <ul style="padding-left: 20px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px;">
+              <li><strong style="color: var(--text-primary);"><i class="fa-solid fa-mobile-screen-button"></i> Relación de Aspecto Vertical:</strong> El sistema rechaza automáticamente videos con orientación horizontal (paisaje) o cuadrados. El video debe ser estrictamente en modo retrato (ej. 9:16 o similar) para conservar el aspecto inmersivo tipo TikTok.</li>
+              <li><strong style="color: var(--text-primary);"><i class="fa-solid fa-wand-magic-sparkles"></i> Miniaturas Automáticas:</strong> No necesitas crear ni diseñar portadas. Al cargar el video, el sistema extraerá dinámicamente el fotograma del segundo 1.5 en alta definición y lo publicará automáticamente.</li>
+              <li><strong style="color: var(--text-primary);"><i class="fa-solid fa-folder-tree"></i> Colecciones y Episodios:</strong> Si subes varios videos de Buenos Aires, puedes escribir en Colección <code style="color: var(--neon-pink);">Buenos Aires</code> y ponerles episodios 1, 2, 3, etc. El sistema los mostrará en el carrusel derecho cuando un usuario reproduzca cualquiera de ellos.</li>
+              <li><strong style="color: var(--text-primary);"><i class="fa-solid fa-circle-check"></i> Publicación en Vivo:</strong> Una vez confirmada la subida, el video aparecerá instantáneamente en el feed móvil y en la grilla del catálogo principal sin necesidad de recompilar el sitio.</li>
+            </ul>
+            
+            <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; font-size: 0.8rem; color: var(--text-muted);">
+              Cualquier consulta sobre almacenamiento o bases de datos, contactar al equipo técnico.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Pestaña 2: Gestión de Catálogo (Lista de Videos) -->
+    <div class="tab-content" id="tab-videos">
+      <div class="glass-panel glassmorphism">
+        <div class="panel-title">
+          <i class="fa-solid fa-film" style="color:var(--neon-pink);"></i>
+          Catálogo Completo de Shorts
+        </div>
+
+        <div id="catalog-alert-container"></div>
+
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width: 70px;">Miniatura</th>
+                <th>Detalles del Short</th>
+                <th>Categoría</th>
+                <th>Colección / Episodio</th>
+                <th>Colegio</th>
+                <th style="width: 100px;">Me Gusta</th>
+                <th style="width: 80px; text-align: center;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="admin-videos-tbody">
+              <!-- Cargado dinámicamente -->
+              <tr>
+                <td colspan="7" class="no-data-card">
+                  <i class="fa-solid fa-spinner fa-spin" style="color:var(--neon-pink);"></i>
+                  <p>Conectando con Supabase y cargando momentos...</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pestaña 3: Moderación de Comentarios -->
+    <div class="tab-content" id="tab-comments">
+      <div class="glass-panel glassmorphism">
+        <div class="panel-title">
+          <i class="fa-solid fa-comments" style="color:var(--neon-pink);"></i>
+          Moderación de Anécdotas y Comentarios
+        </div>
+
+        <div id="comments-alert-container"></div>
+
+        <div class="comments-grid" id="admin-comments-container">
+          <!-- Cargado dinámicamente -->
+          <div class="no-data-card">
+            <i class="fa-solid fa-spinner fa-spin" style="color:var(--neon-pink);"></i>
+            <p>Buscando comentarios de los chicos en Bariloche...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pestaña 4: Gestión de Usuarios -->
+    <div class="tab-content" id="tab-users">
+      <div class="glass-panel glassmorphism">
+        <div class="panel-title">
+          <i class="fa-solid fa-users" style="color:var(--neon-pink);"></i>
+          Gestión e Inspección de Usuarios
+        </div>
+
+        <div id="users-alert-container"></div>
+
+        <div class="table-container">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width: 60px;">Avatar</th>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Membresía / Suscripción</th>
+                <th>Fecha de Registro</th>
+                <th style="text-align: center; width: 320px;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-tbody">
+              <!-- Cargado dinámicamente -->
+              <tr>
+                <td colspan="7" class="no-data-card">
+                  <i class="fa-solid fa-spinner fa-spin" style="color:var(--neon-pink);"></i>
+                  <p>Conectando con Supabase y cargando perfiles de usuario...</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Modal de Confirmación de Eliminación -->
+  <div class="modal-overlay" id="confirm-delete-modal">
+    <div class="modal-card glassmorphism">
+      <i class="fa-solid fa-circle-exclamation" style="font-size: 3rem; color: #ef4444; margin-bottom: 20px;"></i>
+      <h3 style="font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; margin-bottom: 10px;">¿Eliminar este Video?</h3>
+      <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.4;">Esta acción borrará el registro de la base de datos de manera definitiva y eliminará el video `.mp4` y su miniatura del Storage de Supabase. No se puede deshacer.</p>
+      
+      <div class="modal-buttons">
+        <button class="btn-cancel" id="btn-delete-cancel">Cancelar</button>
+        <button class="btn-confirm-delete" id="btn-delete-confirm">Eliminar para siempre</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Elemento Auxiliar Canvas Oculto para Extraer Miniaturas del Video -->
+  <canvas id="thumbnail-canvas" style="display: none;"></canvas>
+
+  <!-- Script del Administrador Supabase (ES Modules) -->
+  <script type="module" src="_source/js/admin-app.js"></script>
+</body>
+</html>
