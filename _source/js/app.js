@@ -396,6 +396,9 @@ function setupVideoControls(card, videoData) {
       void playPauseHud.offsetWidth; // Trigger reflow
       playPauseHud.classList.add('animate-hud');
     }
+
+    // Mostrar controles brevemente al reproducir para guiar al usuario (3.5 segundos)
+    showMobileControls();
   });
 
   // Evento pause del video: Sincroniza interfaz
