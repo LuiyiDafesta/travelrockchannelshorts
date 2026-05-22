@@ -80,6 +80,48 @@ document.addEventListener('DOMContentLoaded', () => {
       playActiveVideo();
     }
   }, 500);
+
+  // Inicializar sidebar de "Continuar Viendo"
+  updateKeepWatchingSidebar();
+
+  // Configurar Simulación de Checkout Premium (Shorta.com Checkout)
+  const btnCheckoutSubmit = document.getElementById('btn-checkout-submit');
+  const btnCheckoutSuccessClose = document.getElementById('btn-checkout-success-close');
+  const step1 = document.getElementById('premium-modal-content-step1');
+  const step2 = document.getElementById('premium-modal-content-step2');
+  const step3 = document.getElementById('premium-modal-content-step3');
+  const premiumModal = document.getElementById('premium-checkout-modal');
+
+  if (btnCheckoutSubmit) {
+    btnCheckoutSubmit.addEventListener('click', () => {
+      // Ir a Paso 2 (Procesando Pago con Spinner)
+      step1.classList.add('hidden');
+      step2.classList.remove('hidden');
+
+      // Simular la comunicación con la pasarela de pagos segura (2 segundos)
+      setTimeout(() => {
+        step2.classList.add('hidden');
+        step3.classList.remove('hidden');
+
+        // Disparar lluvia mágica de confeti de éxito premium
+        triggerConfetti();
+      }, 2000);
+    });
+  }
+
+  if (btnCheckoutSuccessClose) {
+    btnCheckoutSuccessClose.addEventListener('click', () => {
+      if (premiumModal) {
+        premiumModal.classList.remove('active');
+      }
+      // Resetear modal a paso 1 para futuras suscripciones
+      setTimeout(() => {
+        step1.classList.remove('hidden');
+        step2.classList.add('hidden');
+        step3.classList.add('hidden');
+      }, 300);
+    });
+  }
 });
 
 // ----------------------------------------------------------------------
@@ -846,6 +888,9 @@ function setupIntersectionObserver() {
       if (entry.isIntersecting) {
         state.activeVideoId = id;
         
+        // Registrar en "Continuar Viendo"
+        logRecentlyPlayed(id);
+        
         // Pausar todos los demás primero
         pauseAllVideos();
         
@@ -892,6 +937,9 @@ function playActiveVideo() {
 
   const activeCard = document.getElementById(`short-card-${state.activeVideoId}`);
   if (!activeCard) return;
+
+  // Registrar en "Continuar Viendo"
+  logRecentlyPlayed(state.activeVideoId);
 
   const video = activeCard.querySelector('.short-video');
   const unmuteBtn = activeCard.querySelector('.unmute-overlay-btn');
@@ -1119,4 +1167,132 @@ function setupKeyboardNavigation() {
       }
     }
   });
+}
+
+// ----------------------------------------------------------------------
+// GESTIÓN HISTORIAL "CONTINUAR VIENDO" (Recently Played)
+// ----------------------------------------------------------------------
+let recentlyPlayed = JSON.parse(localStorage.getItem('tr_recently_played') || '[]');
+
+// Si está vacío en primer inicio, inicializamos con los 3 primeros videos
+if (recentlyPlayed.length === 0 && state.videos.length >= 3) {
+  recentlyPlayed = [1, 2, 3];
+  localStorage.setItem('tr_recently_played', JSON.stringify(recentlyPlayed));
+}
+
+// Registrar un video reproducido en el historial
+function logRecentlyPlayed(id) {
+  // Evitar duplicados moviendo el ID al principio
+  recentlyPlayed = recentlyPlayed.filter(vidId => vidId !== id);
+  recentlyPlayed.unshift(id);
+  
+  // Limitar historial a los últimos 3 videos reproducidos
+  if (recentlyPlayed.length > 3) {
+    recentlyPlayed.pop();
+  }
+  
+  localStorage.setItem('tr_recently_played', JSON.stringify(recentlyPlayed));
+  updateKeepWatchingSidebar();
+}
+
+// Renderizar dinámicamente la lista de "Continuar Viendo" en la barra lateral
+function updateKeepWatchingSidebar() {
+  const listEl = document.getElementById('keep-watching-list');
+  if (!listEl) return;
+  
+  if (recentlyPlayed.length === 0) {
+    listEl.innerHTML = `
+      <div class="keep-watching-skeleton">
+        <div class="skeleton-thumb"></div>
+        <div class="skeleton-text">
+          <div class="sk-line-1"></div>
+          <div class="sk-line-2"></div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  listEl.innerHTML = recentlyPlayed.map(id => {
+    const video = state.videos.find(v => v.id === id);
+    if (!video) return '';
+    return `
+      <div class="keep-watching-item" data-video-id="${video.id}">
+        <div class="keep-watching-thumb">
+          <img src="${video.thumbnailUrl}" alt="${video.title}">
+          <div class="keep-watching-thumb-overlay">
+            <i class="fa-solid fa-play"></i>
+          </div>
+        </div>
+        <div class="keep-watching-details">
+          <div class="keep-watching-title">${video.title}</div>
+          <div class="keep-watching-meta">${video.school.split(' - ')[0]}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Asignar click para reproducir instantáneamente el video seleccionado
+  listEl.querySelectorAll('.keep-watching-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const id = parseInt(item.getAttribute('data-video-id'));
+      state.activeVideoId = id;
+      switchView('feed');
+      
+      if (window.innerWidth >= 992) {
+        document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
+        const targetCard = document.getElementById(`short-card-${id}`);
+        if (targetCard) targetCard.classList.add('active-desktop');
+      } else {
+        const targetCard = document.getElementById(`short-card-${id}`);
+        if (targetCard) {
+          targetCard.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+      
+      setTimeout(playActiveVideo, 200);
+    });
+  });
+}
+
+// ----------------------------------------------------------------------
+// LLUVIA DE CONFETI DE ALTA FIDELIDAD (Efecto Checkout Exitoso)
+// ----------------------------------------------------------------------
+function triggerConfetti() {
+  const duration = 3000;
+  const animationEnd = Date.now() + duration;
+  const colors = ['#a855f7', '#ec4899', '#f97316', '#22c55e', '#3b82f6'];
+  
+  const interval = setInterval(() => {
+    if (Date.now() > animationEnd) {
+      return clearInterval(interval);
+    }
+    
+    // Crear un confeti (elemento DOM circular de color brillante)
+    const confetti = document.createElement('div');
+    confetti.className = 'confetti-particle';
+    confetti.style.position = 'fixed';
+    confetti.style.zIndex = '9999';
+    confetti.style.width = Math.random() * 8 + 6 + 'px';
+    confetti.style.height = Math.random() * 8 + 6 + 'px';
+    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+    confetti.style.borderRadius = '50%';
+    confetti.style.left = Math.random() * 100 + 'vw';
+    confetti.style.top = '-10px';
+    confetti.style.opacity = Math.random() * 0.7 + 0.3;
+    confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+    
+    document.body.appendChild(confetti);
+    
+    // Animar la caída del confeti con una trayectoria curva premium
+    const animation = confetti.animate([
+      { transform: `translate3d(0, 0, 0) rotate(0deg)`, opacity: confetti.style.opacity },
+      { transform: `translate3d(${(Math.random() - 0.5) * 160}px, 105vh, 0) rotate(${Math.random() * 540}deg)`, opacity: 0 }
+    ], {
+      duration: Math.random() * 1800 + 1200,
+      easing: 'cubic-bezier(.1, .7, .3, 1)'
+    });
+    
+    animation.onfinish = () => confetti.remove();
+  }, 35);
 }

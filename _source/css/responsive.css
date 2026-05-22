@@ -11,6 +11,27 @@
     display: none !important;
   }
   
+  .app-sidebar {
+    display: none !important;
+  }
+  
+  .mobile-header {
+    display: flex !important;
+  }
+  
+  .mobile-tab-bar {
+    display: flex !important;
+  }
+  
+  /* Ajuste del main wrapper para móvil con header superior y tab bar inferior */
+  .main-wrapper {
+    margin-left: 0 !important;
+    margin-top: 60px !important;
+    margin-bottom: 60px !important;
+    height: calc(100vh - 120px) !important;
+    width: 100% !important;
+  }
+  
   /* El wrapper del reproductor ocupa todo el ancho y alto disponible */
   .player-wrapper {
     height: 100%;
@@ -22,8 +43,8 @@
   
   .short-card {
     padding: 0;
-    height: calc(100vh - 70px);
-    min-height: calc(100vh - 70px);
+    height: 100% !important;
+    min-height: 100% !important;
   }
 
   /* Ajuste de márgenes del header y categorías */
@@ -37,6 +58,7 @@
 
   .explorer-view {
     padding: 24px 16px 100px;
+    height: 100% !important;
   }
 
   .explorer-hero {
@@ -71,9 +93,33 @@
    B. COMPORTAMIENTO PARA ESCRITORIO (Min 992px)
    ---------------------------------------------------------------------- */
 @media (min-width: 992px) {
+  .app-sidebar {
+    display: flex !important;
+  }
+  
+  .mobile-header {
+    display: none !important;
+  }
+  
+  .mobile-tab-bar {
+    display: none !important;
+  }
+  
+  .main-wrapper {
+    margin-left: 260px !important;
+    margin-top: 0 !important;
+    width: calc(100% - 260px) !important;
+    height: 100vh !important;
+  }
+
   /* En Desktop, el feed se ajusta para mostrar el layout de cine */
   .feed-view {
     overflow-y: hidden; /* El scroll snap se desactiva y el cambio se gestiona por click, teclado o carrusel */
+    height: 100vh !important;
+  }
+  
+  .explorer-view {
+    height: 100vh !important;
   }
 
   .short-card {

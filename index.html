@@ -33,9 +33,10 @@
     <div class="aurora-glow aurora-glow-3"></div>
   </div>
 
-  <!-- 1. HEADER PREMIUM DE CRISTAL -->
-  <header class="app-header glassmorphism" id="main-header">
-    <div class="logo-container" id="btn-logo">
+  <!-- A. SIDEBAR PREMIUM DE ESCRITORIO (Estilo Shorta.com) -->
+  <aside class="app-sidebar glassmorphism" id="app-sidebar">
+    <!-- Bloque de Logo -->
+    <div class="sidebar-logo" id="sidebar-btn-logo">
       <div class="logo-icon">TR</div>
       <div class="logo-text">
         TravelRock
@@ -43,16 +44,106 @@
       </div>
     </div>
     
-    <!-- Selector de Vistas / Modos -->
-    <div class="nav-modes">
-      <button class="mode-btn" id="mode-feed-btn">
-        <i class="fa-solid fa-play"></i> Reproductor
-      </button>
-      <button class="mode-btn active" id="mode-explorer-btn">
-        <i class="fa-solid fa-clapperboard"></i> Catálogo
+    <!-- Botón Buscador Rápido -->
+    <div class="sidebar-search-container">
+      <button class="sidebar-search-btn" id="sidebar-search-trigger">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span>Buscar momentos...</span>
       </button>
     </div>
+
+    <!-- Menú de Navegación Principal -->
+    <nav class="sidebar-menu">
+      <button class="sidebar-menu-item active" id="sidebar-btn-explorer">
+        <i class="fa-solid fa-clapperboard"></i>
+        <span>Catálogo</span>
+      </button>
+      <button class="sidebar-menu-item" id="sidebar-btn-feed">
+        <i class="fa-solid fa-play"></i>
+        <span>Reproductor</span>
+      </button>
+    </nav>
+
+    <!-- Sección "Continuar Viendo" -->
+    <div class="keep-watching-section">
+      <h4 class="sidebar-section-title">Continuar viendo</h4>
+      <div class="keep-watching-list" id="keep-watching-list">
+        <!-- Generado dinámicamente por JS con miniaturas -->
+        <div class="keep-watching-skeleton">
+          <div class="skeleton-thumb"></div>
+          <div class="skeleton-text">
+            <div class="sk-line-1"></div>
+            <div class="sk-line-2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta Premium "TravelRock PRO" -->
+    <div class="sidebar-premium-card">
+      <div class="premium-card-glow"></div>
+      <div class="premium-card-content">
+        <div class="premium-badge"><i class="fa-solid fa-crown"></i> PRO</div>
+        <h3>TravelRock PRO</h3>
+        <p>Sin anuncios. Sin límites. Mirá momentos exclusivos de Bariloche.</p>
+        <button class="premium-card-btn" id="btn-sidebar-subscribe">Suscribirme ahora</button>
+      </div>
+    </div>
+
+    <!-- Footer de Sidebar (Legal & Redes) -->
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-links">
+        <a href="#" class="footer-link">Ayuda</a>
+        <a href="#" class="footer-link">Términos</a>
+        <a href="#" class="footer-link">Privacidad</a>
+      </div>
+      <button class="sidebar-lang-btn">
+        <i class="fa-solid fa-globe"></i> Idioma
+      </button>
+      
+      <div class="sidebar-socials">
+        <a href="https://instagram.com" target="_blank" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+        <a href="https://tiktok.com" target="_blank" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+        <a href="https://youtube.com" target="_blank" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a>
+        <a href="https://twitter.com" target="_blank" aria-label="X"><i class="fa-brands fa-x-twitter"></i></a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- B. HEADER MÓVIL SUPERIOR (Estilo Shorta.com) -->
+  <header class="mobile-header glassmorphism" id="mobile-header">
+    <div class="mobile-logo-container" id="mobile-btn-logo">
+      <div class="logo-icon">TR</div>
+      <div class="logo-text">
+        TravelRock
+        <span>Shorts</span>
+      </div>
+    </div>
+    
+    <button class="mobile-premium-btn" id="mobile-header-premium-btn">
+      <i class="fa-solid fa-crown"></i>
+    </button>
   </header>
+
+  <!-- C. BARRA DE PESTAÑAS MÓVIL INFERIOR (Estilo Shorta.com App) -->
+  <nav class="mobile-tab-bar glassmorphism" id="mobile-tab-bar">
+    <button class="tab-btn active" id="tab-btn-explorer">
+      <i class="fa-solid fa-house"></i>
+      <span>Inicio</span>
+    </button>
+    <button class="tab-btn" id="tab-btn-feed">
+      <i class="fa-solid fa-play"></i>
+      <span>Shorts</span>
+    </button>
+    <button class="tab-btn" id="tab-btn-search">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <span>Buscar</span>
+    </button>
+    <button class="tab-btn" id="tab-btn-premium">
+      <i class="fa-solid fa-crown"></i>
+      <span>Premium</span>
+    </button>
+  </nav>
 
   <!-- 3. CONTENEDOR PRINCIPAL -->
   <main class="main-wrapper" style="margin-top: 70px; height: calc(100vh - 70px);">
@@ -106,6 +197,83 @@
 
 
   </main>
+
+  <!-- D. MODAL PREMIUM DE SUSCRIPCIÓN (Checkout de Alta Fidelidad Estilo Shorta.com) -->
+  <div class="premium-modal-overlay" id="premium-checkout-modal">
+    <div class="premium-modal-card glassmorphism">
+      <button class="premium-modal-close" id="btn-close-premium-modal">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      
+      <div class="premium-modal-body" id="premium-modal-content-step1">
+        <div class="premium-modal-header">
+          <div class="modal-crown-container">
+            <i class="fa-solid fa-crown animate-pulse-crown"></i>
+          </div>
+          <h2>Unite a <span class="text-gradient-effect">TravelRock PRO</span></h2>
+          <p class="modal-subtitle">La mejor experiencia de Bariloche sin interrupciones</p>
+        </div>
+        
+        <div class="premium-features-list">
+          <div class="feature-item">
+            <i class="fa-solid fa-circle-check"></i>
+            <div class="feature-text">
+              <h4>Sin Publicidad</h4>
+              <p>Mirá todos los shorts y anécdotas de corrido, 100% libre de anuncios.</p>
+            </div>
+          </div>
+          
+          <div class="feature-item">
+            <i class="fa-solid fa-circle-check"></i>
+            <div class="feature-text">
+              <h4>Momentos VIP Exclusivos</h4>
+              <p>Acceso anticipado a videos especiales de boliches y tomas aéreas de drones.</p>
+            </div>
+          </div>
+          
+          <div class="feature-item">
+            <i class="fa-solid fa-circle-check"></i>
+            <div class="feature-text">
+              <h4>Calidad Ultra HD 4K</h4>
+              <p>Reproducción a máxima tasa de bits y sonido envolvente de alta definición.</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="premium-pricing-box">
+          <div class="pricing-badge">ACCESO TOTAL</div>
+          <div class="pricing-price">$3.99 <span class="pricing-period">/ mes</span></div>
+          <p class="pricing-notice">Cancela en cualquier momento desde tu cuenta</p>
+        </div>
+        
+        <button class="premium-checkout-btn" id="btn-checkout-submit">
+          <span>Comenzar mi Membresía PRO</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+
+      <!-- Paso 2: Procesando Pago / Éxito -->
+      <div class="premium-modal-body hidden" id="premium-modal-content-step2">
+        <div class="checkout-processing">
+          <div class="premium-loader"></div>
+          <h3>Procesando tu Suscripción...</h3>
+          <p>Conectando con el servidor de pagos seguro.</p>
+        </div>
+      </div>
+      
+      <!-- Paso 3: Éxito total -->
+      <div class="premium-modal-body hidden" id="premium-modal-content-step3">
+        <div class="checkout-success">
+          <div class="success-icon-container">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <h3>¡Bienvenido al Club PRO! 🎉</h3>
+          <p>Tu cuenta ha sido activada con éxito. Ya tenés acceso completo e ilimitado.</p>
+          <button class="premium-success-btn" id="btn-checkout-success-close">Comenzar a disfrutar</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Script Principal de Base de Datos y Lógica (ES Modules) -->
   <script type="module" src="_source/js/ui.js"></script>
