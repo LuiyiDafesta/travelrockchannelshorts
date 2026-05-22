@@ -171,6 +171,36 @@ function renderFeed() {
             <p class="video-desc-text">${video.description}</p>
           </div>
 
+          <!-- Barra de Control Premium Flotante (Oculta por defecto, visible en hover/tap) -->
+          <div class="video-control-bar glassmorphism">
+            <div class="control-bar-left">
+              <button class="control-btn btn-control-play-pause" title="Play/Pause">
+                <i class="fa-solid fa-play"></i>
+              </button>
+              <button class="control-btn btn-control-rewind" title="Retroceder 5s">
+                <i class="fa-solid fa-backward"></i>
+              </button>
+              <button class="control-btn btn-control-forward" title="Adelantar 5s">
+                <i class="fa-solid fa-forward"></i>
+              </button>
+            </div>
+            
+            <div class="control-bar-center">
+              <div class="control-timeline-wrapper">
+                <div class="control-timeline-bar">
+                  <div class="control-timeline-fill"></div>
+                </div>
+              </div>
+              <div class="control-time-text">0:00 / 0:00</div>
+            </div>
+            
+            <div class="control-bar-right">
+              <button class="control-btn btn-control-mute" title="Sonido/Silencio">
+                <i class="fa-solid ${state.isMuted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i>
+              </button>
+            </div>
+          </div>
+
           <!-- Barra de Progreso Fina -->
           <div class="video-progress-bar">
             <div class="video-progress-fill"></div>
@@ -333,11 +363,79 @@ function setupVideoControls(card, videoData) {
   const doubleHeart = card.querySelector('.double-tap-heart');
   const playPauseHud = card.querySelector('.play-pause-hud');
 
+  // Nuevos Controles del Panel Premium
+  const controlBar = card.querySelector('.video-control-bar');
+  const ctrlPlayPauseBtn = card.querySelector('.btn-control-play-pause');
+  const ctrlRewindBtn = card.querySelector('.btn-control-rewind');
+  const ctrlForwardBtn = card.querySelector('.btn-control-forward');
+  const ctrlMuteBtn = card.querySelector('.btn-control-mute');
+  const ctrlTimeText = card.querySelector('.control-time-text');
+  const ctrlTimelineWrapper = card.querySelector('.control-timeline-wrapper');
+  const ctrlTimelineBar = card.querySelector('.control-timeline-bar');
+  const ctrlTimelineFill = card.querySelector('.control-timeline-fill');
+
+  // Formateador de tiempo a minutos:segundos (e.g. 0:05)
+  function formatTime(seconds) {
+    if (isNaN(seconds) || seconds === Infinity) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  }
+
   // A. Eventos de Reproducción y Mute
-  
+
+  // Evento play del video: Sincroniza interfaz
+  video.addEventListener('play', () => {
+    ctrlPlayPauseBtn.querySelector('i').className = 'fa-solid fa-pause';
+    unmuteBtn.classList.remove('visible');
+    
+    // HUD Animación: Play
+    if (playPauseHud) {
+      playPauseHud.querySelector('i').className = 'fa-solid fa-play';
+      playPauseHud.classList.remove('animate-hud');
+      void playPauseHud.offsetWidth; // Trigger reflow
+      playPauseHud.classList.add('animate-hud');
+    }
+  });
+
+  // Evento pause del video: Sincroniza interfaz
+  video.addEventListener('pause', () => {
+    ctrlPlayPauseBtn.querySelector('i').className = 'fa-solid fa-play';
+    
+    // Mostrar unmute button como play indicador si está pausado
+    unmuteBtn.querySelector('i').className = 'fa-solid fa-play';
+    unmuteBtn.classList.add('visible');
+
+    // HUD Animación: Pause
+    if (playPauseHud) {
+      playPauseHud.querySelector('i').className = 'fa-solid fa-pause';
+      playPauseHud.classList.remove('animate-hud');
+      void playPauseHud.offsetWidth; // Trigger reflow
+      playPauseHud.classList.add('animate-hud');
+    }
+  });
+
+  // Evento LoadedMetadata para establecer duración
+  video.addEventListener('loadedmetadata', () => {
+    ctrlTimeText.textContent = `0:00 / ${formatTime(video.duration)}`;
+  });
+
   // Click simple en pantalla: Play/Pause
-  video.addEventListener('click', togglePlayPause);
-  
+  function togglePlayPause() {
+    if (video.paused) {
+      video.play().catch(err => console.log("Autoplay bloqueado:", err));
+    } else {
+      video.pause();
+    }
+  }
+
+  // Click en botón de play/pause de la barra
+  ctrlPlayPauseBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    togglePlayPause();
+    resetMobileControlsTimer();
+  });
+
   // Click en botón central de mute
   unmuteBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -345,45 +443,47 @@ function setupVideoControls(card, videoData) {
     updateMuteIconGlobally();
   });
 
-  function togglePlayPause() {
-    if (video.paused) {
-      video.play().catch(err => console.log("Autoplay bloqueado:", err));
-      unmuteBtn.classList.remove('visible');
-      
-      // HUD Animación: Play
-      if (playPauseHud) {
-        playPauseHud.querySelector('i').className = 'fa-solid fa-play';
-        playPauseHud.classList.remove('animate-hud');
-        void playPauseHud.offsetWidth; // Trigger reflow
-        playPauseHud.classList.add('animate-hud');
-      }
-    } else {
-      video.pause();
-      
-      // HUD Animación: Pause
-      if (playPauseHud) {
-        playPauseHud.querySelector('i').className = 'fa-solid fa-pause';
-        playPauseHud.classList.remove('animate-hud');
-        void playPauseHud.offsetWidth; // Trigger reflow
-        playPauseHud.classList.add('animate-hud');
-      }
-      
-      // Mostrar mute button como play indicador si está pausado
-      unmuteBtn.querySelector('i').className = 'fa-solid fa-play';
-      unmuteBtn.classList.add('visible');
-    }
-  }
+  // Click en botón mute de la barra
+  ctrlMuteBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    state.isMuted = !state.isMuted;
+    updateMuteIconGlobally();
+    resetMobileControlsTimer();
+  });
 
-  // B. Barra de Progreso y Drag-to-Seek Móvil/Desktop Híbrido
+  // B. Botones de Adelantar y Atrasar 5 segundos
+  ctrlRewindBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    video.currentTime = Math.max(0, video.currentTime - 5);
+    resetMobileControlsTimer();
+  });
+
+  ctrlForwardBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
+    resetMobileControlsTimer();
+  });
+
+  // C. Barra de Progreso y Drag-to-Seek Móvil/Desktop Híbrido
   let isDraggingTimeline = false;
+  let isDraggingControlTimeline = false;
 
   video.addEventListener('timeupdate', () => {
-    if (video.duration && !isDraggingTimeline) {
+    if (video.duration) {
       const percentage = (video.currentTime / video.duration) * 100;
-      progressFill.style.width = `${percentage}%`;
+      
+      if (!isDraggingTimeline) {
+        progressFill.style.width = `${percentage}%`;
+      }
+      if (!isDraggingControlTimeline) {
+        ctrlTimelineFill.style.width = `${percentage}%`;
+      }
+
+      ctrlTimeText.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
     }
   });
 
+  // Drag en barra de progreso fina
   function seek(e) {
     if (!video.duration) return;
     const rect = progressBar.getBoundingClientRect();
@@ -393,6 +493,7 @@ function setupVideoControls(card, videoData) {
     }
     const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     progressFill.style.width = `${pos * 100}%`;
+    ctrlTimelineFill.style.width = `${pos * 100}%`;
     video.currentTime = pos * video.duration;
   }
 
@@ -406,9 +507,39 @@ function setupVideoControls(card, videoData) {
     seek(e);
   });
 
+  // Drag en barra de tiempo del panel premium
+  function seekControl(e) {
+    if (!video.duration) return;
+    const rect = ctrlTimelineBar.getBoundingClientRect();
+    let clientX = e.clientX;
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+    }
+    const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    ctrlTimelineFill.style.width = `${pos * 100}%`;
+    progressFill.style.width = `${pos * 100}%`;
+    video.currentTime = pos * video.duration;
+  }
+
+  ctrlTimelineWrapper.addEventListener('mousedown', (e) => {
+    isDraggingControlTimeline = true;
+    seekControl(e);
+    resetMobileControlsTimer();
+  });
+
+  ctrlTimelineWrapper.addEventListener('touchstart', (e) => {
+    isDraggingControlTimeline = true;
+    seekControl(e);
+    resetMobileControlsTimer();
+  });
+
   window.addEventListener('mousemove', (e) => {
     if (isDraggingTimeline) {
       seek(e);
+    }
+    if (isDraggingControlTimeline) {
+      seekControl(e);
+      resetMobileControlsTimer();
     }
   });
 
@@ -416,15 +547,79 @@ function setupVideoControls(card, videoData) {
     if (isDraggingTimeline) {
       seek(e);
     }
+    if (isDraggingControlTimeline) {
+      seekControl(e);
+      resetMobileControlsTimer();
+    }
   });
 
   window.addEventListener('mouseup', () => {
     isDraggingTimeline = false;
+    isDraggingControlTimeline = false;
   });
 
   window.addEventListener('touchend', () => {
     isDraggingTimeline = false;
+    isDraggingControlTimeline = false;
   });
+
+  // D. Ocultación Automática e Interacción en Móviles
+  let controlsTimeout = null;
+
+  function showMobileControls() {
+    playerWrapper.classList.add('show-controls');
+    resetMobileControlsTimer();
+  }
+
+  function hideMobileControls() {
+    playerWrapper.classList.remove('show-controls');
+    if (controlsTimeout) {
+      clearTimeout(controlsTimeout);
+      controlsTimeout = null;
+    }
+  }
+
+  function resetMobileControlsTimer() {
+    if (controlsTimeout) {
+      clearTimeout(controlsTimeout);
+    }
+    controlsTimeout = setTimeout(() => {
+      if (!isDraggingControlTimeline && !isDraggingTimeline) {
+        playerWrapper.classList.remove('show-controls');
+      } else {
+        resetMobileControlsTimer();
+      }
+    }, 3500);
+  }
+
+  // Detectar dispositivo touch
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+  if (isTouchDevice) {
+    // Al tocar el video en móviles: alternar visibilidad de controles
+    video.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (playerWrapper.classList.contains('show-controls')) {
+        hideMobileControls();
+      } else {
+        showMobileControls();
+      }
+    });
+
+    // Registrar toque en el wrapper para resetear timer
+    playerWrapper.addEventListener('touchstart', () => {
+      showMobileControls();
+    }, { passive: true });
+
+    controlBar.addEventListener('click', (e) => {
+      e.stopPropagation();
+      resetMobileControlsTimer();
+    });
+  } else {
+    // Desktop: Click simple en video es Play/Pause. El hover se maneja en CSS.
+    video.addEventListener('click', togglePlayPause);
+  }
 
   // C. Interacciones de Like (Corazón)
   const likeBtnMobile = card.querySelector('.btn-like');
@@ -604,6 +799,7 @@ function setupVideoControls(card, videoData) {
 function updateMuteIconGlobally() {
   const videos = document.querySelectorAll('.short-video');
   const unmuteButtons = document.querySelectorAll('.unmute-overlay-btn');
+  const controlMuteBtns = document.querySelectorAll('.btn-control-mute');
 
   videos.forEach(v => {
     v.muted = state.isMuted;
@@ -617,6 +813,15 @@ function updateMuteIconGlobally() {
     } else {
       icon.className = 'fa-solid fa-volume-high';
       btn.classList.remove('visible');
+    }
+  });
+
+  controlMuteBtns.forEach(btn => {
+    const icon = btn.querySelector('i');
+    if (state.isMuted) {
+      icon.className = 'fa-solid fa-volume-xmark';
+    } else {
+      icon.className = 'fa-solid fa-volume-high';
     }
   });
 }
