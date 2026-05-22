@@ -44,6 +44,7 @@ const netflixContainer = document.getElementById('netflix-rows-container');
 document.addEventListener('DOMContentLoaded', () => {
   renderFeed();
   renderNetflixRows();
+  renderNetflixGrid(state.videos); // Renderizar grilla de catálogo inicial
   
   // Inicializar navegación de UI
   initNavigation((action, data) => {
@@ -54,9 +55,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } else if (action === 'filter') {
       state.currentFilter = data;
-      filterFeed(data);
+      updateAppOnFilterOrSearch(); // Filtrado dinámico unificado
     }
   });
+
+  // Configurar buscador en tiempo real
+  const searchInput = document.getElementById('catalog-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      updateAppOnFilterOrSearch();
+    });
+  }
 
   // Configurar observador inteligente para reproducción automática en móviles
   setupIntersectionObserver();
@@ -64,9 +73,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Soporte de navegación por teclado en Desktop
   setupKeyboardNavigation();
 
-  // Iniciar reproducción del primer video
+  // Iniciar reproducción del primer video sólo si la vista feed está activa
   setTimeout(() => {
-    playActiveVideo();
+    const feedView = document.getElementById('shorts-feed-view');
+    if (feedView && !feedView.classList.contains('hidden')) {
+      playActiveVideo();
+    }
   }, 500);
 });
 
@@ -77,9 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // A. Renderizar el Feed de Videos (Estructura móvil y desktop híbrida)
 function renderFeed() {
   feedContainer.innerHTML = '';
-  const filtered = state.currentFilter === 'all' 
-    ? state.videos 
-    : state.videos.filter(v => v.category === state.currentFilter);
+  const filtered = getFilteredVideos();
 
   if (filtered.length === 0) {
     feedContainer.innerHTML = `
@@ -115,6 +125,9 @@ function renderFeed() {
           
           <!-- Micro-animación de Doble Tap -->
           <div class="double-tap-heart"><i class="fa-solid fa-heart"></i></div>
+          
+          <!-- HUD Indicador de Play/Pause Gigante -->
+          <div class="play-pause-hud"><i class="fa-solid fa-play"></i></div>
           
           <!-- Botón de Unmute/Sonido Inteligente Flotante -->
           <div class="unmute-overlay-btn ${state.isMuted ? 'visible' : ''}">
@@ -318,6 +331,7 @@ function setupVideoControls(card, videoData) {
   const progressBar = card.querySelector('.video-progress-bar');
   const unmuteBtn = card.querySelector('.unmute-overlay-btn');
   const doubleHeart = card.querySelector('.double-tap-heart');
+  const playPauseHud = card.querySelector('.play-pause-hud');
 
   // A. Eventos de Reproducción y Mute
   
@@ -335,27 +349,81 @@ function setupVideoControls(card, videoData) {
     if (video.paused) {
       video.play().catch(err => console.log("Autoplay bloqueado:", err));
       unmuteBtn.classList.remove('visible');
+      
+      // HUD Animación: Play
+      if (playPauseHud) {
+        playPauseHud.querySelector('i').className = 'fa-solid fa-play';
+        playPauseHud.classList.remove('animate-hud');
+        void playPauseHud.offsetWidth; // Trigger reflow
+        playPauseHud.classList.add('animate-hud');
+      }
     } else {
       video.pause();
+      
+      // HUD Animación: Pause
+      if (playPauseHud) {
+        playPauseHud.querySelector('i').className = 'fa-solid fa-pause';
+        playPauseHud.classList.remove('animate-hud');
+        void playPauseHud.offsetWidth; // Trigger reflow
+        playPauseHud.classList.add('animate-hud');
+      }
+      
       // Mostrar mute button como play indicador si está pausado
       unmuteBtn.querySelector('i').className = 'fa-solid fa-play';
       unmuteBtn.classList.add('visible');
     }
   }
 
-  // B. Barra de Progreso
+  // B. Barra de Progreso y Drag-to-Seek Móvil/Desktop Híbrido
+  let isDraggingTimeline = false;
+
   video.addEventListener('timeupdate', () => {
-    if (video.duration) {
+    if (video.duration && !isDraggingTimeline) {
       const percentage = (video.currentTime / video.duration) * 100;
       progressFill.style.width = `${percentage}%`;
     }
   });
 
-  // Adelantar/retroceder clickeando la barra
-  progressBar.addEventListener('click', (e) => {
+  function seek(e) {
+    if (!video.duration) return;
     const rect = progressBar.getBoundingClientRect();
-    const pos = (e.clientX - rect.left) / rect.width;
+    let clientX = e.clientX;
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+    }
+    const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    progressFill.style.width = `${pos * 100}%`;
     video.currentTime = pos * video.duration;
+  }
+
+  progressBar.addEventListener('mousedown', (e) => {
+    isDraggingTimeline = true;
+    seek(e);
+  });
+
+  progressBar.addEventListener('touchstart', (e) => {
+    isDraggingTimeline = true;
+    seek(e);
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (isDraggingTimeline) {
+      seek(e);
+    }
+  });
+
+  window.addEventListener('touchmove', (e) => {
+    if (isDraggingTimeline) {
+      seek(e);
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    isDraggingTimeline = false;
+  });
+
+  window.addEventListener('touchend', () => {
+    isDraggingTimeline = false;
   });
 
   // C. Interacciones de Like (Corazón)
@@ -608,6 +676,12 @@ function pauseAllVideos() {
 
 // Reproducir activamente el video seleccionado en el estado
 function playActiveVideo() {
+  const feedView = document.getElementById('shorts-feed-view');
+  if (feedView && feedView.classList.contains('hidden')) {
+    pauseAllVideos();
+    return;
+  }
+
   const activeCard = document.getElementById(`short-card-${state.activeVideoId}`);
   if (!activeCard) return;
 
@@ -649,24 +723,143 @@ function preloadNextVideo(currentId) {
   }
 }
 
-// Filtrar feed por categoría
-function filterFeed(category) {
+// Obtener lista filtrada de videos combinando categoría y búsqueda
+export function getFilteredVideos() {
+  let list = state.videos;
+  
+  // A. Filtrar por Categoría chip activa
+  if (state.currentFilter !== 'all') {
+    list = list.filter(v => v.category === state.currentFilter);
+  }
+  
+  // B. Filtrar por término de búsqueda en input
+  const searchInput = document.getElementById('catalog-search-input');
+  const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  
+  if (query) {
+    list = list.filter(v => 
+      v.title.toLowerCase().includes(query) || 
+      v.description.toLowerCase().includes(query) || 
+      v.school.toLowerCase().includes(query) || 
+      v.categoryLabel.toLowerCase().includes(query)
+    );
+  }
+  
+  return list;
+}
+
+// C. Renderizar la grilla general del Explorer (Buscador y Filtrado)
+function renderNetflixGrid(filteredVideos) {
+  const gridContainer = document.getElementById('netflix-grid-container');
+  if (!gridContainer) return;
+  
+  gridContainer.innerHTML = '';
+  
+  if (filteredVideos.length === 0) {
+    gridContainer.innerHTML = `
+      <div class="glassmorphism" style="padding: 40px; border-radius: 20px; text-align: center; grid-column: 1 / -1; max-width: 320px; margin: 40px auto; border-color: rgba(236, 72, 153, 0.3);">
+        <i class="fa-solid fa-magnifying-glass" style="font-size: 3rem; margin-bottom: 20px; color: var(--neon-pink); filter: drop-shadow(0 0 10px rgba(236,72,153,0.4));"></i>
+        <h3 style="font-family: var(--font-display); margin-bottom: 8px; font-weight: 700;">No hay resultados</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">Intentá buscando otra palabra clave, boliche o el colegio de los chicos.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  gridContainer.innerHTML = filteredVideos.map(video => `
+    <div class="netflix-card" data-video-id="${video.id}">
+      <img class="netflix-card-img" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
+      <div class="netflix-card-overlay">
+        <span class="netflix-card-school">${video.school.split(' - ')[0]}</span>
+        <h4 class="netflix-card-title">${video.title}</h4>
+      </div>
+    </div>
+  `).join('');
+  
+  // Asignar click a cada tarjeta de la grilla para reproducir al instante
+  const gridCards = gridContainer.querySelectorAll('.netflix-card');
+  gridCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const id = parseInt(card.getAttribute('data-video-id'));
+      state.activeVideoId = id;
+      
+      // Cambiar a vista feed
+      switchView('feed');
+      
+      // En Desktop: Buscar el card en el DOM y marcarlo activo
+      if (window.innerWidth >= 992) {
+        document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
+        const targetCard = document.getElementById(`short-card-${id}`);
+        if (targetCard) targetCard.classList.add('active-desktop');
+      } else {
+        // En móvil: Scroll hasta el elemento
+        const targetCard = document.getElementById(`short-card-${id}`);
+        if (targetCard) {
+          targetCard.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+
+      // Reiniciar y reproducir
+      setTimeout(playActiveVideo, 200);
+    });
+  });
+}
+
+// D. Unificar la actualización de todas las vistas tras buscar o filtrar categorías
+function updateAppOnFilterOrSearch() {
+  const filtered = getFilteredVideos();
+  const searchInput = document.getElementById('catalog-search-input');
+  const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  
+  const gridSectionTitle = document.getElementById('grid-section-title');
+  const netflixRowsContainer = document.getElementById('netflix-rows-container');
+  
+  const categoryLabels = {
+    all: 'Todos los Momentos',
+    boliche: 'Noches de Boliches',
+    aventura: 'Aventura Extrema',
+    lifestyle: 'Lifestyle & Relax',
+    emociones: 'Momentos Mágicos'
+  };
+  
+  if (query) {
+    // Si hay búsqueda activa: ocultar carruseles y mostrar resultados en grilla
+    if (netflixRowsContainer) netflixRowsContainer.style.display = 'none';
+    if (gridSectionTitle) gridSectionTitle.textContent = `Resultados de Búsqueda para "${searchInput.value.trim()}" (${filtered.length})`;
+  } else {
+    // Si no hay búsqueda:
+    if (state.currentFilter === 'all') {
+      // Mostrar carruseles y todos los momentos
+      if (netflixRowsContainer) netflixRowsContainer.style.display = 'block';
+      if (gridSectionTitle) gridSectionTitle.textContent = 'Todos los Momentos';
+    } else {
+      // Ocultar carruseles y mostrar momentos de la categoría seleccionada
+      if (netflixRowsContainer) netflixRowsContainer.style.display = 'none';
+      if (gridSectionTitle) gridSectionTitle.textContent = `${categoryLabels[state.currentFilter]} (${filtered.length})`;
+    }
+  }
+  
+  // Re-renderizar Grilla Explorer y Feed
+  renderNetflixGrid(filtered);
   renderFeed();
   
-  // Si filtramos, el primer video de la lista se convierte en el activo
-  const filtered = category === 'all' 
-    ? state.videos 
-    : state.videos.filter(v => v.category === category);
-    
+  // Actualizar video activo si ya no está disponible en la lista filtrada
   if (filtered.length > 0) {
-    state.activeVideoId = filtered[0].id;
-    
-    // Configurar IntersectionObserver de nuevo para los nuevos elementos
-    setupIntersectionObserver();
-    
-    setTimeout(() => {
-      playActiveVideo();
-    }, 100);
+    const isStillAvailable = filtered.some(v => v.id === state.activeVideoId);
+    if (!isStillAvailable) {
+      state.activeVideoId = filtered[0].id;
+    }
+  }
+  
+  // Reconectar IntersectionObserver para el feed dinámico
+  setupIntersectionObserver();
+  
+  // Controlar reproducción según vista activa
+  const feedView = document.getElementById('shorts-feed-view');
+  if (feedView && !feedView.classList.contains('hidden')) {
+    setTimeout(playActiveVideo, 100);
+  } else {
+    pauseAllVideos();
   }
 }
 
@@ -675,15 +868,12 @@ function filterFeed(category) {
 // ----------------------------------------------------------------------
 function setupKeyboardNavigation() {
   document.addEventListener('keydown', (e) => {
-    // Si el usuario está escribiendo en el input de comentarios, no hacer nada
-    if (document.activeElement.classList.contains('comment-input')) {
+    // Si el usuario está escribiendo en comentarios o en la búsqueda, ignorar shortcuts
+    if (document.activeElement.classList.contains('comment-input') || document.activeElement.id === 'catalog-search-input') {
       return;
     }
 
-    const filtered = state.currentFilter === 'all'
-      ? state.videos
-      : state.videos.filter(v => v.category === state.currentFilter);
-      
+    const filtered = getFilteredVideos();
     const currentIndex = filtered.findIndex(v => v.id === state.activeVideoId);
 
     if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
@@ -692,7 +882,6 @@ function setupKeyboardNavigation() {
         e.preventDefault();
         state.activeVideoId = filtered[currentIndex + 1].id;
         
-        // En Desktop: reproducir directamente. En Móvil: el scrollsnap se encarga pero también podemos empujarlo
         if (window.innerWidth >= 992) {
           playActiveVideo();
         } else {

@@ -29,13 +29,13 @@ export function initNavigation(onViewChange) {
     if (onViewChange) onViewChange('explorer');
   });
 
-  // Logo lleva a Feed por defecto
+  // Logo lleva a Catálogo por defecto
   btnLogo.addEventListener('click', () => {
-    switchView('feed');
-    if (onViewChange) onViewChange('feed');
+    switchView('explorer');
+    if (onViewChange) onViewChange('explorer');
   });
 
-  // Inicializar control de Categorías (chips flotantes)
+  // Inicializar control de Categorías (chips dentro del catálogo)
   const categoryChips = document.querySelectorAll('.category-chip');
   categoryChips.forEach(chip => {
     chip.addEventListener('click', (e) => {
@@ -71,14 +71,12 @@ export function switchView(targetView) {
     
     feedView.classList.remove('hidden');
     explorerView.classList.add('hidden');
-    categoriesNav.style.display = 'flex'; // Mostrar categorías en el feed
   } else if (targetView === 'explorer') {
     modeExplorerBtn.classList.add('active');
     modeFeedBtn.classList.remove('active');
     
     explorerView.classList.remove('hidden');
     feedView.classList.add('hidden');
-    categoriesNav.style.display = 'none'; // Ocultar categorías en Netflix ya que tiene sus propias filas
   }
 }
 

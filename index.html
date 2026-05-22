@@ -45,34 +45,25 @@
     
     <!-- Selector de Vistas / Modos -->
     <div class="nav-modes">
-      <button class="mode-btn active" id="mode-feed-btn">
-        <i class="fa-solid fa-play"></i> Feed
+      <button class="mode-btn" id="mode-feed-btn">
+        <i class="fa-solid fa-play"></i> Reproductor
       </button>
-      <button class="mode-btn" id="mode-explorer-btn">
-        <i class="fa-solid fa-clapperboard"></i> Netflix Mode
+      <button class="mode-btn active" id="mode-explorer-btn">
+        <i class="fa-solid fa-clapperboard"></i> Catálogo
       </button>
     </div>
   </header>
 
-  <!-- 2. SELECTOR DE CATEGORÍAS FLOTANTE -->
-  <nav class="categories-container" id="categories-nav">
-    <button class="category-chip active" data-category="all">⚡ Todos los Momentos</button>
-    <button class="category-chip" data-category="boliche"><i class="fa-solid fa-music"></i> Boliches</button>
-    <button class="category-chip" data-category="aventura"><i class="fa-solid fa-mountain"></i> Aventura</button>
-    <button class="category-chip" data-category="lifestyle"><i class="fa-solid fa-mug-hot"></i> Lifestyle</button>
-    <button class="category-chip" data-category="emociones"><i class="fa-solid fa-heart"></i> Momentos Mágicos</button>
-  </nav>
-
   <!-- 3. CONTENEDOR PRINCIPAL -->
-  <main class="main-wrapper">
+  <main class="main-wrapper" style="margin-top: 70px; height: calc(100vh - 70px);">
     
     <!-- VISTA A: FEED VERTICAL TIPO SHORTS (Móvil & Desktop Cine Híbrido) -->
-    <section class="feed-view" id="shorts-feed-view">
+    <section class="feed-view hidden" id="shorts-feed-view">
       <!-- Los videos verticales se generarán dinámicamente por JS aquí -->
     </section>
 
-    <!-- VISTA B: VISTA NETFLIX EXPLORER -->
-    <section class="explorer-view hidden" id="netflix-explorer-view">
+    <!-- VISTA B: VISTA NETFLIX EXPLORER (CATÁLOGO PRINCIPAL POR DEFECTO) -->
+    <section class="explorer-view" id="netflix-explorer-view">
       
       <!-- Gran Banner Premium de Portada -->
       <div class="explorer-hero glassmorphism">
@@ -82,13 +73,37 @@
           <p class="explorer-hero-desc">
             Reviví los momentos más intensos de los chicos en Bariloche. Excursiones épicas, boliches colmados, fogones íntimos y anécdotas inolvidables. La mejor experiencia en formato vertical inmersivo.
           </p>
+          
+          <!-- Buscador Premium Integrado -->
+          <div class="search-bar-wrapper">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="catalog-search-input" class="search-input" placeholder="Buscar colegio, boliche, excursión o palabra clave...">
+          </div>
         </div>
       </div>
 
-      <!-- Contenedor dinámico de Filas Netflix (se generan por JS) -->
+      <!-- Selector de Categorías dentro del Catálogo -->
+      <div class="catalog-categories-section">
+        <nav class="categories-container-catalog" id="categories-nav">
+          <button class="category-chip active" data-category="all">⚡ Todos los Momentos</button>
+          <button class="category-chip" data-category="boliche"><i class="fa-solid fa-music"></i> Boliches</button>
+          <button class="category-chip" data-category="aventura"><i class="fa-solid fa-mountain"></i> Aventura</button>
+          <button class="category-chip" data-category="lifestyle"><i class="fa-solid fa-mug-hot"></i> Lifestyle</button>
+          <button class="category-chip" data-category="emociones"><i class="fa-solid fa-heart"></i> Momentos Mágicos</button>
+        </nav>
+      </div>
+
+      <!-- Contenedor dinámico de Filas Netflix (carruseles por categoría) -->
       <div id="netflix-rows-container"></div>
-      
-    </section>
+
+      <!-- Grilla General y Resultados de Búsqueda -->
+      <div class="netflix-row" id="netflix-grid-section" style="margin-top: 20px;">
+        <h3 class="row-title" id="grid-section-title">Todos los Momentos</h3>
+        <div class="explorer-grid" id="netflix-grid-container">
+          <!-- Las tarjetas de la grilla de búsqueda se generarán por JS aquí -->
+        </div>
+      </div>
+
 
   </main>
 
