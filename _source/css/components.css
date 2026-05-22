@@ -851,7 +851,8 @@
 
 .side-panel {
   flex: 1;
-  max-width: 420px;
+  max-width: 680px;
+  min-width: 320px;
   height: 94%;
   border-radius: var(--radius-xl);
   display: flex;
@@ -865,47 +866,145 @@
   transition: transform var(--transition-normal);
 }
 
-.side-panel-header {
-  padding: 24px 24px 16px;
-  border-bottom: 1px solid var(--glass-border);
-}
-
-.side-panel-title {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 1.4rem;
-  line-height: 1.2;
-  margin-top: 8px;
-  margin-bottom: 12px;
-}
-
-.side-panel-meta {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.side-panel-meta span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.side-panel-meta span i {
-  color: var(--neon-pink);
-}
-
 .side-panel-body {
   flex: 1;
   overflow-y: auto;
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 28px;
 }
 
+/* 1. Show Card Superior */
+.side-panel-showcard {
+  display: flex;
+  gap: 20px;
+  background: rgba(12, 12, 16, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  margin-bottom: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.showcard-poster {
+  width: 110px;
+  height: 155px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-premium);
+  transition: transform var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.side-panel-showcard:hover .showcard-poster {
+  transform: scale(1.03);
+}
+
+.showcard-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+}
+
+.showcard-tags {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--neon-pink);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.showcard-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.45rem;
+  line-height: 1.25;
+  color: #fff;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.showcard-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.btn-replay-showcard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  color: #000;
+  border: none;
+  padding: 10px 18px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-display);
+  font-weight: 750;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+}
+
+.btn-replay-showcard:hover {
+  transform: scale(1.05);
+  background: var(--neon-pink);
+  color: #fff;
+  box-shadow: var(--neon-glow-pink);
+}
+
+.btn-like-showcard,
+.btn-share-showcard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-share-showcard {
+  width: 38px;
+  padding: 0;
+}
+
+.btn-like-showcard:hover,
+.btn-share-showcard:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.btn-like-showcard.liked {
+  background: rgba(236, 72, 153, 0.15);
+  border-color: var(--neon-pink);
+  color: var(--neon-pink);
+  box-shadow: var(--neon-glow-pink);
+}
+
+/* 2. Anécdota con botón MÁS */
 .experience-box h4 {
   font-family: var(--font-display);
   font-weight: 700;
@@ -916,12 +1015,188 @@
   letter-spacing: 0.5px;
 }
 
-.experience-box p {
-  font-size: 0.9rem;
+.desc-container {
+  position: relative;
+  font-size: 0.85rem;
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
+.btn-more-desc {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-left: 6px;
+  vertical-align: middle;
+  transition: all var(--transition-fast);
+}
+
+.btn-more-desc:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.desc-full.hidden {
+  display: none;
+}
+
+/* 3. Carruseles de la Barra Lateral */
+.side-panel-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.carousel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.carousel-header h3 {
+  font-family: var(--font-display);
+  font-weight: 750;
+  font-size: 0.95rem;
+  color: #fff;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.carousel-header .episode-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-left: 4px;
+  font-weight: 400;
+  text-transform: none;
+}
+
+.carousel-arrows {
+  display: flex;
+  gap: 6px;
+}
+
+.carousel-arrows button {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all var(--transition-fast);
+}
+
+.carousel-arrows button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
+}
+
+.carousel-track {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 2px;
+  scroll-behavior: smooth;
+}
+
+/* Ocultar barra de scroll en carruseles internos del panel */
+.carousel-track::-webkit-scrollbar {
+  display: none;
+}
+.carousel-track {
+  -ms-overflow-style: none;  /* IE y Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.carousel-card {
+  position: relative;
+  flex: 0 0 100px;
+  height: 145px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  transition: all var(--transition-normal);
+}
+
+.carousel-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-normal);
+}
+
+.carousel-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+}
+
+.carousel-card:hover img {
+  transform: scale(1.05);
+}
+
+.carousel-card.active {
+  border: 2px solid var(--neon-pink);
+  box-shadow: var(--neon-glow-pink);
+}
+
+.carousel-card-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(8, 8, 10, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  z-index: 5;
+}
+
+.carousel-card-badge.tag-badge {
+  background: rgba(139, 92, 246, 0.75);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.carousel-card .active-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(236, 72, 153, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+.carousel-card .active-badge i {
+  color: #fff;
+  font-size: 1.2rem;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+}
+
+/* 4. Sección de Comentarios e Interacción Completa */
 .interactive-comments-section {
   display: flex;
   flex-direction: column;
@@ -940,25 +1215,55 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: 180px;
+  max-height: 240px;
   overflow-y: auto;
 }
 
 .comment-item {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--glass-border);
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
+  display: flex;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
   font-size: 0.8rem;
+  align-items: flex-start;
+  transition: all var(--transition-fast);
+}
+
+.comment-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.comment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.comment-content {
+  flex: 1;
 }
 
 .comment-user {
   font-family: var(--font-display);
   font-weight: 700;
   color: #fff;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
 
 .comment-user span {
@@ -969,7 +1274,8 @@
 
 .comment-text {
   color: var(--text-secondary);
-  line-height: 1.4;
+  line-height: 1.45;
+  font-size: 0.8rem;
 }
 
 .comment-input-wrapper {

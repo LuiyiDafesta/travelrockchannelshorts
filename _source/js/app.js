@@ -251,33 +251,88 @@ function renderFeed() {
 
         <!-- PANEL DE DETALLES LATERAL GLASSMORPHISM (Exclusivo Desktop Cine) -->
         <div class="side-panel">
-          <div class="side-panel-header">
-            <span class="school-badge"><i class="fa-solid fa-graduation-cap"></i> ${video.school}</span>
-            <h2 class="side-panel-title">${video.title}</h2>
-            <div class="side-panel-meta">
-              <span><i class="fa-solid fa-calendar"></i> ${video.date}</span>
-              <span><i class="fa-solid fa-heart"></i> <strong class="desktop-like-count">${video.likes}</strong> likes</span>
-            </div>
-          </div>
-
           <div class="side-panel-body">
-            <!-- Anécdota y Detalles -->
+            
+            <!-- Bloque 1: Show Card Superior (Estilo Netflix/Shorta) -->
+            <div class="side-panel-showcard">
+              <img class="showcard-poster" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
+              <div class="showcard-info">
+                <div>
+                  <span class="showcard-tags">${video.categoryLabel} · ${video.school.split(' - ')[0]}</span>
+                  <h2 class="showcard-title">${video.title}</h2>
+                </div>
+                <div class="showcard-actions">
+                  <button class="btn-replay-showcard">
+                    <i class="fa-solid fa-play"></i> Ver de nuevo
+                  </button>
+                  <button class="btn-like-showcard btn-like-desktop" data-id="${video.id}">
+                    <i class="fa-solid fa-heart"></i> <strong class="desktop-like-count">${video.likes}</strong>
+                  </button>
+                  <button class="btn-share-showcard btn-share-desktop" data-id="${video.id}">
+                    <i class="fa-solid fa-share-nodes"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bloque 2: Anécdota y Detalles con botón MÁS -->
             <div class="experience-box">
               <h4>La anécdota del día ❄️</h4>
-              <p>${video.description}</p>
+              <p class="desc-container">
+                ${video.description.length > 130 
+                  ? `<span class="desc-short">${video.description.substring(0, 130)}...</span>
+                     <span class="desc-full hidden">${video.description}</span>
+                     <button class="btn-more-desc">MÁS</button>`
+                  : `<span>${video.description}</span>`
+                }
+              </p>
             </div>
 
-            <!-- Botones Rápidos de Interacción Desktop -->
-            <div style="display:flex; gap:12px; margin-bottom:8px;">
-              <button class="premium-btn btn-like-desktop" data-id="${video.id}" style="flex:1;">
-                <i class="fa-solid fa-heart"></i> Like
-              </button>
-              <button class="premium-btn btn-share-desktop" data-id="${video.id}" style="flex:1;">
-                <i class="fa-solid fa-share-nodes"></i> Compartir
-              </button>
+            <!-- Bloque 3: Carrusel A (Episodios de Bariloche) -->
+            <div class="side-panel-carousel">
+              <div class="carousel-header">
+                <h3>Episodios <span class="episode-count">${state.videos.length}</span></h3>
+                <div class="carousel-arrows">
+                  <button class="btn-carousel-prev" data-target="episodes-track-${video.id}"><i class="fa-solid fa-chevron-left"></i></button>
+                  <button class="btn-carousel-next" data-target="episodes-track-${video.id}"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+              </div>
+              <div class="carousel-track" id="episodes-track-${video.id}">
+                ${state.videos.map((ep, epIdx) => {
+                  const isActive = ep.id === video.id;
+                  return `
+                    <div class="carousel-card ${isActive ? 'active' : ''}" data-video-id="${ep.id}">
+                      <img src="${ep.thumbnailUrl}" alt="${ep.title}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=300&auto=format&fit=crop&q=60';">
+                      <span class="carousel-card-badge">M${epIdx + 1}</span>
+                      ${isActive ? '<div class="active-badge"><i class="fa-solid fa-play"></i></div>' : ''}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
             </div>
 
-            <!-- Sección de Comentarios Interactivos -->
+            <!-- Bloque 4: Carrusel B (Sugerencias Recomendados) -->
+            <div class="side-panel-carousel">
+              <div class="carousel-header">
+                <h3>Sugeridos <span class="episode-count">${state.videos.filter(v => v.id !== video.id).length}</span></h3>
+                <div class="carousel-arrows">
+                  <button class="btn-carousel-prev" data-target="suggested-track-${video.id}"><i class="fa-solid fa-chevron-left"></i></button>
+                  <button class="btn-carousel-next" data-target="suggested-track-${video.id}"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+              </div>
+              <div class="carousel-track" id="suggested-track-${video.id}">
+                ${state.videos.filter(v => v.id !== video.id).map((sug) => {
+                  return `
+                    <div class="carousel-card" data-video-id="${sug.id}">
+                      <img src="${sug.thumbnailUrl}" alt="${sug.title}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=300&auto=format&fit=crop&q=60';">
+                      <span class="carousel-card-badge tag-badge">${sug.categoryLabel.split(' ')[0]}</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <!-- Bloque 5: Comentarios e Interacciones -->
             <div class="interactive-comments-section">
               <h4>Comentarios de los Chicos (<span class="comment-count-text">${state.comments[video.id] ? state.comments[video.id].length : 0}</span>)</h4>
               <div class="comments-list" id="comments-list-${video.id}">
@@ -292,6 +347,7 @@ function renderFeed() {
                 </button>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -375,6 +431,25 @@ function renderNetflixRows() {
   });
 }
 
+// Generador dinámico de degradés para avatares sociales
+function getAvatarGradient(username) {
+  const colors = [
+    ['#ec4899', '#8b5cf6'], // Rosa a Púrpura
+    ['#3b82f6', '#22c55e'], // Azul a Verde
+    ['#f97316', '#eab308'], // Naranja a Amarillo
+    ['#ef4444', '#ec4899'], // Rojo a Rosa
+    ['#06b6d4', '#3b82f6'], // Cian a Azul
+    ['#8b5cf6', '#d946ef']  // Violeta a Fucsia
+  ];
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % colors.length;
+  const grad = colors[index];
+  return `linear-gradient(135deg, ${grad[0]}, ${grad[1]})`;
+}
+
 // Genera el HTML de comentarios para un video específico
 function renderCommentsHtml(videoId) {
   const videoComments = state.comments[videoId] || [];
@@ -384,10 +459,15 @@ function renderCommentsHtml(videoId) {
   
   return videoComments.map(c => `
     <div class="comment-item">
-      <div class="comment-user">
-        ${c.user} <span>${c.time}</span>
+      <div class="comment-avatar" style="background: ${getAvatarGradient(c.user)}">
+        ${c.user.charAt(0).toUpperCase()}
       </div>
-      <div class="comment-text">${c.text}</div>
+      <div class="comment-content">
+        <div class="comment-user">
+          ${c.user} <span>${c.time}</span>
+        </div>
+        <div class="comment-text">${c.text}</div>
+      </div>
     </div>
   `).join('');
 }
@@ -687,7 +767,7 @@ function setupVideoControls(card, videoData) {
       likeBtnMobile.classList.add('liked');
       if (likeBtnDesktop) {
         likeBtnDesktop.classList.add('liked');
-        likeBtnDesktop.innerHTML = `<i class="fa-solid fa-heart"></i> Liked!`;
+        likeBtnDesktop.innerHTML = `<i class="fa-solid fa-heart"></i> <strong class="desktop-like-count">${videoObj.likes}</strong>`;
       }
       
       triggerLikeAnimation(likeBtnMobile);
@@ -833,6 +913,75 @@ function setupVideoControls(card, videoData) {
   // En móvil, click en comentarios abre un alert o simulación rápida
   commentsMobileBtn.addEventListener('click', () => {
     alert(`Anécdotas en Bariloche:\n\n` + state.comments[videoData.id].map(c => `• ${c.user}: ${c.text}`).join('\n'));
+  });
+
+  // 1. Botón Replay de Show Card
+  const btnReplay = card.querySelector('.btn-replay-showcard');
+  if (btnReplay) {
+    btnReplay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      video.currentTime = 0;
+      video.play().catch(err => console.log(err));
+    });
+  }
+
+  // 2. Expandir Descripción (MÁS/MENOS)
+  const btnMoreDesc = card.querySelector('.btn-more-desc');
+  if (btnMoreDesc) {
+    btnMoreDesc.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const descShort = card.querySelector('.desc-short');
+      const descFull = card.querySelector('.desc-full');
+      if (descFull.classList.contains('hidden')) {
+        descFull.classList.remove('hidden');
+        descShort.classList.add('hidden');
+        btnMoreDesc.textContent = 'MENOS';
+      } else {
+        descFull.classList.add('hidden');
+        descShort.classList.remove('hidden');
+        btnMoreDesc.textContent = 'MÁS';
+      }
+    });
+  }
+
+  // 3. Flechas de carrusel en panel de detalles
+  const carouselArrows = card.querySelectorAll('.carousel-arrows button');
+  carouselArrows.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const targetId = btn.getAttribute('data-target');
+      const track = card.querySelector(`#${targetId}`);
+      if (track) {
+        const scrollAmount = 240;
+        if (btn.classList.contains('btn-carousel-prev')) {
+          track.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        } else {
+          track.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+      }
+    });
+  });
+
+  // 4. Click en miniatura de carrusel (Cambio de video instantáneo)
+  const carouselCards = card.querySelectorAll('.carousel-card');
+  carouselCards.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = parseInt(item.getAttribute('data-video-id'));
+      
+      // Cambiar video activo
+      state.activeVideoId = id;
+      
+      // En desktop cine: marcar el card activo
+      if (window.innerWidth >= 992) {
+        document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
+        const targetCard = document.getElementById(`short-card-${id}`);
+        if (targetCard) targetCard.classList.add('active-desktop');
+      }
+      
+      // Reproducir
+      setTimeout(playActiveVideo, 100);
+    });
   });
 }
 
