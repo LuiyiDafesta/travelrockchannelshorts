@@ -1,0 +1,11 @@
+# robots.txt para TravelRock Channel Shorts
+# Permite que todos los buscadores indexen nuestro sitio e imágenes de Bariloche, pero evita indexar archivos de desarrollo.
+
+User-agent: *
+Allow: /
+
+# Evitar indexación de archivos fuente de desarrollo
+Disallow: /_source/
+
+# Enlace al Sitemap si se genera en el futuro
+# Sitemap: http://tudominio.com/sitemap.xml

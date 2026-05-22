@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>TravelRock Channel Shorts - Bariloche Premium Experience</title>
+  
+  <!-- Metatags de SEO y Open Graph -->
+  <meta name="description" content="Mira los mejores momentos verticales en Bariloche con los chicos de TravelRock. Una experiencia premium al estilo Netflix y TikTok con tecnología ultra rápida.">
+  <meta name="keywords" content="TravelRock, Bariloche, Egresados, Shorts, Videos, By Pass, Cerebro, Cerro Catedral, Viajes, Premium">
+  <meta name="author" content="TravelRock Channel">
+  
+  <meta property="og:title" content="TravelRock Channel Shorts - Bariloche Premium Experience">
+  <meta property="og:description" content="Mira los momentos más locos, divertidos y espectaculares del viaje de egresados de los chicos en Bariloche.">
+  <meta property="og:image" content="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&auto=format&fit=crop&q=80">
+  <meta property="og:type" content="website">
+  
+  <!-- Icono de Pestaña (Favicon SVG Inline Premium) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏔️</text></svg>">
+  
+  <!-- FontAwesome para Iconos Vectoriales Premium -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Hoja de Estilos Unificada y Minificada (Assets de Producción para Ferozo) -->
+  <link rel="stylesheet" href="assets/css/app.min.css">
+</head>
+<body>
+
+  <!-- Fondos Ambientales Aurora Glow -->
+  <div class="aurora-bg">
+    <div class="aurora-glow aurora-glow-1"></div>
+    <div class="aurora-glow aurora-glow-2"></div>
+    <div class="aurora-glow aurora-glow-3"></div>
+  </div>
+
+  <!-- 1. HEADER PREMIUM DE CRISTAL -->
+  <header class="app-header glassmorphism" id="main-header">
+    <div class="logo-container" id="btn-logo">
+      <div class="logo-icon">TR</div>
+      <div class="logo-text">
+        TravelRock
+        <span>Channel Shorts</span>
+      </div>
+    </div>
+    
+    <!-- Selector de Vistas / Modos -->
+    <div class="nav-modes">
+      <button class="mode-btn active" id="mode-feed-btn">
+        <i class="fa-solid fa-play"></i> Feed
+      </button>
+      <button class="mode-btn" id="mode-explorer-btn">
+        <i class="fa-solid fa-clapperboard"></i> Netflix Mode
+      </button>
+    </div>
+  </header>
+
+  <!-- 2. SELECTOR DE CATEGORÍAS FLOTANTE -->
+  <nav class="categories-container" id="categories-nav">
+    <button class="category-chip active" data-category="all">⚡ Todos los Momentos</button>
+    <button class="category-chip" data-category="boliche"><i class="fa-solid fa-music"></i> Boliches</button>
+    <button class="category-chip" data-category="aventura"><i class="fa-solid fa-mountain"></i> Aventura</button>
+    <button class="category-chip" data-category="lifestyle"><i class="fa-solid fa-mug-hot"></i> Lifestyle</button>
+    <button class="category-chip" data-category="emociones"><i class="fa-solid fa-heart"></i> Momentos Mágicos</button>
+  </nav>
+
+  <!-- 3. CONTENEDOR PRINCIPAL -->
+  <main class="main-wrapper">
+    
+    <!-- VISTA A: FEED VERTICAL TIPO SHORTS (Móvil & Desktop Cine Híbrido) -->
+    <section class="feed-view" id="shorts-feed-view">
+      <!-- Los videos verticales se generarán dinámicamente por JS aquí -->
+    </section>
+
+    <!-- VISTA B: VISTA NETFLIX EXPLORER -->
+    <section class="explorer-view hidden" id="netflix-explorer-view">
+      
+      <!-- Gran Banner Premium de Portada -->
+      <div class="explorer-hero glassmorphism">
+        <div class="explorer-hero-content">
+          <span class="explorer-hero-badge">El Viaje de tu Vida</span>
+          <h1 class="explorer-hero-title">Bariloche Egresados 2026</h1>
+          <p class="explorer-hero-desc">
+            Reviví los momentos más intensos de los chicos en Bariloche. Excursiones épicas, boliches colmados, fogones íntimos y anécdotas inolvidables. La mejor experiencia en formato vertical inmersivo.
+          </p>
+        </div>
+      </div>
+
+      <!-- Contenedor dinámico de Filas Netflix (se generan por JS) -->
+      <div id="netflix-rows-container"></div>
+      
+    </section>
+
+  </main>
+
+  <!-- Script Principal de Base de Datos y Lógica (ES Modules) -->
+  <script type="module" src="_source/js/ui.js"></script>
+  <script type="module" src="_source/js/app.js"></script>
+</body>
+</html>

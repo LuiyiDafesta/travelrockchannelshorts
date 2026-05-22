@@ -1,0 +1,87 @@
+# ----------------------------------------------------------------------
+# | Configuración de Servidor Optimizado para Hosting Ferozo (Apache)    |
+# | TravelRock Channel Shorts - Premium Video Platform                   |
+# ----------------------------------------------------------------------
+
+# 1. EVITAR LA NAVEGACIÓN DE DIRECTORIOS
+# Evita que los usuarios exploren carpetas vacías o el código fuente directamente.
+Options -Indexes
+
+# 2. CONFIGURACIÓN DE CHARSET POR DEFECTO
+AddDefaultCharset UTF-8
+
+# 3. COMPRESIÓN DE ARCHIVOS (mod_deflate / GZIP)
+# Comprime los recursos basados en texto para reducir drásticamente el tiempo de carga.
+<IfModule mod_deflate.c>
+    # Activar compresión
+    SetOutputFilter DEFLATE
+
+    # Comprimir tipos de archivo específicos
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE text/javascript
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/x-javascript
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE image/svg+xml
+    AddOutputFilterByType DEFLATE image/x-icon
+    AddOutputFilterByType DEFLATE text/xml
+    AddOutputFilterByType DEFLATE application/xml
+    AddOutputFilterByType DEFLATE application/xhtml+xml
+
+    # Manejar navegadores antiguos con bugs conocidos
+    BrowserMatch ^Mozilla/4 gzip-only-text/html
+    BrowserMatch ^Mozilla/4\.0[678] no-gzip
+    BrowserMatch \bMSIE !no-gzip !gzip-only-text/html
+</IfModule>
+
+# 4. POLÍTICAS DE CACHÉ DE ARCHIVOS (mod_expires)
+# Almacena en caché los assets estáticos del navegador para visitas consecutivas instantáneas.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresDefault "access plus 1 month"
+
+    # CSS / JS
+    ExpiresByType text/css "access plus 1 year"
+    ExpiresByType text/javascript "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType application/x-javascript "access plus 1 year"
+
+    # Imágenes
+    ExpiresByType image/jpeg "access plus 1 year"
+    ExpiresByType image/png "access plus 1 year"
+    ExpiresByType image/gif "access plus 1 year"
+    ExpiresByType image/webp "access plus 1 year"
+    ExpiresByType image/svg+xml "access plus 1 year"
+    ExpiresByType image/x-icon "access plus 1 year"
+
+    # Fuentes
+    ExpiresByType font/ttf "access plus 1 year"
+    ExpiresByType font/woff "access plus 1 year"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/font-woff "access plus 1 year"
+    ExpiresByType application/font-woff2 "access plus 1 year"
+</IfModule>
+
+# 5. CONTROL DE ENCABEZADOS DE CACHÉ (mod_headers)
+# Asegura que el contenido estático mantenga directivas de caché correctas.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js|txt|xml)$">
+        Header set Cache-Control "max-age=31536000, public"
+    </FilesMatch>
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|ico|svg)$">
+        Header set Cache-Control "max-age=31536000, public"
+    </FilesMatch>
+    <FilesMatch "\.(woff|woff2|ttf|eot)$">
+        Header set Cache-Control "max-age=31536000, public"
+    </FilesMatch>
+</IfModule>
+
+# 6. CONFIGURACIONES DE SEGURIDAD BÁSICA
+# Desactivar firma del servidor
+ServerSignature Off
+
+# Evitar Clickjacking
+<IfModule mod_headers.c>
+    Header always append X-Frame-Options SAMEORIGIN
+</IfModule>
