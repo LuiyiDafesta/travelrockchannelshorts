@@ -78,6 +78,10 @@ function updateUserUI() {
   const premiumSidebarCard = document.querySelector('.sidebar-premium-card');
   const mobileHeaderPremiumBtn = document.getElementById('mobile-header-premium-btn');
 
+  // Elementos de administración
+  const sidebarBtnAdmin = document.getElementById('sidebar-btn-admin');
+  const mobileBtnAdmin = document.getElementById('mobile-btn-admin');
+
   if (clientSession) {
     // Usuario Logueado
     if (sidebarBtnLogin) sidebarBtnLogin.classList.add('hidden');
@@ -100,7 +104,7 @@ function updateUserUI() {
 
     if (clientSession.is_premium) {
       if (sidebarRoleBadge) {
-        sidebarRoleBadge.innerHTML = 'PRO 👑';
+        sidebarRoleBadge.innerHTML = clientSession.role === 'admin' ? 'Admin 👑' : 'PRO 👑';
         sidebarRoleBadge.className = 'user-badge-premium';
       }
       if (premiumSidebarCard) premiumSidebarCard.style.display = 'none';
@@ -111,13 +115,22 @@ function updateUserUI() {
     } else {
       if (sidebarRoleBadge) {
         sidebarRoleBadge.innerHTML = clientSession.role === 'admin' ? 'Admin ⚙️' : 'Egresado 🎓';
-        sidebarRoleBadge.className = '';
+        sidebarRoleBadge.className = clientSession.role === 'admin' ? 'user-badge-premium' : '';
       }
       if (premiumSidebarCard) premiumSidebarCard.style.display = 'block';
       if (mobileHeaderPremiumBtn) {
         mobileHeaderPremiumBtn.style.color = '';
         mobileHeaderPremiumBtn.style.textShadow = '';
       }
+    }
+
+    // Mostrar/ocultar enlaces de administración según rol
+    if (clientSession.role === 'admin') {
+      if (sidebarBtnAdmin) sidebarBtnAdmin.classList.remove('hidden');
+      if (mobileBtnAdmin) mobileBtnAdmin.classList.remove('hidden');
+    } else {
+      if (sidebarBtnAdmin) sidebarBtnAdmin.classList.add('hidden');
+      if (mobileBtnAdmin) mobileBtnAdmin.classList.add('hidden');
     }
   } else {
     // Invitado (No Logueado)
@@ -131,6 +144,9 @@ function updateUserUI() {
       mobileHeaderPremiumBtn.style.color = '';
       mobileHeaderPremiumBtn.style.textShadow = '';
     }
+
+    if (sidebarBtnAdmin) sidebarBtnAdmin.classList.add('hidden');
+    if (mobileBtnAdmin) mobileBtnAdmin.classList.add('hidden');
   }
 }
 
