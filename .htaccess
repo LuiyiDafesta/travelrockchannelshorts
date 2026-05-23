@@ -3,6 +3,11 @@ PassengerEnabled on
 PassengerAppType node
 PassengerStartupFile server.js
 
+# Desactivar Passenger para archivos estáticos (Apache los sirve nativamente mucho más rápido)
+<FilesMatch "\.(html|css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|txt|xml|htaccess)$">
+    PassengerEnabled off
+</FilesMatch>
+
 # ----------------------------------------------------------------------
 # | Configuración de Servidor Optimizado para Hosting Ferozo (Apache)    |
 # | TravelRock Channel Shorts - Premium Video Platform                   |
