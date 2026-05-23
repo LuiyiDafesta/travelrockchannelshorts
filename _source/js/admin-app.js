@@ -418,6 +418,13 @@ function extractVideoThumbnail(videoFile) {
     video.preload = 'metadata';
     video.muted = true;
     video.playsInline = true;
+    video.style.position = 'absolute';
+    video.style.width = '0px';
+    video.style.height = '0px';
+    video.style.opacity = '0';
+    video.style.pointerEvents = 'none';
+    
+    document.body.appendChild(video);
     
     // Crear URL del archivo de video
     const fileUrl = URL.createObjectURL(videoFile);
@@ -430,24 +437,40 @@ function extractVideoThumbnail(videoFile) {
     };
     
     video.onseeked = () => {
-      const canvas = document.getElementById('thumbnail-canvas') || document.createElement('canvas');
-      
-      // Escalar la miniatura para que tenga un tamaño óptimo y alta calidad
-      const targetHeight = 720;
-      const scale = Math.min(1, targetHeight / video.videoHeight);
-      canvas.width = video.videoWidth * scale;
-      canvas.height = video.videoHeight * scale;
-      
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      canvas.toBlob((blob) => {
-        resolve(blob);
+      try {
+        const canvas = document.getElementById('thumbnail-canvas') || document.createElement('canvas');
+        
+        // Escalar la miniatura para que tenga un tamaño óptimo y alta calidad
+        const targetHeight = 720;
+        const scale = Math.min(1, targetHeight / video.videoHeight);
+        canvas.width = video.videoWidth * scale;
+        canvas.height = video.videoHeight * scale;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        canvas.toBlob((blob) => {
+          resolve(blob);
+          if (video.parentNode) {
+            document.body.removeChild(video);
+          }
+          URL.revokeObjectURL(fileUrl);
+        }, 'image/jpeg', 0.85);
+      } catch (err) {
+        console.error("Error drawing canvas thumbnail:", err);
+        if (video.parentNode) {
+          document.body.removeChild(video);
+        }
         URL.revokeObjectURL(fileUrl);
-      }, 'image/jpeg', 0.85);
+        resolve(null);
+      }
     };
     
-    video.onerror = () => {
+    video.onerror = (e) => {
+      console.error("Error loading video for thumbnail extraction:", e);
+      if (video.parentNode) {
+        document.body.removeChild(video);
+      }
       URL.revokeObjectURL(fileUrl);
       resolve(null);
     };
