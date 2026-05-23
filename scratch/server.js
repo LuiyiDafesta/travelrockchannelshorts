@@ -45,7 +45,10 @@ async function uploadToB2(fileBuffer, fileName, contentType) {
   });
 
   const { authorizationToken } = authResponse;
-  const apiUrl = authResponse.apiInfo.storageApi.apiUrl;
+  const apiUrl = authResponse.apiUrl || (authResponse.apiInfo && authResponse.apiInfo.storageApi && authResponse.apiInfo.storageApi.apiUrl);
+  if (!apiUrl) {
+    throw new Error(`Failed to parse apiUrl from B2 Auth response: ${JSON.stringify(authResponse)}`);
+  }
 
   // 2. List buckets to find the bucketName matching the bucketId
   const bucketsResponse = await new Promise((resolve, reject) => {
@@ -144,94 +147,121 @@ function handleVideoUpload(req, res) {
   req.pipe(writeStream);
 
   writeStream.on('finish', () => {
-    console.log(`Temp file saved to: ${rawFilePath}. Starting compression...`);
-    
-    // 1. Convert video strictly for web playback (H.264, web-optimized, vertical scaled, faststart metadata)
-    // scale=-2:'min(1080,ih)' preserves orientation, ensures even dimensions, and limits height to 1080p for web
-    const compressCmd = `ffmpeg -y -i "${rawFilePath}" -c:v libx264 -crf 23 -preset medium -vf "scale=-2:'min(1080,ih)'" -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart "${compressedFilePath}"`;
-    
-    exec(compressCmd, (err, stdout, stderr) => {
-      let finalVideoPath = compressedFilePath;
-      let usedRawFallback = false;
+    try {
+      console.log(`Temp file saved to: ${rawFilePath}. Starting compression...`);
+      
+      // 1. Convert video strictly for web playback (H.264, web-optimized, vertical scaled, faststart metadata)
+      // scale=-2:'min(1080,ih)' preserves orientation, ensures even dimensions, and limits height to 1080p for web
+      const compressCmd = `ffmpeg -y -i "${rawFilePath}" -c:v libx264 -crf 23 -preset medium -vf "scale=-2:'min(1080,ih)'" -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart "${compressedFilePath}"`;
+      
+      exec(compressCmd, (err, stdout, stderr) => {
+        let finalVideoPath = compressedFilePath;
+        let usedRawFallback = false;
 
-      if (err) {
-        console.warn("FFmpeg Compression failed or FFmpeg is not installed on the server. Falling back to uploading the raw, uncompressed video. Error details:", err.message);
-        finalVideoPath = rawFilePath;
-        usedRawFallback = true;
-      }
-      
-      console.log('Starting thumbnail generation/extraction...');
-      
-      // 2. Extract thumbnail frame at 1.5 seconds
-      const thumbCmd = `ffmpeg -y -ss 00:00:01.5 -i "${finalVideoPath}" -vframes 1 -q:v 2 "${thumbFilePath}"`;
-      
-      exec(thumbCmd, async (tErr, tStdout, tStderr) => {
-        let hasThumb = true;
-        if (tErr) {
-          console.warn("FFmpeg Thumbnail extraction failed. Attempting fallback...");
-          const fallbackCmd = `ffmpeg -y -i "${finalVideoPath}" -vframes 1 -q:v 2 "${thumbFilePath}"`;
-          await new Promise(r => exec(fallbackCmd, r));
-          
-          if (!fs.existsSync(thumbFilePath)) {
-            console.warn("No FFmpeg found on server to generate thumbnail. Using fallback placeholder image.");
-            hasThumb = false;
-          }
+        if (err) {
+          console.warn("FFmpeg Compression failed or FFmpeg is not installed on the server. Falling back to uploading the raw, uncompressed video. Error details:", err.message);
+          finalVideoPath = rawFilePath;
+          usedRawFallback = true;
         }
         
-        console.log('Uploading to Backblaze B2...');
+        console.log('Starting thumbnail generation/extraction...');
         
-        try {
-          // Read files into Buffers
-          const videoBuffer = fs.readFileSync(finalVideoPath);
-          let thumbBuffer;
-          
-          if (hasThumb) {
-            thumbBuffer = fs.readFileSync(thumbFilePath);
-          } else {
-            // A tiny high-quality base64 1x1 grey pixel JPEG to avoid breaking B2 or Supabase
-            const dummyJpegBase64 = '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
-            thumbBuffer = Buffer.from(dummyJpegBase64, 'base64');
+        // 2. Extract thumbnail frame at 1.5 seconds
+        const thumbCmd = `ffmpeg -y -ss 00:00:01.5 -i "${finalVideoPath}" -vframes 1 -q:v 2 "${thumbFilePath}"`;
+        
+        exec(thumbCmd, async (tErr, tStdout, tStderr) => {
+          let hasThumb = true;
+          try {
+            if (tErr) {
+              console.warn("FFmpeg Thumbnail extraction failed. Attempting fallback...");
+              const fallbackCmd = `ffmpeg -y -i "${finalVideoPath}" -vframes 1 -q:v 2 "${thumbFilePath}"`;
+              await new Promise(r => exec(fallbackCmd, r));
+              
+              if (!fs.existsSync(thumbFilePath)) {
+                console.warn("No FFmpeg found on server to generate thumbnail. Using fallback placeholder image.");
+                hasThumb = false;
+              }
+            }
+            
+            console.log('Uploading to Backblaze B2...');
+            
+            // Read files into Buffers
+            const videoBuffer = fs.readFileSync(finalVideoPath);
+            let thumbBuffer;
+            
+            if (hasThumb) {
+              thumbBuffer = fs.readFileSync(thumbFilePath);
+            } else {
+              // A tiny high-quality base64 1x1 grey pixel JPEG to avoid breaking B2 or Supabase
+              const dummyJpegBase64 = '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
+              thumbBuffer = Buffer.from(dummyJpegBase64, 'base64');
+            }
+            
+            const b2VideoName = `shorts/${timestamp}_${sanitizedBase}.mp4`;
+            const b2ThumbName = `thumbnails/${timestamp}_${sanitizedBase}.jpg`;
+            
+            // Parallel Upload to B2
+            const [videoUrl, thumbnailUrl] = await Promise.all([
+              uploadToB2(videoBuffer, b2VideoName, 'video/mp4'),
+              uploadToB2(thumbBuffer, b2ThumbName, 'image/jpeg')
+            ]);
+            
+            console.log('B2 Upload complete! Public URLs:');
+            console.log(`Video:     ${videoUrl}`);
+            console.log(`Thumbnail: ${thumbnailUrl}`);
+            
+            res.writeHead(200, {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, PATCH, DELETE',
+              'Access-Control-Allow-Headers': 'X-Requested-With,content-type,Authorization'
+            });
+            res.end(JSON.stringify({ videoUrl, thumbnailUrl }));
+            
+          } catch (uploadErr) {
+            console.error("B2 Upload or processing failed:", uploadErr);
+            res.writeHead(500, {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, PATCH, DELETE',
+              'Access-Control-Allow-Headers': 'X-Requested-With,content-type,Authorization'
+            });
+            res.end(JSON.stringify({ error: 'Uploading to Backblaze B2 failed.', details: uploadErr.message, stack: uploadErr.stack }));
+          } finally {
+            // Cleanup all local temp files
+            const filesToClean = [rawFilePath];
+            if (!usedRawFallback) {
+              filesToClean.push(compressedFilePath);
+            }
+            if (hasThumb && fs.existsSync(thumbFilePath)) {
+              filesToClean.push(thumbFilePath);
+            }
+            cleanupFiles(filesToClean);
           }
-          
-          const b2VideoName = `shorts/${timestamp}_${sanitizedBase}.mp4`;
-          const b2ThumbName = `thumbnails/${timestamp}_${sanitizedBase}.jpg`;
-          
-          // Parallel Upload to B2
-          const [videoUrl, thumbnailUrl] = await Promise.all([
-            uploadToB2(videoBuffer, b2VideoName, 'video/mp4'),
-            uploadToB2(thumbBuffer, b2ThumbName, 'image/jpeg')
-          ]);
-          
-          console.log('B2 Upload complete! Public URLs:');
-          console.log(`Video:     ${videoUrl}`);
-          console.log(`Thumbnail: ${thumbnailUrl}`);
-          
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ videoUrl, thumbnailUrl }));
-          
-        } catch (uploadErr) {
-          console.error("B2 Upload failed:", uploadErr);
-          res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Uploading to Backblaze B2 failed.', details: uploadErr.message }));
-        } finally {
-          // Cleanup all local temp files
-          const filesToClean = [rawFilePath];
-          if (!usedRawFallback) {
-            filesToClean.push(compressedFilePath);
-          }
-          if (hasThumb && fs.existsSync(thumbFilePath)) {
-            filesToClean.push(thumbFilePath);
-          }
-          cleanupFiles(filesToClean);
-        }
+        });
       });
-    });
+    } catch (finishErr) {
+      console.error("Error in finish stream handler:", finishErr);
+      res.writeHead(500, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, PATCH, DELETE',
+        'Access-Control-Allow-Headers': 'X-Requested-With,content-type,Authorization'
+      });
+      res.end(JSON.stringify({ error: 'Error processing upload finish.', details: finishErr.message, stack: finishErr.stack }));
+      cleanupFiles([rawFilePath, compressedFilePath, thumbFilePath].filter(Boolean));
+    }
   });
 
   writeStream.on('error', (err) => {
     console.error("Write stream error:", err);
-    res.writeHead(500, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Saving temporary upload file failed.' }));
+    res.writeHead(500, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, PATCH, DELETE',
+      'Access-Control-Allow-Headers': 'X-Requested-With,content-type,Authorization'
+    });
+    res.end(JSON.stringify({ error: 'Saving temporary upload file failed.', details: err.message }));
     cleanupFiles([rawFilePath]);
   });
 }
