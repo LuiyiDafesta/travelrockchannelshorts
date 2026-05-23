@@ -483,7 +483,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       boliche: 'fa-solid fa-music',
       aventura: 'fa-solid fa-mountain',
       lifestyle: 'fa-solid fa-mug-hot',
-      emociones: 'fa-solid fa-heart'
+      emociones: 'fa-solid fa-heart',
+      bienvenida: 'fa-solid fa-hand-wave'
     };
     
     let html = `<button class="category-chip active" data-category="all">⚡ Todos los Momentos</button>`;

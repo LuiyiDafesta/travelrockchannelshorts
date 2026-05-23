@@ -1262,7 +1262,9 @@ async function saveVideoEdit(e) {
     
     // 2. Actualizar la redirección Open Graph estática para WhatsApp
     if (updatedData) {
-      await fetch('/api/save-seo', {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const seoEndpoint = isLocal ? '/api/save-seo' : 'api/save-seo.php';
+      await fetch(seoEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1273,7 +1275,7 @@ async function saveVideoEdit(e) {
           school: schoolVal,
           description: descVal
         })
-      }).catch(err => console.error("Error al actualizar SEO local:", err));
+      }).catch(err => console.error("Error al actualizar SEO:", err));
     }
     
     showAlert(catalogAlertContainer, 'success', '<i class="fa-solid fa-check"></i> El Short vertical y su SEO se han actualizado correctamente.');
