@@ -1,3 +1,8 @@
+# Phusion Passenger configuration for Node.js routing in Ferozo
+PassengerEnabled on
+PassengerAppType node
+PassengerStartupFile server.js
+
 # ----------------------------------------------------------------------
 # | Configuración de Servidor Optimizado para Hosting Ferozo (Apache)    |
 # | TravelRock Channel Shorts - Premium Video Platform                   |
