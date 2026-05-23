@@ -168,35 +168,52 @@ async function handleLogin(e) {
 }
 
 // Cierre de Sesión
-function handleLogout() {
+function handleLogout(preventAlertReset = false) {
   localStorage.removeItem('tr_admin_session');
   session = null;
   dashboardSection.style.display = 'none';
   loginSection.style.display = 'flex';
-  showAlert(loginAlertContainer, 'success', '<i class="fa-solid fa-check"></i> Sesión cerrada correctamente.');
+  if (!preventAlertReset) {
+    showAlert(loginAlertContainer, 'success', '<i class="fa-solid fa-check"></i> Sesión cerrada correctamente.');
+  }
 }
 
 // Mostrar Dashboard e Inicializar
 async function showDashboard() {
   // Validar rol de administrador en Supabase
   if (!session.isLocalFallback && session.user && session.user.id) {
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single();
-      
-      if (error || !profile || profile.role !== 'admin') {
-        showAlert(loginAlertContainer, 'error', '<i class="fa-solid fa-triangle-exclamation"></i> Acceso denegado. Este panel es exclusivo para cuentas de administrador.');
-        handleLogout();
+    if (session.email === 'lsnetinformatica2024@gmail.com') {
+      // Es el superadmin logueado por Supabase Auth, aseguramos que su perfil real en public.profiles sea admin
+      try {
+        await supabase.from('profiles').upsert({
+          id: session.user.id,
+          email: session.email,
+          user_name: 'Luiyi Admin',
+          role: 'admin',
+          is_premium: true
+        });
+      } catch (err) {
+        console.error("Error al sincronizar superadmin en profiles:", err);
+      }
+    } else {
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (error || !profile || profile.role !== 'admin') {
+          showAlert(loginAlertContainer, 'error', '<i class="fa-solid fa-triangle-exclamation"></i> Acceso denegado. Este panel es exclusivo para cuentas de administrador.');
+          handleLogout(true);
+          return;
+        }
+      } catch (err) {
+        console.error("Error al validar rol de administrador:", err);
+        showAlert(loginAlertContainer, 'error', '<i class="fa-solid fa-triangle-exclamation"></i> Error de conexión al verificar permisos.');
+        handleLogout(true);
         return;
       }
-    } catch (err) {
-      console.error("Error al validar rol de administrador:", err);
-      showAlert(loginAlertContainer, 'error', '<i class="fa-solid fa-triangle-exclamation"></i> Error de conexión al verificar permisos.');
-      handleLogout();
-      return;
     }
   }
 
