@@ -411,6 +411,49 @@ function clearSelectedFile() {
   uploadProgressBox.style.display = 'none';
 }
 
+// Función auxiliar para extraer una miniatura de video en el navegador usando Canvas
+function extractVideoThumbnail(videoFile) {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    
+    // Crear URL del archivo de video
+    const fileUrl = URL.createObjectURL(videoFile);
+    video.src = fileUrl;
+    
+    video.onloadedmetadata = () => {
+      // Capturar cuadro a los 1.5 segundos o a la mitad si es más corto
+      const seekTime = Math.min(1.5, video.duration / 2);
+      video.currentTime = seekTime;
+    };
+    
+    video.onseeked = () => {
+      const canvas = document.getElementById('thumbnail-canvas') || document.createElement('canvas');
+      
+      // Escalar la miniatura para que tenga un tamaño óptimo y alta calidad
+      const targetHeight = 720;
+      const scale = Math.min(1, targetHeight / video.videoHeight);
+      canvas.width = video.videoWidth * scale;
+      canvas.height = video.videoHeight * scale;
+      
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      canvas.toBlob((blob) => {
+        resolve(blob);
+        URL.revokeObjectURL(fileUrl);
+      }, 'image/jpeg', 0.85);
+    };
+    
+    video.onerror = () => {
+      URL.revokeObjectURL(fileUrl);
+      resolve(null);
+    };
+  });
+}
+
 // 5. PUBLICACIÓN DE VIDEOS E INTEGRACIÓN DE CANVAS DE PORTADA
 if (uploadForm) {
   uploadForm.addEventListener('submit', publishShort);
@@ -439,43 +482,65 @@ async function publishShort(e) {
   btnUploadSubmit.disabled = true;
   btnUploadSubmit.innerHTML = '<span>Procesando y Subiendo...</span> <i class="fa-solid fa-spinner fa-spin"></i>';
   uploadProgressBox.style.display = 'block';
-  updateProgressBar(5, 'Conectando con el servidor de compresión local...');
+  updateProgressBar(5, 'Iniciando subida del Short vertical...');
 
   try {
-    updateProgressBar(10, 'Subiendo video para compresión rápida (H.264 vertical a 1080p y portadas)...');
+    // Determinar los endpoints del backend según el entorno
+    let uploadTargetUrl = 'api/upload.php';
+    let seoTargetUrl = 'api/save-seo.php';
     
-    // 1. Enviar el archivo mediante POST al endpoint de compresión y subida a Backblaze B2
-    // Intentamos detectar si el servidor de compresión local está corriendo en tu PC (localhost:8080)
-    let uploadTargetUrl = '/api/upload';
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     
-    try {
-      // Hacer un check ultra rápido sin transferir datos
-      const localCheck = await fetch('http://localhost:8080/api/upload', { 
-        method: 'OPTIONS' 
-      }).catch(() => null);
+    let videoUrl = '';
+    let thumbnailUrl = '';
+    
+    if (isLocal) {
+      // Entorno Local: Usamos el servidor Node.js local con compresión FFmpeg
+      uploadTargetUrl = '/api/upload';
+      seoTargetUrl = '/api/save-seo';
       
-      if (localCheck && (localCheck.ok || localCheck.status === 200)) {
-        uploadTargetUrl = 'http://localhost:8080/api/upload';
-        console.log("🚀 Servidor local de compresión detectado en localhost:8080. Procesando video en tu PC...");
-      } else {
-        console.warn("⚠️ Servidor local en localhost:8080 no responde, usando la ruta por defecto del hosting.");
+      updateProgressBar(10, 'Enviando video al compresor local FFmpeg en tu PC...');
+      const uploadRes = await fetch(`${uploadTargetUrl}?name=${encodeURIComponent(currentSelectedFile.name)}`, {
+        method: 'POST',
+        body: currentSelectedFile
+      });
+
+      if (!uploadRes.ok) {
+        const errData = await uploadRes.json().catch(() => ({}));
+        throw new Error(errData.error || errData.details || `Error del servidor local de carga: ${uploadRes.status}`);
       }
-    } catch (e) {
-      console.warn("⚠️ Error detectando servidor local, usando ruta por defecto del hosting:", e);
-    }
+      
+      const result = await uploadRes.json();
+      videoUrl = result.videoUrl;
+      thumbnailUrl = result.thumbnailUrl;
+    } else {
+      // Entorno de Producción (Ferozo): Usamos carga directa con PHP y miniatura extraída vía Canvas
+      updateProgressBar(15, 'Generando miniatura del video desde el navegador...');
+      const thumbBlob = await extractVideoThumbnail(currentSelectedFile);
+      
+      updateProgressBar(30, 'Subiendo video y portada a Backblaze B2 desde Ferozo...');
+      const formData = new FormData();
+      formData.append('video', currentSelectedFile);
+      if (thumbBlob) {
+        formData.append('thumbnail', thumbBlob, 'thumbnail.jpg');
+      }
+      
+      const uploadRes = await fetch(uploadTargetUrl, {
+        method: 'POST',
+        body: formData
+      });
 
-    const uploadRes = await fetch(`${uploadTargetUrl}?name=${encodeURIComponent(currentSelectedFile.name)}`, {
-      method: 'POST',
-      body: currentSelectedFile
-    });
-
-    if (!uploadRes.ok) {
-      const errData = await uploadRes.json().catch(() => ({}));
-      throw new Error(errData.error || errData.details || `Error del servidor de carga: ${uploadRes.status}`);
+      if (!uploadRes.ok) {
+        const errData = await uploadRes.json().catch(() => ({}));
+        throw new Error(errData.error || errData.details || `Error del servidor de producción: ${uploadRes.status}`);
+      }
+      
+      const result = await uploadRes.json();
+      videoUrl = result.videoUrl;
+      thumbnailUrl = result.thumbnailUrl;
     }
     
-    const { videoUrl, thumbnailUrl } = await uploadRes.json();
-    updateProgressBar(80, 'Video comprimido y subido a Backblaze B2. Guardando metadatos en la base de datos...');
+    updateProgressBar(80, 'Guardando metadatos en la base de datos de Supabase...');
 
     // 2. Obtener etiqueta de categoría de forma dinámica
     const selectedCat = dynamicCategories.find(c => c.slug === categoryVal);
@@ -507,11 +572,11 @@ async function publishShort(e) {
 
     if (dbErr) throw dbErr;
 
-    updateProgressBar(90, 'Guardando páginas de SEO dinámico y Open Graph...');
+    updateProgressBar(90, 'Generando archivos SEO y Open Graph en el servidor...');
 
-    // 4. Invocar el backend local para escribir la página de redirección Open Graph estática para WhatsApp
+    // 4. Invocar el backend para escribir la página de redirección Open Graph estática para WhatsApp
     if (dbData && dbData.id) {
-      await fetch('/api/save-seo', {
+      await fetch(seoTargetUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -522,7 +587,7 @@ async function publishShort(e) {
           school: schoolVal,
           description: descVal
         })
-      }).catch(err => console.error("Error al generar redirección SEO local:", err));
+      }).catch(err => console.error("Error al generar redirección SEO:", err));
     }
 
     // Éxito completo!
