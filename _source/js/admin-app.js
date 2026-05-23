@@ -444,8 +444,27 @@ async function publishShort(e) {
   try {
     updateProgressBar(10, 'Subiendo video para compresión rápida (H.264 vertical a 1080p y portadas)...');
     
-    // 1. Enviar el archivo mediante POST al endpoint local de compresión y subida a Backblaze B2
-    const uploadRes = await fetch(`/api/upload?name=${encodeURIComponent(currentSelectedFile.name)}`, {
+    // 1. Enviar el archivo mediante POST al endpoint de compresión y subida a Backblaze B2
+    // Intentamos detectar si el servidor de compresión local está corriendo en tu PC (localhost:8080)
+    let uploadTargetUrl = '/api/upload';
+    
+    try {
+      // Hacer un check ultra rápido sin transferir datos
+      const localCheck = await fetch('http://localhost:8080/api/upload', { 
+        method: 'OPTIONS' 
+      }).catch(() => null);
+      
+      if (localCheck && (localCheck.ok || localCheck.status === 200)) {
+        uploadTargetUrl = 'http://localhost:8080/api/upload';
+        console.log("🚀 Servidor local de compresión detectado en localhost:8080. Procesando video en tu PC...");
+      } else {
+        console.warn("⚠️ Servidor local en localhost:8080 no responde, usando la ruta por defecto del hosting.");
+      }
+    } catch (e) {
+      console.warn("⚠️ Error detectando servidor local, usando ruta por defecto del hosting:", e);
+    }
+
+    const uploadRes = await fetch(`${uploadTargetUrl}?name=${encodeURIComponent(currentSelectedFile.name)}`, {
       method: 'POST',
       body: currentSelectedFile
     });
