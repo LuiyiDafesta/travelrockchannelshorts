@@ -1280,7 +1280,6 @@ async function saveCategory(e) {
     // Reset form
     document.getElementById('category-form').reset();
     document.getElementById('category-edit-id').value = '';
-    document.getElementById('btn-category-text').textContent = 'Agregar Categoría';
     
     loadCategories();
     loadUploaderSelects();
@@ -1389,7 +1388,6 @@ async function saveCollection(e) {
     // Reset form
     document.getElementById('collection-form').reset();
     document.getElementById('collection-edit-id').value = '';
-    document.getElementById('btn-collection-text').textContent = 'Agregar Colección';
     
     loadCollections();
     loadUploaderSelects();
