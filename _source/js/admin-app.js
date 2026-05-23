@@ -19,6 +19,15 @@ let session = null;
 let currentSelectedFile = null;
 let videoDuration = 0;
 let deleteTargetId = null;
+let dynamicCategories = [];
+let dynamicCollections = [];
+
+// Elementos de Edición y CRUD
+const editVideoModal = document.getElementById('edit-video-modal');
+const btnEditCancel = document.getElementById('btn-edit-cancel');
+const editVideoForm = document.getElementById('edit-video-form');
+const categoryForm = document.getElementById('category-form');
+const collectionForm = document.getElementById('collection-form');
 
 // Elementos del DOM
 const loginSection = document.getElementById('login-section');
@@ -119,9 +128,28 @@ document.addEventListener('DOMContentLoaded', () => {
         loadComments();
       } else if (targetTabId === 'tab-users') {
         loadUsers();
+      } else if (targetTabId === 'tab-metadata') {
+        loadCategories();
+        loadCollections();
       }
     });
   });
+
+  // Vincular Formularios de CRUD de Metadatos y Edición
+  if (categoryForm) {
+    categoryForm.addEventListener('submit', saveCategory);
+  }
+  if (collectionForm) {
+    collectionForm.addEventListener('submit', saveCollection);
+  }
+  if (editVideoForm) {
+    editVideoForm.addEventListener('submit', saveVideoEdit);
+  }
+  if (btnEditCancel) {
+    btnEditCancel.addEventListener('click', () => {
+      editVideoModal.style.display = 'none';
+    });
+  }
 
   // Eventos de selección de archivo y Drag & Drop
   setupFileEvents();
@@ -234,6 +262,7 @@ async function showDashboard() {
   }
 
   // Cargar estadísticas
+  loadUploaderSelects();
   updateStats();
 }
 
@@ -410,77 +439,30 @@ async function publishShort(e) {
   btnUploadSubmit.disabled = true;
   btnUploadSubmit.innerHTML = '<span>Procesando y Subiendo...</span> <i class="fa-solid fa-spinner fa-spin"></i>';
   uploadProgressBox.style.display = 'block';
-  updateProgressBar(5, 'Conectando con el servidor de Storage...');
+  updateProgressBar(5, 'Conectando con el servidor de compresión local...');
 
   try {
-    const timestamp = Date.now();
-    const sanitizedFileName = currentSelectedFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
+    updateProgressBar(10, 'Subiendo video para compresión rápida (H.264 vertical a 1080p y portadas)...');
     
-    // A. SUBIR VIDEO A SUPABASE STORAGE (Bucket: videos)
-    const videoPath = `shorts/${timestamp}_${sanitizedFileName}`;
-    
-    updateProgressBar(10, 'Subiendo archivo de video vertical (esto puede tardar unos segundos)...');
-    
-    const { data: uploadVid, error: uVidErr } = await supabase.storage
-      .from('videos')
-      .upload(videoPath, currentSelectedFile, {
-        cacheControl: '3600',
-        upsert: false
-      });
-
-    if (uVidErr) throw uVidErr;
-    
-    const videoPublicUrl = supabase.storage.from('videos').getPublicUrl(videoPath).data.publicUrl;
-    updateProgressBar(55, 'Video subido. Capturando fotograma a 1.5s para miniatura...');
-
-    // B. GENERACIÓN DE MINIATURA MEDIANTE CANVAS
-    // Buscamos capturar el frame en el canvas
-    const canvas = document.getElementById('thumbnail-canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = auxPreviewVideo.videoWidth;
-    canvas.height = auxPreviewVideo.videoHeight;
-    
-    // Buscar el segundo 1.5 en el video
-    auxPreviewVideo.currentTime = Math.min(1.5, videoDuration / 2);
-    
-    // Esperar a que se realice la búsqueda de fotograma
-    await new Promise((resolve) => {
-      auxPreviewVideo.onseeked = resolve;
+    // 1. Enviar el archivo mediante POST al endpoint local de compresión y subida a Backblaze B2
+    const uploadRes = await fetch(`/api/upload?name=${encodeURIComponent(currentSelectedFile.name)}`, {
+      method: 'POST',
+      body: currentSelectedFile
     });
 
-    // Dibujar el frame en el canvas
-    ctx.drawImage(auxPreviewVideo, 0, 0, canvas.width, canvas.height);
-    updateProgressBar(70, 'Fotograma capturado. Creando portada JPG...');
-
-    // Convertir canvas a Blob de Imagen
-    const thumbnailBlob = await new Promise((resolve) => {
-      canvas.toBlob(resolve, 'image/jpeg', 0.85); // Calidad alta del 85%
-    });
-
-    // C. SUBIR MINIATURA AL STORAGE
-    const thumbPath = `thumbnails/${timestamp}_thumb.jpg`;
-    updateProgressBar(75, 'Subiendo miniatura de portada...');
+    if (!uploadRes.ok) {
+      const errData = await uploadRes.json().catch(() => ({}));
+      throw new Error(errData.error || errData.details || `Error del servidor de carga: ${uploadRes.status}`);
+    }
     
-    const { data: uploadThumb, error: uThumbErr } = await supabase.storage
-      .from('videos')
-      .upload(thumbPath, thumbnailBlob, {
-        contentType: 'image/jpeg',
-        upsert: false
-      });
+    const { videoUrl, thumbnailUrl } = await uploadRes.json();
+    updateProgressBar(80, 'Video comprimido y subido a Backblaze B2. Guardando metadatos en la base de datos...');
 
-    if (uThumbErr) throw uThumbErr;
+    // 2. Obtener etiqueta de categoría de forma dinámica
+    const selectedCat = dynamicCategories.find(c => c.slug === categoryVal);
+    const categoryLabelVal = selectedCat ? selectedCat.name : categoryVal;
 
-    const thumbnailPublicUrl = supabase.storage.from('videos').getPublicUrl(thumbPath).data.publicUrl;
-    updateProgressBar(85, 'Portada subida. Guardando metadatos en la base de datos...');
-
-    // D. GUARDAR EN TABLA DE VIDEOS
-    const categoryLabels = {
-      boliche: 'Noche de Boliche',
-      aventura: 'Aventura Extrema',
-      lifestyle: 'Lifestyle & Relax',
-      emociones: 'Momentos Mágicos'
-    };
-
+    // 3. Guardar en la tabla de videos de Supabase y obtener el ID generado
     const { data: dbData, error: dbErr } = await supabase
       .from('videos')
       .insert([
@@ -488,10 +470,10 @@ async function publishShort(e) {
           title: titleVal,
           school: schoolVal,
           category: categoryVal,
-          category_label: categoryLabels[categoryVal],
+          category_label: categoryLabelVal,
           description: descVal,
-          video_url: videoPublicUrl,
-          thumbnail_url: thumbnailPublicUrl,
+          video_url: videoUrl,
+          thumbnail_url: thumbnailUrl,
           likes: Math.floor(Math.random() * 200) + 50, // Generar likes premium iniciales aleatorios
           duration: Math.round(videoDuration),
           date: dateVal,
@@ -500,13 +482,33 @@ async function publishShort(e) {
           province: provinceVal || null,
           chapters: chaptersVal || null
         }
-      ]);
+      ])
+      .select('id')
+      .single();
 
     if (dbErr) throw dbErr;
 
+    updateProgressBar(90, 'Guardando páginas de SEO dinámico y Open Graph...');
+
+    // 4. Invocar el backend local para escribir la página de redirección Open Graph estática para WhatsApp
+    if (dbData && dbData.id) {
+      await fetch('/api/save-seo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: dbData.id,
+          videoUrl,
+          thumbnailUrl,
+          title: titleVal,
+          school: schoolVal,
+          description: descVal
+        })
+      }).catch(err => console.error("Error al generar redirección SEO local:", err));
+    }
+
     // Éxito completo!
     updateProgressBar(100, '¡Publicado con éxito!');
-    showAlert(uploadAlertContainer, 'success', `<strong>¡Enhorabuena!</strong> El short vertical se ha subido, capturado su portada e indexado en vivo en la base de datos.`);
+    showAlert(uploadAlertContainer, 'success', `<strong>¡Enhorabuena!</strong> El Short se comprimió, subió a Backblaze B2, generó su página de Open Graph (SEO) y se publicó con éxito.`);
     
     // Limpiar formulario
     uploadForm.reset();
@@ -533,6 +535,8 @@ function updateProgressBar(percentage, statusText) {
 }
 
 // 6. GESTIÓN Y CARGA DEL CATÁLOGO (LISTADO CRUD)
+let loadedVideos = [];
+
 async function loadCatalog() {
   adminVideosTbody.innerHTML = `
     <tr>
@@ -551,7 +555,9 @@ async function loadCatalog() {
 
     if (error) throw error;
 
-    if (!videos || videos.length === 0) {
+    loadedVideos = videos || [];
+
+    if (!loadedVideos || loadedVideos.length === 0) {
       adminVideosTbody.innerHTML = `
         <tr>
           <td colspan="7" class="no-data-card">
@@ -563,7 +569,7 @@ async function loadCatalog() {
       return;
     }
 
-    adminVideosTbody.innerHTML = videos.map(video => `
+    adminVideosTbody.innerHTML = loadedVideos.map(video => `
       <tr id="video-row-${video.id}">
         <td>
           <img class="table-thumb" src="${video.thumbnail_url}" alt="${video.title}">
@@ -576,7 +582,7 @@ async function loadCatalog() {
           </div>
         </td>
         <td>
-          <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:var(--neon-pink);">${video.category_label}</span>
+          <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:var(--neon-pink);">${video.category_label || video.category}</span>
         </td>
         <td>
           ${video.collection_name 
@@ -587,19 +593,34 @@ async function loadCatalog() {
           }
         </td>
         <td>
-          <div style="font-size: 0.8rem; font-weight:600;"><i class="fa-solid fa-graduation-cap"></i> ${video.school.split(' - ')[0]}</div>
+          <div style="font-size: 0.8rem; font-weight:600;"><i class="fa-solid fa-graduation-cap"></i> ${video.school ? video.school.split(' - ')[0] : ''}</div>
           ${video.province ? `<div class="table-meta" style="margin-top: 4px; font-size: 0.75rem;"><i class="fa-solid fa-map-pin" style="color:var(--neon-pink);"></i> ${video.province}</div>` : ''}
         </td>
         <td style="font-weight: 700; font-family: var(--font-display);">
           <i class="fa-solid fa-heart" style="color:var(--neon-pink);"></i> ${video.likes}
         </td>
-        <td style="text-align: center;">
+        <td style="text-align: center; display: flex; gap: 6px; justify-content: center; align-items: center; min-height: 55px;">
+          <button class="btn-edit-row" data-id="${video.id}">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
           <button class="btn-delete-row" data-id="${video.id}" data-url="${video.video_url}" data-thumb="${video.thumbnail_url}">
             <i class="fa-solid fa-trash-can"></i>
           </button>
         </td>
       </tr>
     `).join('');
+
+    // Asignar eventos de edición
+    const editButtons = adminVideosTbody.querySelectorAll('.btn-edit-row');
+    editButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = parseInt(btn.getAttribute('data-id'));
+        const video = loadedVideos.find(v => v.id === id);
+        if (video) {
+          openVideoEditModal(video);
+        }
+      });
+    });
 
     // Asignar eventos de eliminación
     const deleteButtons = adminVideosTbody.querySelectorAll('.btn-delete-row');
@@ -1023,5 +1044,359 @@ function showAlert(container, type, message) {
     setTimeout(() => {
       container.innerHTML = '';
     }, 6000);
+  }
+}
+
+// ==========================================================================
+// 9. FUNCIONES CRUD DE METADATOS Y EDICIÓN DE VIDEOS (NUEVAS CAPACIDADES)
+// ==========================================================================
+
+// A. Cargar selectores dinámicos del subidor y del modal de edición
+async function loadUploaderSelects() {
+  try {
+    // 1. Obtener Categorías
+    const { data: cats, error: catErr } = await supabase.from('categories').select('*').order('name');
+    if (!catErr && cats) {
+      dynamicCategories = cats;
+      
+      const selects = [document.getElementById('video-category'), document.getElementById('edit-video-category')];
+      selects.forEach(sel => {
+        if (sel) {
+          sel.innerHTML = '<option value="">Selecciona Categoría del Catálogo</option>' + 
+            cats.map(c => `<option value="${c.slug}">${c.name}</option>`).join('');
+        }
+      });
+    }
+
+    // 2. Obtener Colecciones
+    const { data: cols, error: colErr } = await supabase.from('collections').select('*').order('name');
+    if (!colErr && cols) {
+      dynamicCollections = cols;
+      
+      const datalists = [document.getElementById('collections-list'), document.getElementById('edit-collections-list')];
+      datalists.forEach(dl => {
+        if (dl) {
+          dl.innerHTML = cols.map(c => `<option value="${c.name}">`).join('');
+        }
+      });
+    }
+  } catch (err) {
+    console.error("Error al cargar selectores dinámicos:", err);
+  }
+}
+
+// B. Abrir Modal de Edición de Video
+function openVideoEditModal(video) {
+  if (!editVideoModal) return;
+  
+  document.getElementById('edit-video-id').value = video.id;
+  document.getElementById('edit-video-title').value = video.title || '';
+  document.getElementById('edit-video-school').value = video.school || '';
+  document.getElementById('edit-video-category').value = video.category || '';
+  document.getElementById('edit-video-date').value = video.date || '';
+  document.getElementById('edit-video-province').value = video.province || '';
+  document.getElementById('edit-video-chapters').value = video.chapters || '';
+  document.getElementById('edit-video-collection').value = video.collection_name || '';
+  document.getElementById('edit-video-episode').value = video.episode_number || '';
+  document.getElementById('edit-video-description').value = video.description || '';
+  
+  // Limpiar alerta anterior
+  const alertContainer = document.getElementById('edit-alert-container');
+  if (alertContainer) alertContainer.innerHTML = '';
+  
+  editVideoModal.style.display = 'flex';
+}
+
+// C. Guardar Edición del Video (Update)
+async function saveVideoEdit(e) {
+  e.preventDefault();
+  
+  const idVal = document.getElementById('edit-video-id').value;
+  const titleVal = document.getElementById('edit-video-title').value.trim();
+  const schoolVal = document.getElementById('edit-video-school').value.trim();
+  const categoryVal = document.getElementById('edit-video-category').value;
+  const dateVal = document.getElementById('edit-video-date').value.trim();
+  const provinceVal = document.getElementById('edit-video-province').value.trim();
+  const chaptersVal = document.getElementById('edit-video-chapters').value.trim();
+  const collectionVal = document.getElementById('edit-video-collection').value.trim();
+  const episodeVal = document.getElementById('edit-video-episode').value.trim();
+  const descVal = document.getElementById('edit-video-description').value.trim();
+  
+  const alertContainer = document.getElementById('edit-alert-container');
+  const submitBtn = document.getElementById('btn-edit-submit');
+  
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span>Guardando...</span> <i class="fa-solid fa-spinner fa-spin"></i>';
+  
+  try {
+    const selectedCat = dynamicCategories.find(c => c.slug === categoryVal);
+    const categoryLabelVal = selectedCat ? selectedCat.name : categoryVal;
+
+    // 1. Actualizar en Supabase
+    const { data: updatedData, error } = await supabase
+      .from('videos')
+      .update({
+        title: titleVal,
+        school: schoolVal,
+        category: categoryVal,
+        category_label: categoryLabelVal,
+        date: dateVal,
+        province: provinceVal || null,
+        chapters: chaptersVal || null,
+        collection_name: collectionVal || null,
+        episode_number: episodeVal ? parseInt(episodeVal) : null,
+        description: descVal
+      })
+      .eq('id', idVal)
+      .select('video_url, thumbnail_url')
+      .single();
+      
+    if (error) throw error;
+    
+    // 2. Actualizar la redirección Open Graph estática para WhatsApp
+    if (updatedData) {
+      await fetch('/api/save-seo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: idVal,
+          videoUrl: updatedData.video_url,
+          thumbnailUrl: updatedData.thumbnail_url,
+          title: titleVal,
+          school: schoolVal,
+          description: descVal
+        })
+      }).catch(err => console.error("Error al actualizar SEO local:", err));
+    }
+    
+    showAlert(catalogAlertContainer, 'success', '<i class="fa-solid fa-check"></i> El Short vertical y su SEO se han actualizado correctamente.');
+    editVideoModal.style.display = 'none';
+    
+    loadCatalog();
+    updateStats();
+  } catch (err) {
+    console.error("Error al editar video:", err);
+    showAlert(alertContainer, 'error', `Error al guardar cambios: ${err.message}`);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span>Guardar Cambios</span> <i class="fa-solid fa-circle-check"></i>';
+  }
+}
+
+// D. CRUD DE CATEGORÍAS
+async function loadCategories() {
+  const tbody = document.getElementById('admin-categories-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="3" class="no-data-card"><i class="fa-solid fa-spinner fa-spin"></i> Cargando categorías...</td></tr>';
+  
+  try {
+    const { data: cats, error } = await supabase.from('categories').select('*').order('name');
+    if (error) throw error;
+    
+    if (!cats || cats.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="no-data-card">No hay categorías configuradas.</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = cats.map(c => `
+      <tr id="category-row-${c.id}">
+        <td style="font-weight: 600; color: var(--text-primary);">${c.name}</td>
+        <td style="font-family: monospace; color: var(--neon-pink); font-size: 0.85rem;">${c.slug}</td>
+        <td style="text-align: center; display: flex; gap: 8px; justify-content: center;">
+          <button class="btn-toggle-role btn-edit-category" data-id="${c.id}" data-name="${c.name}" data-slug="${c.slug}" style="padding: 6px 12px;">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn-delete-row btn-delete-category" data-id="${c.id}">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+    
+    // Bind click edit
+    tbody.querySelectorAll('.btn-edit-category').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('category-edit-id').value = btn.getAttribute('data-id');
+        document.getElementById('category-name').value = btn.getAttribute('data-name');
+        document.getElementById('category-slug').value = btn.getAttribute('data-slug');
+        document.getElementById('btn-category-text').textContent = 'Guardar Cambios';
+      });
+    });
+    
+    // Bind click delete
+    tbody.querySelectorAll('.btn-delete-category').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        if (!confirm('¿Seguro que deseas eliminar esta categoría?')) return;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        
+        try {
+          const { error: delErr } = await supabase.from('categories').delete().eq('id', id);
+          if (delErr) throw delErr;
+          
+          showAlert(document.getElementById('categories-alert-container'), 'success', 'Categoría eliminada correctamente.');
+          loadCategories();
+          loadUploaderSelects();
+        } catch (err) {
+          showAlert(document.getElementById('categories-alert-container'), 'error', `Error: ${err.message}`);
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+        }
+      });
+    });
+    
+  } catch (err) {
+    console.error("Error al cargar categorías:", err);
+  }
+}
+
+async function saveCategory(e) {
+  e.preventDefault();
+  const editId = document.getElementById('category-edit-id').value;
+  const nameVal = document.getElementById('category-name').value.trim();
+  const slugVal = document.getElementById('category-slug').value.trim();
+  
+  if (!nameVal || !slugVal) return;
+  
+  const submitBtn = document.getElementById('btn-category-submit');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = 'Guardando... <i class="fa-solid fa-spinner fa-spin"></i>';
+  
+  try {
+    if (editId) {
+      // Update
+      const { error } = await supabase.from('categories').update({ name: nameVal, slug: slugVal }).eq('id', editId);
+      if (error) throw error;
+      showAlert(document.getElementById('categories-alert-container'), 'success', 'Categoría modificada con éxito.');
+    } else {
+      // Insert
+      const { error } = await supabase.from('categories').insert([{ name: nameVal, slug: slugVal }]);
+      if (error) throw error;
+      showAlert(document.getElementById('categories-alert-container'), 'success', 'Categoría agregada con éxito.');
+    }
+    
+    // Reset form
+    document.getElementById('category-form').reset();
+    document.getElementById('category-edit-id').value = '';
+    document.getElementById('btn-category-text').textContent = 'Agregar Categoría';
+    
+    loadCategories();
+    loadUploaderSelects();
+  } catch (err) {
+    showAlert(document.getElementById('categories-alert-container'), 'error', `Error: ${err.message}`);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span>Agregar Categoría</span> <i class="fa-solid fa-circle-check"></i>';
+  }
+}
+
+// E. CRUD DE COLECCIONES
+async function loadCollections() {
+  const tbody = document.getElementById('admin-collections-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="3" class="no-data-card"><i class="fa-solid fa-spinner fa-spin"></i> Cargando colecciones...</td></tr>';
+  
+  try {
+    const { data: cols, error } = await supabase.from('collections').select('*').order('name');
+    if (error) throw error;
+    
+    if (!cols || cols.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="no-data-card">No hay colecciones configuradas.</td></tr>';
+      return;
+    }
+    
+    tbody.innerHTML = cols.map(c => `
+      <tr id="collection-row-${c.id}">
+        <td style="font-weight: 600; color: var(--text-primary);">${c.name}</td>
+        <td style="font-family: monospace; color: var(--neon-purple); font-size: 0.85rem;">${c.slug}</td>
+        <td style="text-align: center; display: flex; gap: 8px; justify-content: center;">
+          <button class="btn-toggle-role btn-edit-collection" data-id="${c.id}" data-name="${c.name}" data-slug="${c.slug}" style="padding: 6px 12px; border-color: rgba(168,85,247,0.3); color:#c084fc;">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn-delete-row btn-delete-collection" data-id="${c.id}">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </td>
+      </tr>
+    `).join('');
+    
+    // Bind click edit
+    tbody.querySelectorAll('.btn-edit-collection').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('collection-edit-id').value = btn.getAttribute('data-id');
+        document.getElementById('collection-name').value = btn.getAttribute('data-name');
+        document.getElementById('collection-slug').value = btn.getAttribute('data-slug');
+        document.getElementById('btn-collection-text').textContent = 'Guardar Cambios';
+      });
+    });
+    
+    // Bind click delete
+    tbody.querySelectorAll('.btn-delete-collection').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        if (!confirm('¿Seguro que deseas eliminar esta colección?')) return;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        
+        try {
+          const { error: delErr } = await supabase.from('collections').delete().eq('id', id);
+          if (delErr) throw delErr;
+          
+          showAlert(document.getElementById('collections-alert-container'), 'success', 'Colección eliminada correctamente.');
+          loadCollections();
+          loadUploaderSelects();
+        } catch (err) {
+          showAlert(document.getElementById('collections-alert-container'), 'error', `Error: ${err.message}`);
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+        }
+      });
+    });
+    
+  } catch (err) {
+    console.error("Error al cargar colecciones:", err);
+  }
+}
+
+async function saveCollection(e) {
+  e.preventDefault();
+  const editId = document.getElementById('collection-edit-id').value;
+  const nameVal = document.getElementById('collection-name').value.trim();
+  const slugVal = document.getElementById('collection-slug').value.trim();
+  
+  if (!nameVal || !slugVal) return;
+  
+  const submitBtn = document.getElementById('btn-collection-submit');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = 'Guardando... <i class="fa-solid fa-spinner fa-spin"></i>';
+  
+  try {
+    if (editId) {
+      // Update
+      const { error } = await supabase.from('collections').update({ name: nameVal, slug: slugVal }).eq('id', editId);
+      if (error) throw error;
+      showAlert(document.getElementById('collections-alert-container'), 'success', 'Colección modificada con éxito.');
+    } else {
+      // Insert
+      const { error } = await supabase.from('collections').insert([{ name: nameVal, slug: slugVal }]);
+      if (error) throw error;
+      showAlert(document.getElementById('collections-alert-container'), 'success', 'Colección agregada con éxito.');
+    }
+    
+    // Reset form
+    document.getElementById('collection-form').reset();
+    document.getElementById('collection-edit-id').value = '';
+    document.getElementById('btn-collection-text').textContent = 'Agregar Colección';
+    
+    loadCollections();
+    loadUploaderSelects();
+  } catch (err) {
+    showAlert(document.getElementById('collections-alert-container'), 'error', `Error: ${err.message}`);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span>Agregar Colección</span> <i class="fa-solid fa-circle-check"></i>';
   }
 }

@@ -2516,6 +2516,7 @@
   box-shadow: 0 0 12px rgba(236, 72, 153, 0.25);
 }
 
-
-
-
+.form-select option {
+  background-color: #121217 !important;
+  color: #f3f4f6 !important;
+}

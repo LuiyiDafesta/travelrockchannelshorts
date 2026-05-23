@@ -432,13 +432,33 @@ async function fetchVideosAndComments() {
       });
     });
 
-    // Establecer video inicial activo si está disponible
+    // 3. Consultar todas las categorías dinámicamente
+    const { data: dbCategories, error: catErr } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name');
+    if (!catErr && dbCategories) {
+      state.dynamicCategories = dbCategories.map(c => ({
+        key: c.slug,
+        label: c.name
+      }));
+    }
+
+    // Establecer video inicial activo si está disponible (priorizando parámetro v en URL)
     if (state.videos.length > 0) {
-      const cachedRecentlyPlayed = JSON.parse(localStorage.getItem('tr_recently_played') || '[]');
-      if (cachedRecentlyPlayed.length > 0 && state.videos.some(v => v.id === cachedRecentlyPlayed[0])) {
-        state.activeVideoId = cachedRecentlyPlayed[0];
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryVid = urlParams.get('v');
+      const parsedQueryVid = queryVid ? parseInt(queryVid) : null;
+      
+      if (parsedQueryVid && state.videos.some(v => v.id === parsedQueryVid)) {
+        state.activeVideoId = parsedQueryVid;
       } else {
-        state.activeVideoId = state.videos[0].id;
+        const cachedRecentlyPlayed = JSON.parse(localStorage.getItem('tr_recently_played') || '[]');
+        if (cachedRecentlyPlayed.length > 0 && state.videos.some(v => v.id === cachedRecentlyPlayed[0])) {
+          state.activeVideoId = cachedRecentlyPlayed[0];
+        } else {
+          state.activeVideoId = state.videos[0].id;
+        }
       }
     }
 
@@ -455,6 +475,28 @@ const netflixContainer = document.getElementById('netflix-rows-container');
 document.addEventListener('DOMContentLoaded', async () => {
   // Carga asíncrona robusta de Supabase antes de renderizar
   await fetchVideosAndComments();
+
+  // Renderizar chips de categorías dinámicos
+  const container = document.getElementById('categories-container');
+  if (container && state.dynamicCategories) {
+    const iconMap = {
+      boliche: 'fa-solid fa-music',
+      aventura: 'fa-solid fa-mountain',
+      lifestyle: 'fa-solid fa-mug-hot',
+      emociones: 'fa-solid fa-heart'
+    };
+    
+    let html = `<button class="category-chip active" data-category="all">⚡ Todos los Momentos</button>`;
+    state.dynamicCategories.forEach(cat => {
+      const icon = iconMap[cat.key] || 'fa-solid fa-tag';
+      html += `
+        <button class="category-chip" data-category="${cat.key}">
+          <i class="${icon}"></i> ${cat.label}
+        </button>
+      `;
+    });
+    container.innerHTML = html;
+  }
 
   renderFeed();
   renderNetflixRows();
@@ -944,8 +986,8 @@ function renderFeed() {
 function renderNetflixRows() {
   netflixContainer.innerHTML = '';
   
-  // Categorías que tenemos en nuestra base de datos
-  const categories = [
+  // Categorías que tenemos en nuestra base de datos (dinámicas o fallback)
+  const categories = state.dynamicCategories || [
     { key: 'boliche', label: 'Boliches & Fiesta Nocturna' },
     { key: 'aventura', label: 'Aventura en la Nieve & Montañas' },
     { key: 'lifestyle', label: 'Lifestyle, Hoteles y Chocolates' },
@@ -1748,6 +1790,25 @@ function playActiveVideo() {
   const activeCard = document.getElementById(`short-card-${state.activeVideoId}`);
   if (!activeCard) return;
 
+  // Actualizar metadatos de SEO y Open Graph dinámicamente para los buscadores/IAs del cliente
+  const activeVideo = state.videos.find(v => v.id === state.activeVideoId);
+  if (activeVideo) {
+    const cleanSchool = activeVideo.school ? activeVideo.school.split(' - ')[0] : '';
+    document.title = `${activeVideo.title} | ${cleanSchool} | TravelRock Channel`;
+    
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', activeVideo.description || '');
+    
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', `${activeVideo.title} - ${cleanSchool}`);
+    
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) ogDesc.setAttribute('content', activeVideo.description || '');
+
+    const ogImage = document.querySelector('meta[property="og:image"]');
+    if (ogImage) ogImage.setAttribute('content', activeVideo.thumbnailUrl || '');
+  }
+
   // Registrar en "Continuar Viendo"
   logRecentlyPlayed(state.activeVideoId);
 
@@ -1880,13 +1941,17 @@ function updateAppOnFilterOrSearch() {
   const gridSectionTitle = document.getElementById('grid-section-title');
   const netflixRowsContainer = document.getElementById('netflix-rows-container');
   
-  const categoryLabels = {
-    all: 'Todos los Momentos',
-    boliche: 'Noches de Boliches',
-    aventura: 'Aventura Extrema',
-    lifestyle: 'Lifestyle & Relax',
-    emociones: 'Momentos Mágicos'
-  };
+  const categoryLabels = { all: 'Todos los Momentos' };
+  if (state.dynamicCategories) {
+    state.dynamicCategories.forEach(c => {
+      categoryLabels[c.key] = c.label;
+    });
+  } else {
+    categoryLabels.boliche = 'Noches de Boliches';
+    categoryLabels.aventura = 'Aventura Extrema';
+    categoryLabels.lifestyle = 'Lifestyle & Relax';
+    categoryLabels.emociones = 'Momentos Mágicos';
+  }
   
   if (query) {
     // Si hay búsqueda activa: ocultar carruseles y mostrar resultados en grilla
