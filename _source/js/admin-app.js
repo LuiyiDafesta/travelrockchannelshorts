@@ -1288,7 +1288,7 @@ async function saveCategory(e) {
     showAlert(document.getElementById('categories-alert-container'), 'error', `Error: ${err.message}`);
   } finally {
     submitBtn.disabled = false;
-    submitBtn.innerHTML = '<span>Agregar Categoría</span> <i class="fa-solid fa-circle-check"></i>';
+    submitBtn.innerHTML = '<span id="btn-category-text">Agregar Categoría</span> <i class="fa-solid fa-circle-check"></i>';
   }
 }
 
@@ -1397,6 +1397,6 @@ async function saveCollection(e) {
     showAlert(document.getElementById('collections-alert-container'), 'error', `Error: ${err.message}`);
   } finally {
     submitBtn.disabled = false;
-    submitBtn.innerHTML = '<span>Agregar Colección</span> <i class="fa-solid fa-circle-check"></i>';
+    submitBtn.innerHTML = '<span id="btn-collection-text">Agregar Colección</span> <i class="fa-solid fa-circle-check" style="color: var(--neon-purple);"></i>';
   }
 }
