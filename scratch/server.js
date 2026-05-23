@@ -298,6 +298,18 @@ function parseJsonBody(req) {
 const server = http.createServer((req, res) => {
   console.log(`${req.method} ${req.url}`);
 
+  // Habilitar CORS para peticiones desde cualquier origen
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Authorization');
+
+  // Responder de inmediato a peticiones de pre-vuelo (OPTIONS)
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
+
   // Handle API Endpoint for Local Video Compression & B2 Uploads
   if (req.method === 'POST' && req.url.startsWith('/api/upload')) {
     handleVideoUpload(req, res);
