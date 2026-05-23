@@ -4,7 +4,7 @@ const path = require('path');
 const https = require('https');
 const { exec } = require('child_process');
 
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 const PUBLIC_DIR = path.join(__dirname, '..');
 
 // Backblaze B2 Configuration
@@ -151,33 +151,47 @@ function handleVideoUpload(req, res) {
     const compressCmd = `ffmpeg -y -i "${rawFilePath}" -c:v libx264 -crf 23 -preset medium -vf "scale=-2:'min(1080,ih)'" -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart "${compressedFilePath}"`;
     
     exec(compressCmd, (err, stdout, stderr) => {
+      let finalVideoPath = compressedFilePath;
+      let usedRawFallback = false;
+
       if (err) {
-        console.error("FFmpeg Compression failed:", err, stderr);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Video compression failed.', details: err.message }));
-        cleanupFiles([rawFilePath]);
-        return;
+        console.warn("FFmpeg Compression failed or FFmpeg is not installed on the server. Falling back to uploading the raw, uncompressed video. Error details:", err.message);
+        finalVideoPath = rawFilePath;
+        usedRawFallback = true;
       }
       
-      console.log('Video compressed successfully! Extracting thumbnail...');
+      console.log('Starting thumbnail generation/extraction...');
       
       // 2. Extract thumbnail frame at 1.5 seconds
-      const thumbCmd = `ffmpeg -y -ss 00:00:01.5 -i "${compressedFilePath}" -vframes 1 -q:v 2 "${thumbFilePath}"`;
+      const thumbCmd = `ffmpeg -y -ss 00:00:01.5 -i "${finalVideoPath}" -vframes 1 -q:v 2 "${thumbFilePath}"`;
       
       exec(thumbCmd, async (tErr, tStdout, tStderr) => {
+        let hasThumb = true;
         if (tErr) {
-          console.error("FFmpeg Thumbnail extraction failed:", tErr, tStderr);
-          // Fallback thumbnail extracting at 0 seconds if 1.5 fails
-          const fallbackCmd = `ffmpeg -y -i "${compressedFilePath}" -vframes 1 -q:v 2 "${thumbFilePath}"`;
+          console.warn("FFmpeg Thumbnail extraction failed. Attempting fallback...");
+          const fallbackCmd = `ffmpeg -y -i "${finalVideoPath}" -vframes 1 -q:v 2 "${thumbFilePath}"`;
           await new Promise(r => exec(fallbackCmd, r));
+          
+          if (!fs.existsSync(thumbFilePath)) {
+            console.warn("No FFmpeg found on server to generate thumbnail. Using fallback placeholder image.");
+            hasThumb = false;
+          }
         }
         
-        console.log('Thumbnail generated! Uploading to Backblaze B2...');
+        console.log('Uploading to Backblaze B2...');
         
         try {
           // Read files into Buffers
-          const videoBuffer = fs.readFileSync(compressedFilePath);
-          const thumbBuffer = fs.readFileSync(thumbFilePath);
+          const videoBuffer = fs.readFileSync(finalVideoPath);
+          let thumbBuffer;
+          
+          if (hasThumb) {
+            thumbBuffer = fs.readFileSync(thumbFilePath);
+          } else {
+            // A tiny high-quality base64 1x1 grey pixel JPEG to avoid breaking B2 or Supabase
+            const dummyJpegBase64 = '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
+            thumbBuffer = Buffer.from(dummyJpegBase64, 'base64');
+          }
           
           const b2VideoName = `shorts/${timestamp}_${sanitizedBase}.mp4`;
           const b2ThumbName = `thumbnails/${timestamp}_${sanitizedBase}.jpg`;
@@ -201,7 +215,14 @@ function handleVideoUpload(req, res) {
           res.end(JSON.stringify({ error: 'Uploading to Backblaze B2 failed.', details: uploadErr.message }));
         } finally {
           // Cleanup all local temp files
-          cleanupFiles([rawFilePath, compressedFilePath, thumbFilePath]);
+          const filesToClean = [rawFilePath];
+          if (!usedRawFallback) {
+            filesToClean.push(compressedFilePath);
+          }
+          if (hasThumb && fs.existsSync(thumbFilePath)) {
+            filesToClean.push(thumbFilePath);
+          }
+          cleanupFiles(filesToClean);
         }
       });
     });
