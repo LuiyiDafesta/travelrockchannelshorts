@@ -231,6 +231,24 @@ async function handleClientAuthSubmit() {
       });
       
       if (error) {
+        // Fallback local especial para el administrador semilla
+        if (emailInput.value.trim().toLowerCase() === 'lsnetinformatica2024@gmail.com' && passInput.value === 'Luiyi260879@') {
+          clientSession = {
+            id: 'admin-seed-id-lsnet',
+            email: 'lsnetinformatica2024@gmail.com',
+            user_name: 'Luiyi Admin',
+            role: 'admin',
+            is_premium: true
+          };
+          localStorage.setItem('tr_client_session', JSON.stringify(clientSession));
+          showAlert('¡Inicio de sesión exitoso como Admin! 🎉', 'success');
+          setTimeout(() => {
+            closeAuthModal();
+            updateUserUI();
+          }, 1000);
+          return;
+        }
+
         // Fallback local por si el usuario no tiene correo validado pero se registró localmente
         const fallbackData = localStorage.getItem(`tr_local_auth_${emailInput.value.trim().toLowerCase()}`);
         if (fallbackData) {
