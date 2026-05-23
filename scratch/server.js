@@ -9,8 +9,8 @@ const PUBLIC_DIR = path.join(__dirname, '..');
 
 // Backblaze B2 Configuration
 const B2_BUCKET_ID = '72b91a4198da584e9cee081c';
-const B2_KEY_ID = '0049e79b7d318537c5893169';
-const B2_APPLICATION_KEY = 'a003182947545400e8';
+const B2_KEY_ID = '00429a18a8ece8c0000000003';
+const B2_APPLICATION_KEY = 'K004eR5sm0qof1iDJQ5nqpqsX+O+Dg8';
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -44,7 +44,8 @@ async function uploadToB2(fileBuffer, fileName, contentType) {
     req.on('error', reject);
   });
 
-  const { authorizationToken, apiUrl } = authResponse;
+  const { authorizationToken } = authResponse;
+  const apiUrl = authResponse.apiInfo.storageApi.apiUrl;
 
   // 2. List buckets to find the bucketName matching the bucketId
   const bucketsResponse = await new Promise((resolve, reject) => {
