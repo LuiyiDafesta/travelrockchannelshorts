@@ -45,6 +45,20 @@ async function loadClientSession() {
   const local = localStorage.getItem('tr_client_session');
   if (local) {
     clientSession = JSON.parse(local);
+    // Sincronizar dinámicamente con Supabase en cada carga de página para evitar datos obsoletos en caché
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq(clientSession.id ? 'id' : 'email', clientSession.id || clientSession.email)
+        .single();
+      if (profile) {
+        clientSession = profile;
+        localStorage.setItem('tr_client_session', JSON.stringify(profile));
+      }
+    } catch (e) {
+      console.warn("No se pudo sincronizar la sesión local con Supabase:", e);
+    }
   }
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -63,6 +77,32 @@ async function loadClientSession() {
     console.error("Error al cargar la sesión de Supabase:", err);
   }
   updateUserUI();
+}
+
+// Sincronizar activamente el estado de la sesión con la base de datos para evitar datos obsoletos en caché
+async function syncSessionWithDatabase() {
+  if (clientSession) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq(clientSession.id ? 'id' : 'email', clientSession.id || clientSession.email)
+        .single();
+      if (profile) {
+        if (clientSession.is_premium !== profile.is_premium) {
+          console.log(`Sincronización de Sesión: Estado premium cambiado de ${clientSession.is_premium} a ${profile.is_premium}`);
+          clientSession = profile;
+          localStorage.setItem('tr_client_session', JSON.stringify(profile));
+          updateUserUI();
+        } else {
+          clientSession = profile;
+          localStorage.setItem('tr_client_session', JSON.stringify(profile));
+        }
+      }
+    } catch (e) {
+      console.warn("No se pudo sincronizar la sesión con Supabase:", e);
+    }
+  }
 }
 
 // Actualizar la interfaz de usuario en base a la sesión
@@ -258,12 +298,27 @@ async function handleClientAuthSubmit() {
       if (error) {
         // Fallback local especial para el administrador semilla
         if (emailInput.value.trim().toLowerCase() === 'lsnetinformatica2024@gmail.com' && passInput.value === 'Luiyi260879@') {
+          // Intentar obtener el perfil real de la base de datos para respetar su estado premium
+          let dbIsPremium = true;
+          try {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('is_premium')
+              .eq('email', 'lsnetinformatica2024@gmail.com')
+              .single();
+            if (prof) {
+              dbIsPremium = prof.is_premium;
+            }
+          } catch (e) {
+            console.error("Error al obtener perfil del admin en login:", e);
+          }
+
           clientSession = {
             id: 'admin-seed-id-lsnet',
             email: 'lsnetinformatica2024@gmail.com',
             user_name: 'Luiyi Admin',
             role: 'admin',
-            is_premium: true
+            is_premium: dbIsPremium
           };
           localStorage.setItem('tr_client_session', JSON.stringify(clientSession));
           showAlert('¡Inicio de sesión exitoso como Admin! 🎉', 'success');
@@ -562,6 +617,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Cargar sesión del cliente
   await loadClientSession();
+
+  // Sincronizar sesión dinámicamente cuando el usuario interactúa, vuelve a la pestaña o cambia de pestaña
+  window.addEventListener('focus', () => {
+    syncSessionWithDatabase();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      syncSessionWithDatabase();
+    }
+  });
 
   // Configurar Modal de Autenticación de Clientes
   const sidebarBtnLogin = document.getElementById('sidebar-btn-login');
@@ -2143,6 +2208,9 @@ function playActiveVideo() {
 
   // Registrar en "Continuar Viendo"
   logRecentlyPlayed(state.activeVideoId);
+
+  // Sincronizar la sesión en segundo plano al reproducir para asegurar el estado premium más actualizado
+  syncSessionWithDatabase().catch(err => console.log("Error syncSession:", err));
 
   const video = activeCard.querySelector('.short-video');
   const unmuteBtn = activeCard.querySelector('.unmute-overlay-btn');

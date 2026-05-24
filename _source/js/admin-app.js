@@ -215,12 +215,20 @@ async function showDashboard() {
     if (session.email === 'lsnetinformatica2024@gmail.com') {
       // Es el superadmin logueado por Supabase Auth, aseguramos que su perfil real en public.profiles sea admin
       try {
+        const { data: existingProf } = await supabase
+          .from('profiles')
+          .select('is_premium')
+          .eq('id', session.user.id)
+          .single();
+          
+        const isPremiumVal = existingProf ? existingProf.is_premium : true;
+
         await supabase.from('profiles').upsert({
           id: session.user.id,
           email: session.email,
           user_name: 'Luiyi Admin',
           role: 'admin',
-          is_premium: true
+          is_premium: isPremiumVal
         });
       } catch (err) {
         console.error("Error al sincronizar superadmin en profiles:", err);
