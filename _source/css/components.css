@@ -1592,6 +1592,11 @@
   overflow-y: auto;
   max-height: 220px;
   padding-right: 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.keep-watching-list::-webkit-scrollbar {
+  display: none !important;
 }
 
 .keep-watching-item {

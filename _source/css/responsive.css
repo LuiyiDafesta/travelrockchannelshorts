@@ -159,21 +159,11 @@
 
   /* Ocultar scrollbars horizontales en carruseles Netflix pero permitir navegación */
   .row-carousel::-webkit-scrollbar {
-    height: 6px;
-    display: block;
+    display: none !important;
   }
-  
-  .row-carousel::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.02);
-  }
-  
-  .row-carousel::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-full);
-  }
-
-  .row-carousel::-webkit-scrollbar-thumb:hover {
-    background: var(--neon-pink);
+  .row-carousel {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 }
 
