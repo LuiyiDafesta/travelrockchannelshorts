@@ -1403,6 +1403,11 @@ function renderCommentsHtml(videoId) {
           ${c.user} <span>${c.time}</span>
         </div>
         <div class="comment-text">${c.text}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
 function setupVideoControls(card, videoData) {
   const video = card.querySelector('.short-video');
   const playerWrapper = card.querySelector('.player-wrapper');
@@ -2018,7 +2023,6 @@ function setupVideoControls(card, videoData) {
   });
 
   // 5. Configurar click en capítulos del video para saltar de tiempo (seek)
-  const chapterItems = card.querySelectorAll('.chapter-timeline-item');
   chapterItems.forEach(item => {
     item.addEventListener('click', (e) => {
       e.stopPropagation();
