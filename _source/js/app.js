@@ -152,6 +152,7 @@ function updateUserUI() {
   // Refrescar dinámicamente las vistas del frontend si ya se cargaron los videos
   if (state.videos && state.videos.length > 0) {
     renderFeed();
+    renderNetflixFeatured();
     renderNetflixRanking();
     renderNetflixRows();
     renderNetflixGrid(getFilteredVideos());
@@ -516,6 +517,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   renderFeed();
+  renderNetflixFeatured();
   renderNetflixRanking();
   renderNetflixRows();
   renderNetflixGrid(state.videos); // Renderizar grilla de catálogo inicial
@@ -1172,6 +1174,81 @@ function renderNetflixRanking() {
   // Agregar event listener para clicks en las tarjetas de ranking
   const rankingCards = rankingContainer.querySelectorAll('.ranking-card');
   rankingCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const id = parseInt(card.getAttribute('data-video-id'));
+      state.activeVideoId = id;
+      
+      // Cambiar a vista feed
+      switchView('feed');
+      
+      // En Desktop: Buscar el card en el DOM y marcarlo activo
+      if (window.innerWidth >= 992) {
+        document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
+        const targetCard = document.getElementById(`short-card-${id}`);
+        if (targetCard) targetCard.classList.add('active-desktop');
+      } else {
+        // En móvil: Scroll hasta el elemento
+        const targetCard = document.getElementById(`short-card-${id}`);
+        if (targetCard) {
+          targetCard.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+      
+      // Reproducir
+      setTimeout(playActiveVideo, 200);
+    });
+  });
+}
+
+// B1. Renderizar Carrusel de "Últimos Agregados" (Tarjetas Grandes estilo Hero)
+function renderNetflixFeatured() {
+  const featuredContainer = document.getElementById('netflix-featured-container');
+  if (!featuredContainer) return;
+  
+  featuredContainer.innerHTML = '';
+  
+  // Obtener los últimos 4 videos subidos/agregados (ordenados por ID descendente)
+  const latestVideos = [...state.videos]
+    .sort((a, b) => b.id - a.id)
+    .slice(0, 4);
+    
+  if (latestVideos.length === 0) {
+    featuredContainer.style.display = 'none';
+    return;
+  }
+  
+  // Controlar visibilidad del contenedor de destacados en la vista general
+  featuredContainer.style.display = state.currentFilter === 'all' ? 'block' : 'none';
+  
+  featuredContainer.innerHTML = `
+    <div class="netflix-row featured-row">
+      <h3 class="row-title"><i class="fa-solid fa-sparkles" style="color: var(--neon-pink); margin-right: 6px;"></i> Los Últimos Agregados</h3>
+      <div class="row-carousel featured-carousel">
+        ${latestVideos.map(video => {
+          // Extraer las tags o categorías secundarias para mostrar como géneros
+          const genresList = video.tags ? video.tags.split(',').slice(0, 2).map(t => t.trim()).join(' · ') : (video.categoryLabel || 'Exclusivo');
+          
+          return `
+            <div class="featured-card" data-video-id="${video.id}">
+              <img class="featured-card-img" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
+              <div class="featured-card-overlay">
+                <span class="featured-card-school">${video.school.split(' - ')[0]}${video.province ? ` (${video.province})` : ''}</span>
+                <h4 class="featured-card-title-logo">${video.title}</h4>
+                <div class="featured-card-genres">${genresList}</div>
+                <button class="featured-card-btn">
+                  <i class="fa-solid fa-play"></i> Reproducir
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+  
+  // Agregar clicks en las tarjetas destacadas
+  const featuredCards = featuredContainer.querySelectorAll('.featured-card');
+  featuredCards.forEach(card => {
     card.addEventListener('click', () => {
       const id = parseInt(card.getAttribute('data-video-id'));
       state.activeVideoId = id;
@@ -2218,21 +2295,25 @@ function updateAppOnFilterOrSearch() {
   }
   
   const netflixRankingContainer = document.getElementById('netflix-ranking-container');
+  const netflixFeaturedContainer = document.getElementById('netflix-featured-container');
   
   if (query) {
-    // Si hay búsqueda activa: ocultar carruseles y ranking
+    // Si hay búsqueda activa: ocultar destacados, carruseles y ranking
+    if (netflixFeaturedContainer) netflixFeaturedContainer.style.display = 'none';
     if (netflixRowsContainer) netflixRowsContainer.style.display = 'none';
     if (netflixRankingContainer) netflixRankingContainer.style.display = 'none';
     if (gridSectionTitle) gridSectionTitle.textContent = `Resultados de Búsqueda para "${searchInput.value.trim()}" (${filtered.length})`;
   } else {
     // Si no hay búsqueda:
     if (state.currentFilter === 'all') {
-      // Mostrar carruseles y ranking
+      // Mostrar destacados, carruseles y ranking
+      if (netflixFeaturedContainer) netflixFeaturedContainer.style.display = 'block';
       if (netflixRowsContainer) netflixRowsContainer.style.display = 'block';
       if (netflixRankingContainer) netflixRankingContainer.style.display = 'block';
       if (gridSectionTitle) gridSectionTitle.textContent = 'Todos los Momentos';
     } else {
-      // Ocultar carruseles y ranking, y mostrar momentos de la categoría seleccionada
+      // Ocultar destacados, carruseles y ranking, y mostrar momentos de la categoría seleccionada
+      if (netflixFeaturedContainer) netflixFeaturedContainer.style.display = 'none';
       if (netflixRowsContainer) netflixRowsContainer.style.display = 'none';
       if (netflixRankingContainer) netflixRankingContainer.style.display = 'none';
       if (gridSectionTitle) gridSectionTitle.textContent = `${categoryLabels[state.currentFilter]} (${filtered.length})`;
