@@ -1774,6 +1774,7 @@ function setupVideoControls(card, videoData) {
 
   // Doble Tap para dar Like con animación y Clic Simple para Play/Pause en todo el video
   let lastTap = 0;
+  let tapTimeout = null;
   playerWrapper.addEventListener('click', (e) => {
     // Evitar disparar si se hace clic en controles inferiores, menú de ajustes, o bloqueo premium
     if (e.target.closest('.embedded-control-bar') || e.target.closest('.video-actions') || e.target.closest('.premium-lock-overlay')) {
@@ -1785,6 +1786,10 @@ function setupVideoControls(card, videoData) {
 
     if (tapLength < 300 && tapLength > 0) {
       e.preventDefault();
+      if (tapTimeout) {
+        clearTimeout(tapTimeout);
+        tapTimeout = null;
+      }
       // Animación de corazón
       doubleHeart.className = 'double-tap-heart animate';
       setTimeout(() => {
@@ -1794,11 +1799,10 @@ function setupVideoControls(card, videoData) {
       giveLike();
     } else {
       // Clic simple: Play/Pause del video con pequeña demora para evitar conflictos
-      setTimeout(() => {
-        const checkTime = new Date().getTime();
-        if (checkTime - lastTap >= 290) {
-          togglePlayPause();
-        }
+      if (tapTimeout) clearTimeout(tapTimeout);
+      tapTimeout = setTimeout(() => {
+        togglePlayPause();
+        tapTimeout = null;
       }, 250);
     }
     lastTap = currentTime;
