@@ -1436,6 +1436,10 @@ function setupVideoControls(card, videoData) {
   video.addEventListener('play', () => {
     if (unmuteBtn) unmuteBtn.classList.remove('visible');
     
+    // Re-aplicar velocidad guardada para evitar reseteos en bucle del navegador
+    const savedSpeed = parseFloat(video.dataset.currentSpeed || '1.0');
+    video.playbackRate = savedSpeed;
+    
     // HUD Animación: Play
     if (playPauseHud) {
       playPauseHud.querySelector('i').className = 'fa-solid fa-play';
@@ -1526,7 +1530,9 @@ function setupVideoControls(card, videoData) {
         e.stopPropagation();
         const speedVal = parseFloat(item.getAttribute('data-speed'));
         if (!isNaN(speedVal)) {
+          video.dataset.currentSpeed = speedVal; // Guardar velocidad en dataset para persistencia
           video.playbackRate = speedVal;
+          video.defaultPlaybackRate = speedVal; // Evitar que el loop del navegador lo resetee
           
           // Actualizar estado activo en la UI del submenú
           speedSubmenu.querySelectorAll('.submenu-item').forEach(i => i.classList.remove('active'));
