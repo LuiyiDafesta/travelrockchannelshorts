@@ -2882,4 +2882,306 @@
   transform: scale(1.05);
 }
 
+/* ==========================================================================
+   TravelRock Channel Shorts - Rediseño de Controles de Video Integrados
+   ========================================================================== */
+
+/* Barra de control integrada translúcida inferior (Siempre visible) */
+.embedded-control-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.6) 65%, rgba(0, 0, 0, 0) 100%);
+  padding: 16px 16px 8px;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: auto;
+  transition: opacity 0.3s ease;
+}
+
+.embedded-controls-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #fff;
+}
+
+.embedded-video-title {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+.embedded-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.embedded-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 1.15rem;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, color 0.2s ease;
+  opacity: 0.85;
+}
+
+.embedded-btn:hover {
+  transform: scale(1.1);
+  color: var(--neon-pink);
+  opacity: 1;
+}
+
+.embedded-btn:active {
+  transform: scale(0.95);
+}
+
+/* Línea de tiempo chiquita siempre visible y expandible al hover */
+.embedded-timeline-wrapper {
+  width: 100%;
+  height: 8px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.embedded-timeline-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 2px;
+  position: relative;
+  transition: height 0.15s ease, background-color 0.15s ease;
+}
+
+.embedded-timeline-wrapper:hover .embedded-timeline-bar {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.embedded-timeline-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--primary-gradient);
+  box-shadow: var(--neon-glow-pink);
+  border-radius: 2px;
+  position: relative;
+}
+
+.embedded-timeline-fill::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%) scale(0);
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(236, 72, 153, 0.8);
+  transition: transform 0.15s ease;
+}
+
+.embedded-timeline-wrapper:hover .embedded-timeline-fill::after {
+  transform: translateY(-50%) scale(1);
+}
+
+/* Popover de Ajustes Glassmorphic */
+.settings-menu-wrapper {
+  position: relative;
+}
+
+.settings-popover {
+  position: absolute;
+  bottom: 38px;
+  right: 0;
+  width: 220px;
+  background: rgba(10, 10, 15, 0.85);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 12px 0;
+  z-index: 50;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  animation: popover-fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.settings-popover.hidden {
+  display: none !important;
+}
+
+@keyframes popover-fade-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.settings-title {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 0 16px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 4px;
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  position: relative;
+}
+
+.settings-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.settings-row-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-row-left i {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+  width: 14px;
+  text-align: center;
+}
+
+.settings-row-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.8rem;
+}
+
+.settings-row-right i {
+  font-size: 0.7rem;
+  margin-top: 1px;
+}
+
+/* Ajustes Submenu Deslizable */
+.settings-submenu {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 10, 15, 0.95);
+  border-radius: 14px;
+  z-index: 55;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.settings-submenu.hidden {
+  display: none !important;
+}
+
+.submenu-item {
+  padding: 11px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.submenu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.submenu-item.active {
+  color: var(--neon-pink);
+  font-weight: 700;
+}
+
+.submenu-item.active::after {
+  content: '✓';
+  font-size: 0.9rem;
+}
+
+/* Spinner Simulador de Calidad / Búfer */
+.quality-loader-spinner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.quality-loader-spinner.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.spinner-circle {
+  width: 52px;
+  height: 52px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: var(--neon-pink);
+  border-radius: 50%;
+  animation: spin 0.9s infinite linear;
+  box-shadow: 0 0 15px rgba(236, 72, 153, 0.3);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Forzar posición de Info Panel arriba del embedded-bar y ocultar Mute flotante central */
+.unmute-overlay-btn {
+  display: none !important;
+}
+
+.video-info-panel {
+  bottom: 64px !important;
+}
+
+
 

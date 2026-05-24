@@ -18,7 +18,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const state = {
   videos: [],
   activeVideoId: 1,
-  isMuted: true, // Muted por defecto debido a políticas de navegadores
+  isMuted: false, // Por defecto siempre activado (solicitud del usuario)
   currentFilter: 'all',
   comments: {}
 };
@@ -924,39 +924,66 @@ function renderFeed() {
             <p class="video-desc-text">${video.description}</p>
           </div>
 
-          <!-- Barra de Control Premium Flotante (Oculta por defecto, visible en hover/tap) -->
-          <div class="video-control-bar glassmorphism">
-            <div class="control-bar-left">
-              <button class="control-btn btn-control-play-pause" title="Play/Pause">
-                <i class="fa-solid fa-play"></i>
-              </button>
-              <button class="control-btn btn-control-rewind" title="Retroceder 5s">
-                <i class="fa-solid fa-backward"></i>
-              </button>
-              <button class="control-btn btn-control-forward" title="Adelantar 5s">
-                <i class="fa-solid fa-forward"></i>
-              </button>
-            </div>
-            
-            <div class="control-bar-center">
-              <div class="control-timeline-wrapper">
-                <div class="control-timeline-bar">
-                  <div class="control-timeline-fill"></div>
+          <!-- Barra de Control Integrada Estilo Netflix (Siempre Visible) -->
+          <div class="embedded-control-bar">
+            <div class="embedded-controls-top">
+              <div class="embedded-video-title">${video.title}</div>
+              <div class="embedded-controls-right">
+                <button class="embedded-btn btn-embedded-mute" title="Sonido/Silencio">
+                  <i class="fa-solid ${state.isMuted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i>
+                </button>
+                <div class="settings-menu-wrapper">
+                  <button class="embedded-btn btn-embedded-settings" title="Ajustes">
+                    <i class="fa-solid fa-gear"></i>
+                  </button>
+                  <div class="settings-popover glassmorphism hidden">
+                    <div class="settings-title">Ajustes</div>
+                    <div class="settings-options">
+                      <!-- Velocidad -->
+                      <div class="settings-row" id="settings-row-speed-${video.id}">
+                        <div class="settings-row-left">
+                          <i class="fa-solid fa-gauge-high"></i>
+                          <span>Velocidad</span>
+                        </div>
+                        <div class="settings-row-right">
+                          <span class="current-speed-text">Normal</span>
+                          <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                        <div class="settings-submenu speed-submenu hidden">
+                          <div class="submenu-item" data-speed="0.5">0.5x</div>
+                          <div class="submenu-item active" data-speed="1.0">Normal</div>
+                          <div class="submenu-item" data-speed="1.5">1.5x</div>
+                          <div class="submenu-item" data-speed="2.0">2.0x</div>
+                        </div>
+                      </div>
+                      <!-- Calidad -->
+                      <div class="settings-row" id="settings-row-quality-${video.id}">
+                        <div class="settings-row-left">
+                          <i class="fa-solid fa-sliders"></i>
+                          <span>Calidad</span>
+                        </div>
+                        <div class="settings-row-right">
+                          <span class="current-quality-text">Automático</span>
+                          <i class="fa-solid fa-chevron-right"></i>
+                        </div>
+                        <div class="settings-submenu quality-submenu hidden">
+                          <div class="submenu-item active" data-quality="auto">Automático</div>
+                          <div class="submenu-item" data-quality="1080p">1080p (Full HD)</div>
+                          <div class="submenu-item" data-quality="720p">720p (HD)</div>
+                          <div class="submenu-item" data-quality="480p">480p (SD)</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="control-time-text">0:00 / 0:00</div>
             </div>
             
-            <div class="control-bar-right">
-              <button class="control-btn btn-control-mute" title="Sonido/Silencio">
-                <i class="fa-solid ${state.isMuted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i>
-              </button>
+            <div class="embedded-timeline-wrapper">
+              <div class="embedded-timeline-bar">
+                <div class="embedded-timeline-fill"></div>
+              </div>
             </div>
-          </div>
-
-          <!-- Barra de Progreso Fina -->
-          <div class="video-progress-bar">
-            <div class="video-progress-fill"></div>
           </div>
         </div>
 
@@ -1376,49 +1403,33 @@ function renderCommentsHtml(videoId) {
           ${c.user} <span>${c.time}</span>
         </div>
         <div class="comment-text">${c.text}</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ----------------------------------------------------------------------
-// GESTIÓN DE CONTROLES E INTERACCIONES DE VIDEO
-// ----------------------------------------------------------------------
-
 function setupVideoControls(card, videoData) {
   const video = card.querySelector('.short-video');
   const playerWrapper = card.querySelector('.player-wrapper');
-  const progressFill = card.querySelector('.video-progress-fill');
-  const progressBar = card.querySelector('.video-progress-bar');
-  const unmuteBtn = card.querySelector('.unmute-overlay-btn');
   const doubleHeart = card.querySelector('.double-tap-heart');
   const playPauseHud = card.querySelector('.play-pause-hud');
+  const unmuteBtn = card.querySelector('.unmute-overlay-btn');
+  const chapterItems = card.querySelectorAll('.chapter-timeline-item');
 
-  // Nuevos Controles del Panel Premium
-  const controlBar = card.querySelector('.video-control-bar');
-  const ctrlPlayPauseBtn = card.querySelector('.btn-control-play-pause');
-  const ctrlRewindBtn = card.querySelector('.btn-control-rewind');
-  const ctrlForwardBtn = card.querySelector('.btn-control-forward');
-  const ctrlMuteBtn = card.querySelector('.btn-control-mute');
-  const ctrlTimeText = card.querySelector('.control-time-text');
-  const ctrlTimelineWrapper = card.querySelector('.control-timeline-wrapper');
-  const ctrlTimelineBar = card.querySelector('.control-timeline-bar');
-  const ctrlTimelineFill = card.querySelector('.control-timeline-fill');
+  // Nuevos Controles del Panel Integrado Estilo Netflix
+  const btnEmbeddedMute = card.querySelector('.btn-embedded-mute');
+  const btnEmbeddedSettings = card.querySelector('.btn-embedded-settings');
+  const settingsPopover = card.querySelector('.settings-popover');
+  const speedRow = card.querySelector(`#settings-row-speed-${videoData.id}`);
+  const qualityRow = card.querySelector(`#settings-row-quality-${videoData.id}`);
+  const speedSubmenu = speedRow?.querySelector('.speed-submenu');
+  const qualitySubmenu = qualityRow?.querySelector('.quality-submenu');
+  const currentSpeedText = card.querySelector('.current-speed-text');
+  const currentQualityText = card.querySelector('.current-quality-text');
 
-  // Formateador de tiempo a minutos:segundos (e.g. 0:05)
-  function formatTime(seconds) {
-    if (isNaN(seconds) || seconds === Infinity) return "0:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  }
+  const timelineWrapper = card.querySelector('.embedded-timeline-wrapper');
+  const timelineFill = card.querySelector('.embedded-timeline-fill');
 
   // A. Eventos de Reproducción y Mute
 
-  // Evento play del video: Sincroniza interfaz
+  // Evento play del video: Sincroniza interfaz y asegura volumen
   video.addEventListener('play', () => {
-    ctrlPlayPauseBtn.querySelector('i').className = 'fa-solid fa-pause';
-    unmuteBtn.classList.remove('visible');
+    if (unmuteBtn) unmuteBtn.classList.remove('visible');
     
     // HUD Animación: Play
     if (playPauseHud) {
@@ -1427,19 +1438,10 @@ function setupVideoControls(card, videoData) {
       void playPauseHud.offsetWidth; // Trigger reflow
       playPauseHud.classList.add('animate-hud');
     }
-
-    // Mostrar controles brevemente al reproducir para guiar al usuario (3.5 segundos)
-    showMobileControls();
   });
 
   // Evento pause del video: Sincroniza interfaz
   video.addEventListener('pause', () => {
-    ctrlPlayPauseBtn.querySelector('i').className = 'fa-solid fa-play';
-    
-    // Mostrar unmute button como play indicador si está pausado
-    unmuteBtn.querySelector('i').className = 'fa-solid fa-play';
-    unmuteBtn.classList.add('visible');
-
     // HUD Animación: Pause
     if (playPauseHud) {
       playPauseHud.querySelector('i').className = 'fa-solid fa-pause';
@@ -1447,11 +1449,6 @@ function setupVideoControls(card, videoData) {
       void playPauseHud.offsetWidth; // Trigger reflow
       playPauseHud.classList.add('animate-hud');
     }
-  });
-
-  // Evento LoadedMetadata para establecer duración
-  video.addEventListener('loadedmetadata', () => {
-    ctrlTimeText.textContent = `0:00 / ${formatTime(video.duration)}`;
   });
 
   // Click simple en pantalla: Play/Pause
@@ -1468,44 +1465,135 @@ function setupVideoControls(card, videoData) {
     }
   }
 
-  // Click en botón de play/pause de la barra
-  ctrlPlayPauseBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    togglePlayPause();
-    resetMobileControlsTimer();
+  // Click en botón mute de la barra integrada
+  if (btnEmbeddedMute) {
+    btnEmbeddedMute.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.isMuted = !state.isMuted;
+      updateMuteIconGlobally();
+    });
+  }
+
+  // B. Menú de Ajustes Popover (Velocidad y Calidad)
+
+  // Toggle Popover de Ajustes
+  if (btnEmbeddedSettings && settingsPopover) {
+    btnEmbeddedSettings.addEventListener('click', (e) => {
+      e.stopPropagation();
+      settingsPopover.classList.toggle('hidden');
+      // Ocultar submenús al abrir/cerrar
+      if (speedSubmenu) speedSubmenu.classList.add('hidden');
+      if (qualitySubmenu) qualitySubmenu.classList.add('hidden');
+    });
+  }
+
+  // Cerrar popover si se hace clic afuera del wrapper de ajustes
+  document.addEventListener('click', (e) => {
+    if (settingsPopover && !settingsPopover.classList.contains('hidden')) {
+      if (!e.target.closest('.settings-menu-wrapper')) {
+        settingsPopover.classList.add('hidden');
+      }
+    }
   });
 
-  // Click en botón central de mute
-  unmuteBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    state.isMuted = !state.isMuted;
-    updateMuteIconGlobally();
-  });
+  // Abrir submenú de velocidad
+  if (speedRow && speedSubmenu) {
+    speedRow.addEventListener('click', (e) => {
+      e.stopPropagation();
+      speedSubmenu.classList.remove('hidden');
+      if (qualitySubmenu) qualitySubmenu.classList.add('hidden');
+    });
+  }
 
-  // Click en botón mute de la barra
-  ctrlMuteBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    state.isMuted = !state.isMuted;
-    updateMuteIconGlobally();
-    resetMobileControlsTimer();
-  });
+  // Abrir submenú de calidad
+  if (qualityRow && qualitySubmenu) {
+    qualityRow.addEventListener('click', (e) => {
+      e.stopPropagation();
+      qualitySubmenu.classList.remove('hidden');
+      if (speedSubmenu) speedSubmenu.classList.add('hidden');
+    });
+  }
 
-  // B. Botones de Adelantar y Atrasar 5 segundos
-  ctrlRewindBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    video.currentTime = Math.max(0, video.currentTime - 5);
-    resetMobileControlsTimer();
-  });
+  // Clic en items de Velocidad
+  if (speedSubmenu) {
+    speedSubmenu.querySelectorAll('.submenu-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const speedVal = parseFloat(item.getAttribute('data-speed'));
+        if (!isNaN(speedVal)) {
+          video.playbackRate = speedVal;
+          
+          // Actualizar estado activo en la UI del submenú
+          speedSubmenu.querySelectorAll('.submenu-item').forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
 
-  ctrlForwardBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    video.currentTime = Math.min(video.duration || 0, video.currentTime + 5);
-    resetMobileControlsTimer();
-  });
+          // Actualizar texto en la fila principal
+          if (currentSpeedText) {
+            currentSpeedText.textContent = speedVal === 1.0 ? 'Normal' : `${speedVal}x`;
+          }
+
+          // Ocultar submenú y popover
+          speedSubmenu.classList.add('hidden');
+          settingsPopover.classList.add('hidden');
+        }
+      });
+    });
+  }
+
+  // Buscar o crear spinner dinámico de carga de calidad
+  let qualitySpinner = playerWrapper.querySelector('.quality-loader-spinner');
+  if (!qualitySpinner) {
+    qualitySpinner = document.createElement('div');
+    qualitySpinner.className = 'quality-loader-spinner';
+    qualitySpinner.innerHTML = '<div class="spinner-circle"></div>';
+    playerWrapper.appendChild(qualitySpinner);
+  }
+
+  // Clic en items de Calidad (Carga simulada premium)
+  if (qualitySubmenu) {
+    qualitySubmenu.querySelectorAll('.submenu-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const qualityVal = item.getAttribute('data-quality');
+        
+        // Simular reload / re-búfer con el spinner
+        qualitySpinner.classList.add('active');
+        const wasPaused = video.paused;
+        video.pause();
+
+        setTimeout(() => {
+          qualitySpinner.classList.remove('active');
+          
+          // Actualizar estado activo en la UI del submenú
+          qualitySubmenu.querySelectorAll('.submenu-item').forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+
+          // Actualizar texto en la fila principal
+          if (currentQualityText) {
+            const labelMap = {
+              'auto': 'Automático',
+              '1080p': '1080p (Full HD)',
+              '720p': '720p (HD)',
+              '480p': '480p (SD)'
+            };
+            currentQualityText.textContent = labelMap[qualityVal] || 'Automático';
+          }
+
+          // Reanudar video si estaba reproduciendo
+          if (!wasPaused) {
+            video.play().catch(err => console.log(err));
+          }
+
+          // Ocultar submenú y popover
+          qualitySubmenu.classList.add('hidden');
+          settingsPopover.classList.add('hidden');
+        }, 800);
+      });
+    });
+  }
 
   // C. Barra de Progreso y Drag-to-Seek Móvil/Desktop Híbrido
   let isDraggingTimeline = false;
-  let isDraggingControlTimeline = false;
 
   const premiumLockOverlay = card.querySelector('.premium-lock-overlay');
   const previewIndicator = card.querySelector('.preview-indicator-badge');
@@ -1552,13 +1640,10 @@ function setupVideoControls(card, videoData) {
       const percentage = (video.currentTime / video.duration) * 100;
       
       if (!isDraggingTimeline) {
-        progressFill.style.width = `${percentage}%`;
+        if (timelineFill) {
+          timelineFill.style.width = `${percentage}%`;
+        }
       }
-      if (!isDraggingControlTimeline) {
-        ctrlTimelineFill.style.width = `${percentage}%`;
-      }
-
-      ctrlTimeText.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
       
       // Resaltado dinámico del capítulo activo basado en el tiempo actual de reproducción
       let activeChapter = null;
@@ -1579,10 +1664,10 @@ function setupVideoControls(card, videoData) {
     }
   });
 
-  // Drag en barra de progreso fina
+  // Drag en la barra de progreso fina integrada
   function seek(e) {
-    if (!video.duration) return;
-    const rect = progressBar.getBoundingClientRect();
+    if (!video.duration || !timelineWrapper) return;
+    const rect = timelineWrapper.getBoundingClientRect();
     let clientX = e.clientX;
     if (e.touches && e.touches.length > 0) {
       clientX = e.touches[0].clientX;
@@ -1599,65 +1684,27 @@ function setupVideoControls(card, videoData) {
       if (premiumLockOverlay && targetTime < 7) premiumLockOverlay.style.display = 'none';
     }
 
-    progressFill.style.width = `${(targetTime / video.duration) * 100}%`;
-    ctrlTimelineFill.style.width = `${(targetTime / video.duration) * 100}%`;
+    if (timelineFill) {
+      timelineFill.style.width = `${(targetTime / video.duration) * 100}%`;
+    }
     video.currentTime = targetTime;
   }
 
-  progressBar.addEventListener('mousedown', (e) => {
-    isDraggingTimeline = true;
-    seek(e);
-  });
+  if (timelineWrapper) {
+    timelineWrapper.addEventListener('mousedown', (e) => {
+      isDraggingTimeline = true;
+      seek(e);
+    });
 
-  progressBar.addEventListener('touchstart', (e) => {
-    isDraggingTimeline = true;
-    seek(e);
-  });
-
-  // Drag en barra de tiempo del panel premium
-  function seekControl(e) {
-    if (!video.duration) return;
-    const rect = ctrlTimelineBar.getBoundingClientRect();
-    let clientX = e.clientX;
-    if (e.touches && e.touches.length > 0) {
-      clientX = e.touches[0].clientX;
-    }
-    const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    let targetTime = pos * video.duration;
-
-    const userIsPremium = clientSession && clientSession.is_premium;
-    if (videoData.is_premium && !userIsPremium && targetTime > 7) {
-      targetTime = 7;
-      if (premiumLockOverlay) premiumLockOverlay.style.display = 'flex';
-      video.pause();
-    } else {
-      if (premiumLockOverlay && targetTime < 7) premiumLockOverlay.style.display = 'none';
-    }
-
-    ctrlTimelineFill.style.width = `${(targetTime / video.duration) * 100}%`;
-    progressFill.style.width = `${(targetTime / video.duration) * 100}%`;
-    video.currentTime = targetTime;
+    timelineWrapper.addEventListener('touchstart', (e) => {
+      isDraggingTimeline = true;
+      seek(e);
+    }, { passive: true });
   }
-
-  ctrlTimelineWrapper.addEventListener('mousedown', (e) => {
-    isDraggingControlTimeline = true;
-    seekControl(e);
-    resetMobileControlsTimer();
-  });
-
-  ctrlTimelineWrapper.addEventListener('touchstart', (e) => {
-    isDraggingControlTimeline = true;
-    seekControl(e);
-    resetMobileControlsTimer();
-  });
 
   window.addEventListener('mousemove', (e) => {
     if (isDraggingTimeline) {
       seek(e);
-    }
-    if (isDraggingControlTimeline) {
-      seekControl(e);
-      resetMobileControlsTimer();
     }
   });
 
@@ -1665,79 +1712,15 @@ function setupVideoControls(card, videoData) {
     if (isDraggingTimeline) {
       seek(e);
     }
-    if (isDraggingControlTimeline) {
-      seekControl(e);
-      resetMobileControlsTimer();
-    }
-  });
+  }, { passive: true });
 
   window.addEventListener('mouseup', () => {
     isDraggingTimeline = false;
-    isDraggingControlTimeline = false;
   });
 
   window.addEventListener('touchend', () => {
     isDraggingTimeline = false;
-    isDraggingControlTimeline = false;
   });
-
-  // D. Ocultación Automática e Interacción en Móviles
-  let controlsTimeout = null;
-
-  function showMobileControls() {
-    playerWrapper.classList.add('show-controls');
-    resetMobileControlsTimer();
-  }
-
-  function hideMobileControls() {
-    playerWrapper.classList.remove('show-controls');
-    if (controlsTimeout) {
-      clearTimeout(controlsTimeout);
-      controlsTimeout = null;
-    }
-  }
-
-  function resetMobileControlsTimer() {
-    if (controlsTimeout) {
-      clearTimeout(controlsTimeout);
-    }
-    controlsTimeout = setTimeout(() => {
-      if (!isDraggingControlTimeline && !isDraggingTimeline) {
-        playerWrapper.classList.remove('show-controls');
-      } else {
-        resetMobileControlsTimer();
-      }
-    }, 3500);
-  }
-
-  // Detectar dispositivo touch
-  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-
-  if (isTouchDevice) {
-    // Al tocar el video en móviles: alternar visibilidad de controles
-    video.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (playerWrapper.classList.contains('show-controls')) {
-        hideMobileControls();
-      } else {
-        showMobileControls();
-      }
-    });
-
-    // Registrar toque en el wrapper para resetear timer
-    playerWrapper.addEventListener('touchstart', () => {
-      showMobileControls();
-    }, { passive: true });
-
-    controlBar.addEventListener('click', (e) => {
-      e.stopPropagation();
-      resetMobileControlsTimer();
-    });
-  } else {
-    // Desktop: Click simple en video es Play/Pause. El hover se maneja en CSS.
-    video.addEventListener('click', togglePlayPause);
-  }
 
   // C. Interacciones de Like (Corazón)
   const likeBtnMobile = card.querySelector('.btn-like');
@@ -1784,16 +1767,16 @@ function setupVideoControls(card, videoData) {
   likeBtnMobile.addEventListener('click', giveLike);
   if (likeBtnDesktop) likeBtnDesktop.addEventListener('click', giveLike);
 
-  // Doble Tap para dar Like con animación
+  // Doble Tap para dar Like con animación y Clic Simple para Play/Pause en todo el video
   let lastTap = 0;
   playerWrapper.addEventListener('click', (e) => {
-    const currentTime = new Date().getTime();
-    const tapLength = currentTime - lastTap;
-    
-    // Evitar disparar si se hace clic en botones flotantes
-    if (e.target.closest('.video-actions') || e.target.closest('.video-progress-bar') || e.target.closest('.unmute-overlay-btn')) {
+    // Evitar disparar si se hace clic en controles inferiores, menú de ajustes, o bloqueo premium
+    if (e.target.closest('.embedded-control-bar') || e.target.closest('.video-actions') || e.target.closest('.premium-lock-overlay')) {
       return;
     }
+
+    const currentTime = new Date().getTime();
+    const tapLength = currentTime - lastTap;
 
     if (tapLength < 300 && tapLength > 0) {
       e.preventDefault();
@@ -1804,9 +1787,18 @@ function setupVideoControls(card, videoData) {
       }, 800);
 
       giveLike();
+    } else {
+      // Clic simple: Play/Pause del video con pequeña demora para evitar conflictos
+      setTimeout(() => {
+        const checkTime = new Date().getTime();
+        if (checkTime - lastTap >= 290) {
+          togglePlayPause();
+        }
+      }, 250);
     }
     lastTap = currentTime;
   });
+
 
   // D. Botón Compartir
   const shareBtnMobile = card.querySelector('.btn-share');
@@ -2094,6 +2086,7 @@ function updateMuteIconGlobally() {
   const videos = document.querySelectorAll('.short-video');
   const unmuteButtons = document.querySelectorAll('.unmute-overlay-btn');
   const controlMuteBtns = document.querySelectorAll('.btn-control-mute');
+  const embeddedMuteBtns = document.querySelectorAll('.btn-embedded-mute');
 
   videos.forEach(v => {
     v.muted = state.isMuted;
@@ -2116,6 +2109,17 @@ function updateMuteIconGlobally() {
       icon.className = 'fa-solid fa-volume-xmark';
     } else {
       icon.className = 'fa-solid fa-volume-high';
+    }
+  });
+
+  embeddedMuteBtns.forEach(btn => {
+    const icon = btn.querySelector('i');
+    if (icon) {
+      if (state.isMuted) {
+        icon.className = 'fa-solid fa-volume-xmark';
+      } else {
+        icon.className = 'fa-solid fa-volume-high';
+      }
     }
   });
 }
