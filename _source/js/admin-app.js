@@ -713,6 +713,12 @@ async function loadCatalog() {
           <div style="font-size: 0.8rem; font-weight:600;"><i class="fa-solid fa-graduation-cap"></i> ${video.school ? video.school.split(' - ')[0] : ''}</div>
           ${video.province ? `<div class="table-meta" style="margin-top: 4px; font-size: 0.75rem;"><i class="fa-solid fa-map-pin" style="color:var(--neon-pink);"></i> ${video.province}</div>` : ''}
         </td>
+        <td style="text-align: center;">
+          <button class="btn-toggle-video-premium" data-id="${video.id}" data-premium="${video.is_premium}" style="background: ${video.is_premium ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${video.is_premium ? 'rgba(245, 158, 11, 0.4)' : 'rgba(255,255,255,0.12)'}; color: ${video.is_premium ? '#fde047' : 'var(--text-muted)'}; padding: 6px 12px; border-radius: var(--radius-xs); cursor: pointer; font-weight: 700; font-size: 0.75rem; transition: all var(--transition-fast); display: inline-flex; align-items: center; gap: 4px; box-shadow: ${video.is_premium ? '0 0 10px rgba(245,158,11,0.2)' : 'none'};">
+            <i class="fa-solid fa-crown" style="font-size:0.7rem; color:${video.is_premium ? '#fde047' : 'var(--text-muted)'};"></i>
+            <span>${video.is_premium ? 'PRO 👑' : 'Común'}</span>
+          </button>
+        </td>
         <td style="font-weight: 700; font-family: var(--font-display);">
           <i class="fa-solid fa-heart" style="color:var(--neon-pink);"></i> ${video.likes}
         </td>
@@ -726,6 +732,37 @@ async function loadCatalog() {
         </td>
       </tr>
     `).join('');
+
+    // Asignar eventos de alternar premium directa
+    const togglePremiumVideoBtns = adminVideosTbody.querySelectorAll('.btn-toggle-video-premium');
+    togglePremiumVideoBtns.forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const currentPremium = btn.getAttribute('data-premium') === 'true';
+        const newPremium = !currentPremium;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        
+        try {
+          const { error } = await supabase
+            .from('videos')
+            .update({ is_premium: newPremium })
+            .eq('id', id);
+            
+          if (error) throw error;
+          
+          showAlert(catalogAlertContainer, 'success', `<i class="fa-solid fa-check"></i> Estado de membresía del video actualizado correctamente.`);
+          loadCatalog();
+          updateStats();
+        } catch (err) {
+          console.error("Error al actualizar premium del video:", err);
+          showAlert(catalogAlertContainer, 'error', `Error: ${err.message}`);
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-crown"></i> ${currentPremium ? 'PRO 👑' : 'Común'}`;
+        }
+      });
+    });
 
     // Asignar eventos de edición
     const editButtons = adminVideosTbody.querySelectorAll('.btn-edit-row');

@@ -1029,26 +1029,33 @@ function renderFeed() {
 function renderNetflixRows() {
   netflixContainer.innerHTML = '';
   
-  // Categorías que tenemos en nuestra base de datos (dinámicas o fallback)
-  const categories = state.dynamicCategories || [
-    { key: 'boliche', label: 'Boliches & Fiesta Nocturna' },
-    { key: 'aventura', label: 'Aventura en la Nieve & Montañas' },
-    { key: 'lifestyle', label: 'Lifestyle, Hoteles y Chocolates' },
-    { key: 'emociones', label: 'Momentos Mágicos del Viaje' }
-  ];
+  // Agrupar videos por colección de forma dinámica
+  const collectionsMap = {};
+  const uncategorizedVideos = [];
+  
+  state.videos.forEach(video => {
+    if (video.collection_name) {
+      const colName = video.collection_name.trim();
+      if (!collectionsMap[colName]) {
+        collectionsMap[colName] = [];
+      }
+      collectionsMap[colName].push(video);
+    } else {
+      uncategorizedVideos.push(video);
+    }
+  });
 
-  categories.forEach(cat => {
-    const rowVideos = state.videos.filter(v => v.category === cat.key);
-    if (rowVideos.length === 0) return;
+  // Obtener nombres de las colecciones ordenadas alfabéticamente
+  const sortedCollectionNames = Object.keys(collectionsMap).sort();
 
-    // Crear la fila
+  // Función interna para crear el HTML de una fila
+  function createRowHtml(title, videos) {
     const row = document.createElement('div');
     row.className = 'netflix-row';
-    
     row.innerHTML = `
-      <h3 class="row-title">${cat.label}</h3>
+      <h3 class="row-title">${title}</h3>
       <div class="row-carousel">
-        ${rowVideos.map(video => `
+        ${videos.map(video => `
           <div class="netflix-card" data-video-id="${video.id}">
             <img class="netflix-card-img" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
             ${video.is_premium ? `
@@ -1062,9 +1069,20 @@ function renderNetflixRows() {
         `).join('')}
       </div>
     `;
+    return row;
+  }
 
-    netflixContainer.appendChild(row);
+  // Renderizar las filas de colecciones
+  sortedCollectionNames.forEach(colName => {
+    if (collectionsMap[colName].length > 0) {
+      netflixContainer.appendChild(createRowHtml(colName, collectionsMap[colName]));
+    }
   });
+
+  // Renderizar los videos que no pertenecen a ninguna colección
+  if (uncategorizedVideos.length > 0) {
+    netflixContainer.appendChild(createRowHtml("Otros Momentos", uncategorizedVideos));
+  }
 
   // Asignar click a cada tarjeta de Netflix para reproducir al instante
   const netflixCards = netflixContainer.querySelectorAll('.netflix-card');
