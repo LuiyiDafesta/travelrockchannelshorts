@@ -65,6 +65,8 @@ const videoCollection = document.getElementById('video-collection');
 const videoEpisode = document.getElementById('video-episode');
 const videoProvince = document.getElementById('video-province');
 const videoChapters = document.getElementById('video-chapters');
+const videoIsPremium = document.getElementById('video-is-premium');
+const videoTags = document.getElementById('video-tags');
 const videoDescription = document.getElementById('video-description');
 
 // Estadísticas
@@ -499,6 +501,8 @@ async function publishShort(e) {
   const episodeVal = videoEpisode.value.trim();
   const provinceVal = videoProvince.value.trim();
   const chaptersVal = videoChapters.value.trim();
+  const isPremiumVal = videoIsPremium ? videoIsPremium.value === 'true' : false;
+  const tagsVal = videoTags ? videoTags.value.trim() : '';
   const descVal = videoDescription.value.trim();
 
   // Iniciar flujo de carga
@@ -587,7 +591,9 @@ async function publishShort(e) {
           collection_name: collectionVal || null,
           episode_number: episodeVal ? parseInt(episodeVal) : null,
           province: provinceVal || null,
-          chapters: chaptersVal || null
+          chapters: chaptersVal || null,
+          is_premium: isPremiumVal,
+          tags: tagsVal || null
         }
       ])
       .select('id')
@@ -682,10 +688,14 @@ async function loadCatalog() {
           <img class="table-thumb" src="${video.thumbnail_url}" alt="${video.title}">
         </td>
         <td>
-          <div class="table-title" title="${video.title}">${video.title}</div>
+          <div class="table-title" title="${video.title}">
+            ${video.is_premium ? '<span style="background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); color: white; font-size: 0.65rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; margin-right: 6px; display: inline-flex; align-items: center; gap: 3px; box-shadow: 0 0 8px rgba(245,158,11,0.4);"><i class="fa-solid fa-crown" style="font-size:0.6rem;"></i> PRO</span>' : ''}
+            ${video.title}
+          </div>
           <div class="table-meta" style="margin-top: 4px;">
             <i class="fa-solid fa-clock"></i> ${video.duration}s · 
             <i class="fa-solid fa-calendar"></i> ${video.date}
+            ${video.tags ? ` · <i class="fa-solid fa-tags" style="color:var(--neon-purple); font-size:0.7rem;"></i> <span style="color:var(--text-secondary); font-size:0.7rem;">${video.tags}</span>` : ''}
           </div>
         </td>
         <td>
@@ -1203,6 +1213,10 @@ function openVideoEditModal(video) {
   document.getElementById('edit-video-date').value = video.date || '';
   document.getElementById('edit-video-province').value = video.province || '';
   document.getElementById('edit-video-chapters').value = video.chapters || '';
+  const isPremiumEdit = document.getElementById('edit-video-is-premium');
+  if (isPremiumEdit) isPremiumEdit.value = video.is_premium ? 'true' : 'false';
+  const tagsEdit = document.getElementById('edit-video-tags');
+  if (tagsEdit) tagsEdit.value = video.tags || '';
   document.getElementById('edit-video-collection').value = video.collection_name || '';
   document.getElementById('edit-video-episode').value = video.episode_number || '';
   document.getElementById('edit-video-description').value = video.description || '';
@@ -1225,6 +1239,8 @@ async function saveVideoEdit(e) {
   const dateVal = document.getElementById('edit-video-date').value.trim();
   const provinceVal = document.getElementById('edit-video-province').value.trim();
   const chaptersVal = document.getElementById('edit-video-chapters').value.trim();
+  const isPremiumVal = document.getElementById('edit-video-is-premium').value === 'true';
+  const tagsVal = document.getElementById('edit-video-tags').value.trim();
   const collectionVal = document.getElementById('edit-video-collection').value.trim();
   const episodeVal = document.getElementById('edit-video-episode').value.trim();
   const descVal = document.getElementById('edit-video-description').value.trim();
@@ -1252,7 +1268,9 @@ async function saveVideoEdit(e) {
         chapters: chaptersVal || null,
         collection_name: collectionVal || null,
         episode_number: episodeVal ? parseInt(episodeVal) : null,
-        description: descVal
+        description: descVal,
+        is_premium: isPremiumVal,
+        tags: tagsVal || null
       })
       .eq('id', idVal)
       .select('video_url, thumbnail_url')

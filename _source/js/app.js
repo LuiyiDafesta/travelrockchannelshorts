@@ -148,6 +148,13 @@ function updateUserUI() {
     if (sidebarBtnAdmin) sidebarBtnAdmin.classList.add('hidden');
     if (mobileBtnAdmin) mobileBtnAdmin.classList.add('hidden');
   }
+
+  // Refrescar dinámicamente las vistas del frontend si ya se cargaron los videos
+  if (state.videos && state.videos.length > 0) {
+    renderFeed();
+    renderNetflixRows();
+    renderNetflixGrid(getFilteredVideos());
+  }
 }
 
 // Abrir modal de autenticación
@@ -405,7 +412,9 @@ async function fetchVideosAndComments() {
       collection_name: v.collection_name,
       episode_number: v.episode_number,
       province: v.province,
-      chapters: v.chapters
+      chapters: v.chapters,
+      is_premium: v.is_premium,
+      tags: v.tags
     }));
 
     // 2. Consultar todos los comentarios
@@ -776,6 +785,30 @@ function renderFeed() {
             <i class="fa-solid ${state.isMuted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i>
           </div>
 
+          <!-- Overlay de Bloqueo Premium (Solo para videos PRO si no tiene membresía) -->
+          ${video.is_premium ? `
+            <div class="premium-lock-overlay" id="premium-lock-overlay-${video.id}" style="display: none;">
+              <div class="lock-overlay-content">
+                <div class="lock-crown-icon">
+                  <i class="fa-solid fa-crown animate-pulse-crown"></i>
+                </div>
+                <h2 class="lock-overlay-title">MOMENTO EXCLUSIVO</h2>
+                <span class="lock-overlay-badge">CLUB PRO 👑</span>
+                <p class="lock-overlay-desc">Estás viendo un avance gratuito de 7 segundos. Suscribite al Club PRO para ver este momento completo y todo el contenido exclusivo de Bariloche.</p>
+                <button class="lock-overlay-btn btn-unlock-video" data-id="${video.id}">
+                  <span>Desbloquear momento ⚡</span>
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Indicador de Avance de 7s -->
+          ${video.is_premium ? `
+            <div class="preview-indicator-badge" id="preview-indicator-${video.id}">
+              <i class="fa-solid fa-crown"></i> Avance Gratuito 7s
+            </div>
+          ` : ''}
+
           <!-- Acciones Flotantes (Visibles en móvil, ocultas en desktop cine) -->
           <div class="video-actions">
             <div class="action-btn-wrapper">
@@ -886,6 +919,15 @@ function renderFeed() {
                   : `<span>${video.description}</span>`
                 }
               </p>
+              ${video.tags ? `
+                <div class="video-tags-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                  ${video.tags.split(',').map(tag => {
+                    const cleanTag = tag.trim();
+                    if (!cleanTag) return '';
+                    return `<span class="tag-pill-badge" data-tag="${cleanTag}" style="cursor: pointer; background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.25); color: #c084fc; padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: all var(--transition-fast);"><i class="fa-solid fa-tag"></i> #${cleanTag}</span>`;
+                  }).join('')}
+                </div>
+              ` : ''}
             </div>
 
             <!-- Bloque 2.5: Capítulos del Video (Timeline Interactivo) -->
@@ -1009,6 +1051,9 @@ function renderNetflixRows() {
         ${rowVideos.map(video => `
           <div class="netflix-card" data-video-id="${video.id}">
             <img class="netflix-card-img" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
+            ${video.is_premium ? `
+              <div class="netflix-card-premium-badge" style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); color: white; border-radius: 4px; padding: 3px 6px; font-size: 0.65rem; font-weight: 800; display: flex; align-items: center; gap: 3px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2;"><i class="fa-solid fa-crown"></i> PRO</div>
+            ` : ''}
             <div class="netflix-card-overlay">
               <span class="netflix-card-school">${video.school.split(' - ')[0]}${video.province ? ` (${video.province})` : ''}</span>
               <h4 class="netflix-card-title">${video.title}</h4>
@@ -1166,6 +1211,11 @@ function setupVideoControls(card, videoData) {
 
   // Click simple en pantalla: Play/Pause
   function togglePlayPause() {
+    const userIsPremium = clientSession && clientSession.is_premium;
+    if (videoData.is_premium && !userIsPremium && video.currentTime >= 7) {
+      if (premiumLockOverlay) premiumLockOverlay.style.display = 'flex';
+      return;
+    }
     if (video.paused) {
       video.play().catch(err => console.log("Autoplay bloqueado:", err));
     } else {
@@ -1212,7 +1262,47 @@ function setupVideoControls(card, videoData) {
   let isDraggingTimeline = false;
   let isDraggingControlTimeline = false;
 
+  const premiumLockOverlay = card.querySelector('.premium-lock-overlay');
+  const previewIndicator = card.querySelector('.preview-indicator-badge');
+
+  function checkPremiumLimit() {
+    const userIsPremium = clientSession && clientSession.is_premium;
+    if (videoData.is_premium && !userIsPremium) {
+      if (video.currentTime >= 7) {
+        video.pause();
+        video.currentTime = 7;
+        if (premiumLockOverlay) {
+          premiumLockOverlay.style.display = 'flex';
+        }
+        return true;
+      }
+    } else {
+      if (premiumLockOverlay) {
+        premiumLockOverlay.style.display = 'none';
+      }
+      if (previewIndicator) {
+        previewIndicator.classList.add('hidden');
+      }
+    }
+    return false;
+  }
+
+  // Configurar click en botón de desbloqueo del overlay
+  const unlockBtn = card.querySelector('.btn-unlock-video');
+  if (unlockBtn) {
+    unlockBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const premiumModal = document.getElementById('premium-checkout-modal');
+      if (premiumModal) {
+        premiumModal.classList.add('active');
+      }
+    });
+  }
+
   video.addEventListener('timeupdate', () => {
+    // Verificar límite premium antes de proceder
+    if (checkPremiumLimit()) return;
+
     if (video.duration) {
       const percentage = (video.currentTime / video.duration) * 100;
       
@@ -1253,9 +1343,20 @@ function setupVideoControls(card, videoData) {
       clientX = e.touches[0].clientX;
     }
     const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    progressFill.style.width = `${pos * 100}%`;
-    ctrlTimelineFill.style.width = `${pos * 100}%`;
-    video.currentTime = pos * video.duration;
+    let targetTime = pos * video.duration;
+
+    const userIsPremium = clientSession && clientSession.is_premium;
+    if (videoData.is_premium && !userIsPremium && targetTime > 7) {
+      targetTime = 7;
+      if (premiumLockOverlay) premiumLockOverlay.style.display = 'flex';
+      video.pause();
+    } else {
+      if (premiumLockOverlay && targetTime < 7) premiumLockOverlay.style.display = 'none';
+    }
+
+    progressFill.style.width = `${(targetTime / video.duration) * 100}%`;
+    ctrlTimelineFill.style.width = `${(targetTime / video.duration) * 100}%`;
+    video.currentTime = targetTime;
   }
 
   progressBar.addEventListener('mousedown', (e) => {
@@ -1277,9 +1378,20 @@ function setupVideoControls(card, videoData) {
       clientX = e.touches[0].clientX;
     }
     const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    ctrlTimelineFill.style.width = `${pos * 100}%`;
-    progressFill.style.width = `${pos * 100}%`;
-    video.currentTime = pos * video.duration;
+    let targetTime = pos * video.duration;
+
+    const userIsPremium = clientSession && clientSession.is_premium;
+    if (videoData.is_premium && !userIsPremium && targetTime > 7) {
+      targetTime = 7;
+      if (premiumLockOverlay) premiumLockOverlay.style.display = 'flex';
+      video.pause();
+    } else {
+      if (premiumLockOverlay && targetTime < 7) premiumLockOverlay.style.display = 'none';
+    }
+
+    ctrlTimelineFill.style.width = `${(targetTime / video.duration) * 100}%`;
+    progressFill.style.width = `${(targetTime / video.duration) * 100}%`;
+    video.currentTime = targetTime;
   }
 
   ctrlTimelineWrapper.addEventListener('mousedown', (e) => {
@@ -1687,6 +1799,45 @@ function setupVideoControls(card, videoData) {
       }
     });
   });
+
+  // Configurar click en los tags interactivos
+  const tagPills = card.querySelectorAll('.tag-pill-badge');
+  tagPills.forEach(pill => {
+    pill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tagQuery = pill.getAttribute('data-tag');
+      if (tagQuery) {
+        const searchInput = document.getElementById('catalog-search-input');
+        if (searchInput) {
+          searchInput.value = tagQuery;
+        }
+        
+        // Pausar todos los videos de inmediato
+        pauseAllVideos();
+        
+        // Ejecutar búsqueda y actualizar vistas
+        state.currentFilter = 'all';
+        
+        // Actualizar chips de categoría activos en la UI
+        document.querySelectorAll('.category-chip').forEach(chip => {
+          if (chip.getAttribute('data-category') === 'all') {
+            chip.classList.add('active');
+          } else {
+            chip.classList.remove('active');
+          }
+        });
+
+        updateAppOnFilterOrSearch();
+        switchView('explorer');
+        
+        // Scroll suave al catálogo/resultados
+        const gridSection = document.getElementById('netflix-grid-section');
+        if (gridSection) {
+          gridSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    });
+  });
 }
 
 // ----------------------------------------------------------------------
@@ -1866,10 +2017,12 @@ export function getFilteredVideos() {
   
   if (query) {
     list = list.filter(v => 
-      v.title.toLowerCase().includes(query) || 
-      v.description.toLowerCase().includes(query) || 
-      v.school.toLowerCase().includes(query) || 
-      v.categoryLabel.toLowerCase().includes(query)
+      (v.title && v.title.toLowerCase().includes(query)) || 
+      (v.description && v.description.toLowerCase().includes(query)) || 
+      (v.school && v.school.toLowerCase().includes(query)) || 
+      (v.categoryLabel && v.categoryLabel.toLowerCase().includes(query)) ||
+      (v.collection_name && v.collection_name.toLowerCase().includes(query)) ||
+      (v.tags && v.tags.toLowerCase().includes(query))
     );
   }
   
@@ -1897,6 +2050,9 @@ function renderNetflixGrid(filteredVideos) {
   gridContainer.innerHTML = filteredVideos.map(video => `
     <div class="netflix-card" data-video-id="${video.id}">
       <img class="netflix-card-img" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
+      ${video.is_premium ? `
+        <div class="netflix-card-premium-badge" style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); color: white; border-radius: 4px; padding: 3px 6px; font-size: 0.65rem; font-weight: 800; display: flex; align-items: center; gap: 3px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2;"><i class="fa-solid fa-crown"></i> PRO</div>
+      ` : ''}
       <div class="netflix-card-overlay">
         <span class="netflix-card-school">${video.school.split(' - ')[0]}${video.province ? ` (${video.province})` : ''}</span>
         <h4 class="netflix-card-title">${video.title}</h4>
