@@ -1876,7 +1876,7 @@ async function publishAd(e) {
 
   const titleVal = adTitle.value.trim();
   const redirectUrlVal = adRedirectUrl.value.trim();
-  const durationVal = parseInt(adDuration.value) || 15;
+  const durationVal = Math.round(adVideoDuration) || parseInt(adDuration.value) || 15;
   const provinceVal = adTargetProvince.value.trim();
 
   btnAdUploadSubmit.disabled = true;
@@ -1885,41 +1885,56 @@ async function publishAd(e) {
   updateAdProgressBar(10, 'Iniciando subida de la campaña...');
 
   try {
-    const timestamp = Date.now();
-    const videoFileName = `ad_video_${timestamp}.mp4`;
-    const thumbnailFileName = `ad_thumb_${timestamp}.jpg`;
+    let uploadTargetUrl = 'api/upload.php';
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    let videoUrl = '';
+    let thumbnailUrl = '';
 
     // 1. Extraer miniatura en Canvas
     updateAdProgressBar(20, 'Generando miniatura automática del video de anuncio...');
     const thumbBlob = await extractVideoThumbnail(currentSelectedAdFile);
 
-    // 2. Subir video a Storage Supabase
-    updateAdProgressBar(40, 'Subiendo video del anuncio a Supabase Storage...');
-    const { data: vData, error: vErr } = await supabase.storage
-      .from('ads')
-      .upload(videoFileName, currentSelectedAdFile, { cacheControl: '3600', upsert: true });
+    if (isLocal) {
+      uploadTargetUrl = '/api/upload';
+      updateAdProgressBar(40, 'Enviando video al compresor local FFmpeg en tu PC...');
+      const uploadRes = await fetch(`${uploadTargetUrl}?name=${encodeURIComponent(currentSelectedAdFile.name)}`, {
+        method: 'POST',
+        body: currentSelectedAdFile
+      });
 
-    if (vErr) throw vErr;
-
-    // Obtener URL de video
-    const { data: vUrlData } = supabase.storage.from('ads').getPublicUrl(videoFileName);
-    const videoUrl = vUrlData.publicUrl;
-
-    // 3. Subir miniatura a Storage Supabase si existe
-    let thumbnailUrl = '';
-    if (thumbBlob) {
-      updateAdProgressBar(60, 'Subiendo miniatura a Supabase Storage...');
-      const { data: tData, error: tErr } = await supabase.storage
-        .from('ads')
-        .upload(thumbnailFileName, thumbBlob, { cacheControl: '3600', upsert: true });
-        
-      if (!tErr) {
-        const { data: tUrlData } = supabase.storage.from('ads').getPublicUrl(thumbnailFileName);
-        thumbnailUrl = tUrlData.publicUrl;
+      if (!uploadRes.ok) {
+        const errData = await uploadRes.json().catch(() => ({}));
+        throw new Error(errData.error || errData.details || `Error del servidor local de carga: ${uploadRes.status}`);
       }
+      
+      const result = await uploadRes.json();
+      videoUrl = result.videoUrl;
+      thumbnailUrl = result.thumbnailUrl;
+    } else {
+      updateAdProgressBar(40, 'Subiendo video y portada a Backblaze B2 desde Ferozo...');
+      const formData = new FormData();
+      formData.append('video', currentSelectedAdFile);
+      if (thumbBlob) {
+        formData.append('thumbnail', thumbBlob, 'ad_thumbnail.jpg');
+      }
+      
+      const uploadRes = await fetch(uploadTargetUrl, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!uploadRes.ok) {
+        const errData = await uploadRes.json().catch(() => ({}));
+        throw new Error(errData.error || errData.details || `Error del servidor de producción: ${uploadRes.status}`);
+      }
+      
+      const result = await uploadRes.json();
+      videoUrl = result.videoUrl;
+      thumbnailUrl = result.thumbnailUrl;
     }
 
-    updateAdProgressBar(80, 'Registrando campaña en la base de datos...');
+    updateAdProgressBar(80, 'Registrando campaña en la base de datos de Supabase...');
 
     // 4. Guardar registro en la tabla ads
     const { error: dbErr } = await supabase
