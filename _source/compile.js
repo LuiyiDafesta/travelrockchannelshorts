@@ -28,10 +28,15 @@ compiled = compiled.replace(/;}/g, '}');
 // 5. Trim
 compiled = compiled.trim();
 
+// Write to assets/css/app.min.css
 const outputDir = path.join(__dirname, '..', 'assets', 'css');
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
 }
-
 fs.writeFileSync(path.join(outputDir, 'app.min.css'), compiled, 'utf8');
 console.log('CSS compiled and minified successfully to assets/css/app.min.css!');
+
+// Also write directly to the root directory for Ferozo compatibility
+const rootOutputDir = path.join(__dirname, '..');
+fs.writeFileSync(path.join(rootOutputDir, 'app.min.css'), compiled, 'utf8');
+console.log('CSS compiled and minified successfully to root app.min.css!');
