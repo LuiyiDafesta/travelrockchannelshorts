@@ -152,6 +152,7 @@ function updateUserUI() {
   // Refrescar dinámicamente las vistas del frontend si ya se cargaron los videos
   if (state.videos && state.videos.length > 0) {
     renderFeed();
+    renderNetflixRanking();
     renderNetflixRows();
     renderNetflixGrid(getFilteredVideos());
   }
@@ -505,10 +506,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         </button>
       `;
     });
+    // Agregar chip especial Club PRO
+    html += `
+      <button class="category-chip special-pro-chip" data-category="pro-only" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%); border: 1px solid rgba(245, 158, 11, 0.4); color: #fde047; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+        <i class="fa-solid fa-crown" style="color: #fde047;"></i> Contenido PRO 👑
+      </button>
+    `;
     container.innerHTML = html;
   }
 
   renderFeed();
+  renderNetflixRanking();
   renderNetflixRows();
   renderNetflixGrid(state.videos); // Renderizar grilla de catálogo inicial
   
@@ -842,6 +850,9 @@ function renderFeed() {
           <!-- Info Flotante (badge, título y descripción) -->
           <div class="video-info-panel">
             <span class="school-badge"><i class="fa-solid fa-graduation-cap"></i> ${video.school}${video.province ? ` (${video.province})` : ''}</span>
+            ${video.is_premium ? `
+              <span class="school-badge" style="background: var(--primary-gradient); box-shadow: var(--neon-glow-pink); margin-left: 6px; text-transform: uppercase;"><i class="fa-solid fa-crown" style="color: #fde047; font-size: 0.75rem;"></i> PRO</span>
+            ` : ''}
             <h3 class="video-title-text">${video.title}</h3>
             <p class="video-desc-text">${video.description}</p>
           </div>
@@ -1108,6 +1119,80 @@ function renderNetflixRows() {
       }
 
       // Reiniciar y reproducir
+      setTimeout(playActiveVideo, 200);
+    });
+  });
+}
+
+// B2. Renderizar Carrusel TOP 5 Ranking Popularidad Estilo Netflix
+function renderNetflixRanking() {
+  const rankingContainer = document.getElementById('netflix-ranking-container');
+  if (!rankingContainer) return;
+  
+  rankingContainer.innerHTML = '';
+  
+  // Obtener los top 5 videos más vistos/populares (ordenados por likes de mayor a menor)
+  const popularVideos = [...state.videos]
+    .sort((a, b) => (b.likes || 0) - (a.likes || 0))
+    .slice(0, 5);
+    
+  if (popularVideos.length === 0) {
+    rankingContainer.style.display = 'none';
+    return;
+  }
+  
+  // Si estamos filtrando o buscando, se ocultará desde updateAppOnFilterOrSearch
+  rankingContainer.style.display = state.currentFilter === 'all' ? 'block' : 'none';
+  
+  rankingContainer.innerHTML = `
+    <div class="netflix-row ranking-row">
+      <h3 class="row-title"><i class="fa-solid fa-fire" style="color: var(--neon-orange); margin-right: 6px;"></i> Los 5 Más Vistos de la Semana</h3>
+      <div class="row-carousel ranking-carousel">
+        ${popularVideos.map((video, index) => `
+          <div class="ranking-card" data-video-id="${video.id}">
+            <div class="ranking-number-wrapper">
+              <span class="ranking-number">${index + 1}</span>
+            </div>
+            <div class="netflix-card ranking-card-inner">
+              <img class="netflix-card-img" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
+              ${video.is_premium ? `
+                <div class="netflix-card-premium-badge" style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); color: white; border-radius: 4px; padding: 3px 6px; font-size: 0.65rem; font-weight: 800; display: flex; align-items: center; gap: 3px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2;"><i class="fa-solid fa-crown"></i> PRO</div>
+              ` : ''}
+              <div class="netflix-card-overlay">
+                <span class="netflix-card-school">${video.school.split(' - ')[0]}${video.province ? ` (${video.province})` : ''}</span>
+                <h4 class="netflix-card-title">${video.title}</h4>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  // Agregar event listener para clicks en las tarjetas de ranking
+  const rankingCards = rankingContainer.querySelectorAll('.ranking-card');
+  rankingCards.forEach(card => {
+    card.addEventListener('click', () => {
+      const id = parseInt(card.getAttribute('data-video-id'));
+      state.activeVideoId = id;
+      
+      // Cambiar a vista feed
+      switchView('feed');
+      
+      // En Desktop: Buscar el card en el DOM y marcarlo activo
+      if (window.innerWidth >= 992) {
+        document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
+        const targetCard = document.getElementById(`short-card-${id}`);
+        if (targetCard) targetCard.classList.add('active-desktop');
+      } else {
+        // En móvil: Scroll hasta el elemento
+        const targetCard = document.getElementById(`short-card-${id}`);
+        if (targetCard) {
+          targetCard.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+      
+      // Reproducir
       setTimeout(playActiveVideo, 200);
     });
   });
@@ -2026,7 +2111,11 @@ export function getFilteredVideos() {
   
   // A. Filtrar por Categoría chip activa
   if (state.currentFilter !== 'all') {
-    list = list.filter(v => v.category === state.currentFilter);
+    if (state.currentFilter === 'pro-only') {
+      list = list.filter(v => v.is_premium === true);
+    } else {
+      list = list.filter(v => v.category === state.currentFilter);
+    }
   }
   
   // B. Filtrar por término de búsqueda en input
@@ -2116,7 +2205,7 @@ function updateAppOnFilterOrSearch() {
   const gridSectionTitle = document.getElementById('grid-section-title');
   const netflixRowsContainer = document.getElementById('netflix-rows-container');
   
-  const categoryLabels = { all: 'Todos los Momentos' };
+  const categoryLabels = { all: 'Todos los Momentos', 'pro-only': 'Contenido PRO 👑' };
   if (state.dynamicCategories) {
     state.dynamicCategories.forEach(c => {
       categoryLabels[c.key] = c.label;
@@ -2128,19 +2217,24 @@ function updateAppOnFilterOrSearch() {
     categoryLabels.emociones = 'Momentos Mágicos';
   }
   
+  const netflixRankingContainer = document.getElementById('netflix-ranking-container');
+  
   if (query) {
-    // Si hay búsqueda activa: ocultar carruseles y mostrar resultados en grilla
+    // Si hay búsqueda activa: ocultar carruseles y ranking
     if (netflixRowsContainer) netflixRowsContainer.style.display = 'none';
+    if (netflixRankingContainer) netflixRankingContainer.style.display = 'none';
     if (gridSectionTitle) gridSectionTitle.textContent = `Resultados de Búsqueda para "${searchInput.value.trim()}" (${filtered.length})`;
   } else {
     // Si no hay búsqueda:
     if (state.currentFilter === 'all') {
-      // Mostrar carruseles y todos los momentos
+      // Mostrar carruseles y ranking
       if (netflixRowsContainer) netflixRowsContainer.style.display = 'block';
+      if (netflixRankingContainer) netflixRankingContainer.style.display = 'block';
       if (gridSectionTitle) gridSectionTitle.textContent = 'Todos los Momentos';
     } else {
-      // Ocultar carruseles y mostrar momentos de la categoría seleccionada
+      // Ocultar carruseles y ranking, y mostrar momentos de la categoría seleccionada
       if (netflixRowsContainer) netflixRowsContainer.style.display = 'none';
+      if (netflixRankingContainer) netflixRankingContainer.style.display = 'none';
       if (gridSectionTitle) gridSectionTitle.textContent = `${categoryLabels[state.currentFilter]} (${filtered.length})`;
     }
   }

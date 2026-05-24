@@ -2687,3 +2687,77 @@
 .tag-pill-badge:active {
   transform: scale(0.95);
 }
+
+/* ==========================================================================
+   12. CARROUSEL DE RANKING TOP 5 ESTILO NETFLIX
+   ========================================================================== */
+.ranking-row {
+  margin-bottom: 40px;
+}
+
+.ranking-carousel {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding: 20px 0 30px 20px;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.ranking-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.ranking-card {
+  display: flex;
+  align-items: flex-end;
+  position: relative;
+  width: 250px;
+  height: 330px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.ranking-number-wrapper {
+  position: absolute;
+  left: -20px;
+  bottom: -22px;
+  z-index: 1;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  transition: all var(--transition-fast);
+}
+
+.ranking-number {
+  font-family: var(--font-display);
+  font-size: 11.5rem;
+  font-weight: 900;
+  line-height: 0.8;
+  color: var(--bg-dark);
+  -webkit-text-stroke: 4px rgba(255, 255, 255, 0.82);
+  filter: drop-shadow(0 0 15px rgba(236, 72, 153, 0.3));
+  transition: all var(--transition-fast);
+}
+
+.ranking-card-inner {
+  margin-left: 45px;
+  flex: 1;
+  height: 310px;
+  width: 205px;
+  z-index: 2;
+  transition: all var(--transition-normal);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+}
+
+.ranking-card:hover .ranking-card-inner {
+  transform: translateY(-10px) scale(1.03);
+  border-color: var(--neon-pink);
+  box-shadow: 0 15px 30px rgba(236, 72, 153, 0.25);
+}
+
+.ranking-card:hover .ranking-number {
+  -webkit-text-stroke-color: var(--neon-pink);
+  filter: drop-shadow(0 0 25px rgba(236, 72, 153, 0.65));
+}
+

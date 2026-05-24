@@ -98,21 +98,23 @@ export function initNavigation(onViewChange) {
     });
   }
 
-  // Inicializar control de Categorías (chips dentro del catálogo)
-  const categoryChips = document.querySelectorAll('.category-chip');
-  categoryChips.forEach(chip => {
-    chip.addEventListener('click', (e) => {
+  // Inicializar control de Categorías (chips dentro del catálogo con delegación de eventos)
+  const categoriesNav = document.getElementById('categories-nav');
+  if (categoriesNav) {
+    categoriesNav.addEventListener('click', (e) => {
+      const chip = e.target.closest('.category-chip');
+      if (!chip) return;
+      
       // Activar chip
-      categoryChips.forEach(c => c.classList.remove('active'));
+      categoriesNav.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
       
       const selectedCategory = chip.getAttribute('data-category');
-      
       if (onViewChange) {
         onViewChange('filter', selectedCategory);
       }
     });
-  });
+  }
 
   // Efecto dinámico de scroll en el Header Móvil (se vuelve más oscuro al hacer scroll en Explorer)
   explorerView.addEventListener('scroll', () => {
