@@ -80,9 +80,36 @@ const tabTriggers = document.querySelectorAll('.tab-trigger');
 const tabContents = document.querySelectorAll('.tab-content');
 const triggerTabVideos = document.getElementById('trigger-tab-videos');
 const triggerTabComments = document.getElementById('trigger-tab-comments');
+const triggerTabAds = document.getElementById('trigger-tab-ads');
 
-// Catálogo y Comentarios
+// Catálogo, Comentarios y Ads
 const adminVideosTbody = document.getElementById('admin-videos-tbody');
+const adminAdsTbody = document.getElementById('admin-ads-tbody');
+const adsUploadAlertContainer = document.getElementById('ads-upload-alert-container');
+const adsCatalogAlertContainer = document.getElementById('ads-catalog-alert-container');
+const adUploadForm = document.getElementById('ad-upload-form');
+const adVideoFile = document.getElementById('ad-video-file');
+const adVideoDropArea = document.getElementById('ad-video-drop-area');
+const adVideoPreviewBox = document.getElementById('ad-video-preview-box');
+const adAuxPreviewVideo = document.getElementById('ad-aux-preview-video');
+const adPreviewFileName = document.getElementById('ad-preview-file-name');
+const adPreviewFileDimensions = document.getElementById('ad-preview-file-dimensions');
+const adPreviewFileDuration = document.getElementById('ad-preview-file-duration');
+const adBtnClearFile = document.getElementById('ad-btn-clear-file');
+const adUploadProgressBox = document.getElementById('ad-upload-progress-box');
+const adUploadProgressBar = document.getElementById('ad-upload-progress-bar');
+const adUploadPercentText = document.getElementById('ad-upload-percent-text');
+const adUploadStatusText = document.getElementById('ad-upload-status-text');
+const btnAdUploadSubmit = document.getElementById('btn-ad-upload-submit');
+
+const adTitle = document.getElementById('ad-title');
+const adRedirectUrl = document.getElementById('ad-redirect-url');
+const adDuration = document.getElementById('ad-duration');
+const adTargetProvince = document.getElementById('ad-target-province');
+
+const adTotalImpressions = document.getElementById('ad-total-impressions');
+const adTotalClicks = document.getElementById('ad-total-clicks');
+const adAverageCtr = document.getElementById('ad-average-ctr');
 const adminCommentsContainer = document.getElementById('admin-comments-container');
 const catalogAlertContainer = document.getElementById('catalog-alert-container');
 const commentsAlertContainer = document.getElementById('comments-alert-container');
@@ -133,6 +160,8 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (targetTabId === 'tab-metadata') {
         loadCategories();
         loadCollections();
+      } else if (targetTabId === 'tab-ads') {
+        loadAds();
       }
     });
   });
@@ -147,6 +176,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (editVideoForm) {
     editVideoForm.addEventListener('submit', saveVideoEdit);
   }
+  if (adUploadForm) {
+    adUploadForm.addEventListener('submit', publishAd);
+  }
   if (btnEditCancel) {
     btnEditCancel.addEventListener('click', () => {
       editVideoModal.style.display = 'none';
@@ -155,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Eventos de selección de archivo y Drag & Drop
   setupFileEvents();
+  setupAdFileEvents();
 
   // Cerrar Modales
   if (btnDeleteCancel) {
@@ -1569,4 +1602,360 @@ async function saveCollection(e) {
     submitBtn.disabled = false;
     submitBtn.innerHTML = '<span id="btn-collection-text">Agregar Colección</span> <i class="fa-solid fa-circle-check" style="color: var(--neon-purple);"></i>';
   }
+}
+
+// ----------------------------------------------------------------------
+// GESTIÓN DE PUBLICIDAD (ADS CRUD)
+// ----------------------------------------------------------------------
+
+async function loadAds() {
+  if (!adminAdsTbody) return;
+  adminAdsTbody.innerHTML = `
+    <tr>
+      <td colspan="5" class="no-data-card">
+        <i class="fa-solid fa-spinner fa-spin" style="color:var(--neon-pink);"></i>
+        <p>Cargando campañas de publicidad en tiempo real...</p>
+      </td>
+    </tr>
+  `;
+
+  try {
+    const { data: ads, error } = await supabase
+      .from('ads')
+      .select('*')
+      .order('id', { ascending: false });
+
+    if (error) throw error;
+
+    if (!ads || ads.length === 0) {
+      adminAdsTbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="no-data-card">
+            <i class="fa-solid fa-rectangle-ad"></i>
+            <p>Aún no hay anuncios registrados. ¡Sube el primero usando el formulario de la izquierda!</p>
+          </td>
+        </tr>
+      `;
+      if (adTotalImpressions) adTotalImpressions.textContent = '0';
+      if (adTotalClicks) adTotalClicks.textContent = '0';
+      if (adAverageCtr) adAverageCtr.textContent = '0.00%';
+      return;
+    }
+
+    // Calcular estadísticas
+    let totalImp = 0;
+    let totalCli = 0;
+    ads.forEach(ad => {
+      totalImp += (ad.impressions || 0);
+      totalCli += (ad.clicks || 0);
+    });
+    
+    if (adTotalImpressions) adTotalImpressions.textContent = totalImp.toLocaleString();
+    if (adTotalClicks) adTotalClicks.textContent = totalCli.toLocaleString();
+    if (adAverageCtr) {
+      const avgCtr = totalImp > 0 ? (totalCli / totalImp * 100) : 0;
+      adAverageCtr.textContent = `${avgCtr.toFixed(2)}%`;
+    }
+
+    adminAdsTbody.innerHTML = ads.map(ad => {
+      const ctr = ad.impressions > 0 ? (ad.clicks / ad.impressions * 100) : 0;
+      return `
+        <tr id="ad-row-${ad.id}">
+          <td>
+            <img class="table-thumb" src="${ad.thumbnail_url || 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60'}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';">
+          </td>
+          <td>
+            <div class="table-title">${ad.title}</div>
+            <div class="table-meta" style="margin-top: 4px;">
+              <i class="fa-solid fa-link"></i> <a href="${ad.redirect_url}" target="_blank" style="color: var(--neon-pink); text-decoration: none;">${ad.redirect_url.substring(0, 35)}${ad.redirect_url.length > 35 ? '...' : ''}</a>
+              ${ad.target_province ? ` · <i class="fa-solid fa-map-pin" style="color:var(--neon-purple);"></i> ${ad.target_province}` : ''}
+            </div>
+          </td>
+          <td>
+            <div style="font-size: 0.8rem; line-height: 1.4;">
+              Impresiones: <span style="color: var(--neon-purple); font-weight: 600;">${ad.impressions || 0}</span><br>
+              Clics: <span style="color: var(--neon-pink); font-weight: 600;">${ad.clicks || 0}</span><br>
+              CTR: <span style="color: var(--neon-orange); font-weight: 600;">${ctr.toFixed(2)}%</span>
+            </div>
+          </td>
+          <td style="text-align: center;">
+            <button class="btn-toggle-ad-active" data-id="${ad.id}" data-active="${ad.active}" style="background: ${ad.active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${ad.active ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255,255,255,0.12)'}; color: ${ad.active ? '#34d399' : 'var(--text-muted)'}; padding: 6px 12px; border-radius: var(--radius-xs); cursor: pointer; font-weight: 700; font-size: 0.75rem; transition: all var(--transition-fast); display: inline-flex; align-items: center; gap: 4px;">
+              <i class="fa-solid ${ad.active ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+              <span>${ad.active ? 'Activo' : 'Pausado'}</span>
+            </button>
+          </td>
+          <td style="text-align: center;">
+            <button class="btn-delete-ad" data-id="${ad.id}" data-url="${ad.video_url}" data-thumb="${ad.thumbnail_url}" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; border-radius: var(--radius-xs); padding: 6px 12px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all var(--transition-fast);">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Switch de activo/pausado
+    const toggleActiveBtns = adminAdsTbody.querySelectorAll('.btn-toggle-ad-active');
+    toggleActiveBtns.forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const currentActive = btn.getAttribute('data-active') === 'true';
+        const newActive = !currentActive;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        
+        try {
+          const { error } = await supabase
+            .from('ads')
+            .update({ active: newActive })
+            .eq('id', id);
+            
+          if (error) throw error;
+          
+          showAlert(adsCatalogAlertContainer, 'success', `<i class="fa-solid fa-check"></i> Estado del anuncio actualizado correctamente.`);
+          loadAds();
+        } catch (err) {
+          console.error("Error al actualizar estado del anuncio:", err);
+          showAlert(adsCatalogAlertContainer, 'error', `Error: ${err.message}`);
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Eliminar anuncio
+    const deleteBtns = adminAdsTbody.querySelectorAll('.btn-delete-ad');
+    deleteBtns.forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const videoUrl = btn.getAttribute('data-url');
+        const thumbUrl = btn.getAttribute('data-thumb');
+
+        if (confirm('¿Estás seguro de que deseas eliminar permanentemente este anuncio? Esta acción no se puede deshacer.')) {
+          btn.disabled = true;
+          btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+          try {
+            // Eliminar del Storage de Supabase si existen
+            if (videoUrl && videoUrl.includes('/storage/v1/object/public/ads/')) {
+              const videoPath = videoUrl.split('/storage/v1/object/public/ads/')[1];
+              await supabase.storage.from('ads').remove([videoPath]).catch(e => console.warn(e));
+            }
+            if (thumbUrl && thumbUrl.includes('/storage/v1/object/public/ads/')) {
+              const thumbPath = thumbUrl.split('/storage/v1/object/public/ads/')[1];
+              await supabase.storage.from('ads').remove([thumbPath]).catch(e => console.warn(e));
+            }
+
+            // Eliminar de base de datos
+            const { error } = await supabase
+              .from('ads')
+              .delete()
+              .eq('id', id);
+              
+            if (error) throw error;
+            
+            showAlert(adsCatalogAlertContainer, 'success', `<i class="fa-solid fa-check"></i> Anuncio y sus archivos asociados eliminados correctamente.`);
+            loadAds();
+          } catch (err) {
+            console.error("Error al eliminar anuncio:", err);
+            showAlert(adsCatalogAlertContainer, 'error', `Error: ${err.message}`);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+          }
+        }
+      });
+    });
+
+  } catch (err) {
+    console.error("Error al cargar anuncios:", err);
+    showAlert(adsCatalogAlertContainer, 'error', `<i class="fa-solid fa-circle-xmark"></i> Error al conectar con Supabase: ${err.message}`);
+  }
+}
+
+let currentSelectedAdFile = null;
+let adVideoDuration = 0;
+
+function setupAdFileEvents() {
+  if (!adVideoDropArea) return;
+  // Drag over / Drag leave
+  ['dragenter', 'dragover'].forEach(eventName => {
+    adVideoDropArea.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      adVideoDropArea.classList.add('dragover');
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    adVideoDropArea.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      adVideoDropArea.classList.remove('dragover');
+    }, false);
+  });
+
+  adVideoDropArea.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    if (files.length > 0) {
+      handleAdVideoFileSelection(files[0]);
+    }
+  });
+
+  adVideoFile.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      handleAdVideoFileSelection(e.target.files[0]);
+    }
+  });
+
+  if (adBtnClearFile) {
+    adBtnClearFile.addEventListener('click', clearSelectedAdFile);
+  }
+}
+
+function handleAdVideoFileSelection(file) {
+  if (file.type !== 'video/mp4') {
+    showAlert(adsUploadAlertContainer, 'error', '<i class="fa-solid fa-circle-xmark"></i> Formato no soportado. Por favor, selecciona un video vertical **MP4**.');
+    clearSelectedAdFile();
+    return;
+  }
+
+  showAlert(adsUploadAlertContainer, 'info', '<i class="fa-solid fa-spinner fa-spin"></i> Analizando resolución del video vertical...');
+  
+  const fileUrl = URL.createObjectURL(file);
+  adAuxPreviewVideo.src = fileUrl;
+  
+  adAuxPreviewVideo.onloadedmetadata = () => {
+    const width = adAuxPreviewVideo.videoWidth;
+    const height = adAuxPreviewVideo.videoHeight;
+    adVideoDuration = adAuxPreviewVideo.duration;
+
+    if (height <= width) {
+      showAlert(adsUploadAlertContainer, 'error', `
+        <div style="text-align:left;">
+          <strong><i class="fa-solid fa-mobile-screen-button"></i> ¡Error de Orientación!</strong><br>
+          El video seleccionado no es vertical (${width}x${height}).<br>
+          Los anuncios de video deben ser estrictamente verticales (Alto > Ancho) para ajustarse a la UI.
+        </div>
+      `);
+      clearSelectedAdFile();
+      return;
+    }
+
+    currentSelectedAdFile = file;
+    adPreviewFileName.textContent = file.name;
+    adPreviewFileDimensions.textContent = `Dimensiones: ${width}x${height}px (Vertical Correcto ✅)`;
+    adPreviewFileDuration.textContent = `Duración: ${Math.round(adVideoDuration)} segundos`;
+    if (adDuration) adDuration.value = Math.round(adVideoDuration);
+    
+    adVideoDropArea.style.display = 'none';
+    adVideoPreviewBox.style.display = 'flex';
+    
+    showAlert(adsUploadAlertContainer, 'success', '<i class="fa-solid fa-circle-check"></i> Video de anuncio vertical validado y aceptado.');
+  };
+
+  adAuxPreviewVideo.onerror = () => {
+    showAlert(adsUploadAlertContainer, 'error', '<i class="fa-solid fa-circle-xmark"></i> Error al analizar el archivo de video.');
+    clearSelectedAdFile();
+  };
+}
+
+function clearSelectedAdFile() {
+  currentSelectedAdFile = null;
+  adVideoFile.value = '';
+  adAuxPreviewVideo.removeAttribute('src');
+  adVideoPreviewBox.style.display = 'none';
+  adVideoDropArea.style.display = 'block';
+  adUploadProgressBox.style.display = 'none';
+}
+
+async function publishAd(e) {
+  e.preventDefault();
+  
+  if (!currentSelectedAdFile) {
+    showAlert(adsUploadAlertContainer, 'error', '<i class="fa-solid fa-triangle-exclamation"></i> Por favor, selecciona un video vertical para el anuncio.');
+    return;
+  }
+
+  const titleVal = adTitle.value.trim();
+  const redirectUrlVal = adRedirectUrl.value.trim();
+  const durationVal = parseInt(adDuration.value) || 15;
+  const provinceVal = adTargetProvince.value.trim();
+
+  btnAdUploadSubmit.disabled = true;
+  btnAdUploadSubmit.innerHTML = '<span>Procesando y Subiendo...</span> <i class="fa-solid fa-spinner fa-spin"></i>';
+  adUploadProgressBox.style.display = 'block';
+  updateAdProgressBar(10, 'Iniciando subida de la campaña...');
+
+  try {
+    const timestamp = Date.now();
+    const videoFileName = `ad_video_${timestamp}.mp4`;
+    const thumbnailFileName = `ad_thumb_${timestamp}.jpg`;
+
+    // 1. Extraer miniatura en Canvas
+    updateAdProgressBar(20, 'Generando miniatura automática del video de anuncio...');
+    const thumbBlob = await extractVideoThumbnail(currentSelectedAdFile);
+
+    // 2. Subir video a Storage Supabase
+    updateAdProgressBar(40, 'Subiendo video del anuncio a Supabase Storage...');
+    const { data: vData, error: vErr } = await supabase.storage
+      .from('ads')
+      .upload(videoFileName, currentSelectedAdFile, { cacheControl: '3600', upsert: true });
+
+    if (vErr) throw vErr;
+
+    // Obtener URL de video
+    const { data: vUrlData } = supabase.storage.from('ads').getPublicUrl(videoFileName);
+    const videoUrl = vUrlData.publicUrl;
+
+    // 3. Subir miniatura a Storage Supabase si existe
+    let thumbnailUrl = '';
+    if (thumbBlob) {
+      updateAdProgressBar(60, 'Subiendo miniatura a Supabase Storage...');
+      const { data: tData, error: tErr } = await supabase.storage
+        .from('ads')
+        .upload(thumbnailFileName, thumbBlob, { cacheControl: '3600', upsert: true });
+        
+      if (!tErr) {
+        const { data: tUrlData } = supabase.storage.from('ads').getPublicUrl(thumbnailFileName);
+        thumbnailUrl = tUrlData.publicUrl;
+      }
+    }
+
+    updateAdProgressBar(80, 'Registrando campaña en la base de datos...');
+
+    // 4. Guardar registro en la tabla ads
+    const { error: dbErr } = await supabase
+      .from('ads')
+      .insert([
+        {
+          title: titleVal,
+          video_url: videoUrl,
+          thumbnail_url: thumbnailUrl || null,
+          redirect_url: redirectUrlVal,
+          duration: durationVal,
+          target_province: provinceVal || null,
+          active: true
+        }
+      ]);
+
+    if (dbErr) throw dbErr;
+
+    updateAdProgressBar(100, '¡Campaña publicada con éxito!');
+    showAlert(adsUploadAlertContainer, 'success', '<strong>¡Felicitaciones!</strong> La campaña de anuncios vertical ha sido cargada y configurada con éxito.');
+    
+    adUploadForm.reset();
+    clearSelectedAdFile();
+    loadAds();
+  } catch (err) {
+    console.error("Error al publicar anuncio:", err);
+    showAlert(adsUploadAlertContainer, 'error', `<i class="fa-solid fa-circle-xmark"></i> Error: ${err.message || 'Error de conexión'}`);
+    adUploadProgressBox.style.display = 'none';
+  } finally {
+    btnAdUploadSubmit.disabled = false;
+    btnAdUploadSubmit.innerHTML = '<span>Publicar Campaña de Anuncio ⚡</span> <i class="fa-solid fa-rectangle-ad"></i>';
+  }
+}
+
+function updateAdProgressBar(percentage, statusText) {
+  adUploadProgressBar.style.width = `${percentage}%`;
+  adUploadPercentText.textContent = `${percentage}%`;
+  adUploadStatusText.textContent = statusText;
 }

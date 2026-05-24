@@ -860,13 +860,13 @@
       </div>
     </section>
 
-    <!-- Pestañas de Navegación del Panel -->
     <nav class="admin-tabs">
       <button class="tab-trigger active" data-tab="tab-upload"><i class="fa-solid fa-cloud-arrow-up"></i> Cargar Momentos</button>
       <button class="tab-trigger" data-tab="tab-videos" id="trigger-tab-videos"><i class="fa-solid fa-list-check"></i> Gestionar Catálogo</button>
       <button class="tab-trigger" data-tab="tab-comments" id="trigger-tab-comments"><i class="fa-solid fa-comments"></i> Comentarios</button>
       <button class="tab-trigger" data-tab="tab-users" id="trigger-tab-users"><i class="fa-solid fa-users"></i> Gestión de Usuarios</button>
       <button class="tab-trigger" data-tab="tab-metadata" id="trigger-tab-metadata"><i class="fa-solid fa-tags"></i> Categorías y Colecciones</button>
+      <button class="tab-trigger" data-tab="tab-ads" id="trigger-tab-ads"><i class="fa-solid fa-rectangle-ad"></i> Publicidad 📢</button>
     </nav>
 
     <!-- Pestaña 1: Carga de Videos (Uploader) -->
@@ -1220,6 +1220,131 @@
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- Pestaña 6: Gestión de Publicidad (Anuncios) -->
+    <div class="tab-content" id="tab-ads">
+      <div class="dashboard-layout">
+        <!-- Formulario e Inserción de Anuncios -->
+        <div class="glass-panel glassmorphism">
+          <div class="panel-title">
+            <i class="fa-solid fa-rectangle-ad" style="color:var(--neon-pink);"></i>
+            Subir Nueva Campaña de Anuncios 📢
+          </div>
+          
+          <div id="ads-upload-alert-container"></div>
+          
+          <form id="ad-upload-form" onsubmit="return false;">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="ad-title">Título del Anunciante / Marca</label>
+                <input class="form-input" type="text" id="ad-title" required placeholder="Ej: By Pass - 30% Off en Entradas">
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label" for="ad-redirect-url">Enlace Patrocinado (URL de Destino)</label>
+                <input class="form-input" type="url" id="ad-redirect-url" required placeholder="https://anunciante.com/egresados-promo">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="ad-duration">Duración del Video Anuncio (Segundos)</label>
+                <input class="form-input" type="number" id="ad-duration" required min="3" max="60" value="15">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="ad-target-province"><i class="fa-solid fa-map-pin"></i> Segmentación por Provincia (Opcional)</label>
+                <input class="form-input" type="text" id="ad-target-province" placeholder="Ej: Buenos Aires">
+              </div>
+            </div>
+
+            <!-- Selector de Archivo de Video Anuncio -->
+            <div class="form-group">
+              <label class="form-label"><i class="fa-solid fa-video"></i> Video del Anuncio (Vertical strictly MP4)</label>
+              <div class="file-drop-area" id="ad-video-drop-area">
+                <i class="fa-solid fa-video file-drop-icon"></i>
+                <div class="file-drop-text">
+                  <h4>Arrastra el video del anuncio aquí</h4>
+                  <p>O haz clic para explorar tus archivos (MP4, Max 50MB)</p>
+                </div>
+                <input class="file-input" type="file" id="ad-video-file" accept="video/mp4" required>
+              </div>
+            </div>
+
+            <!-- Previsualizador de Video y Aspect Ratio para Ads -->
+            <div class="preview-container" id="ad-video-preview-box">
+              <video class="preview-video-thumb" id="ad-aux-preview-video" muted></video>
+              <div class="preview-info">
+                <h5 id="ad-preview-file-name">ad_video.mp4</h5>
+                <p id="ad-preview-file-dimensions">Dimensiones: Leyendo...</p>
+                <p id="ad-preview-file-duration">Duración: Leyendo...</p>
+              </div>
+              <button class="btn-clear-file" id="ad-btn-clear-file" type="button" title="Quitar archivo">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+
+            <!-- Barra de Progreso de Subida de Anuncios -->
+            <div class="upload-progress-wrapper" id="ad-upload-progress-box">
+              <div class="progress-info">
+                <span id="ad-upload-status-text">Subiendo anuncio al Storage...</span>
+                <span id="ad-upload-percent-text">0%</span>
+              </div>
+              <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="ad-upload-progress-bar"></div>
+              </div>
+            </div>
+
+            <button class="premium-btn" type="submit" id="btn-ad-upload-submit" style="width: 100%; margin-top: 15px; border-color: var(--neon-pink); box-shadow: var(--neon-glow-pink);">
+              <span>Publicar Campaña de Anuncio ⚡</span>
+              <i class="fa-solid fa-rectangle-ad"></i>
+            </button>
+          </form>
+        </div>
+
+        <!-- Tabla y Estadísticas de Campañas -->
+        <div class="glass-panel glassmorphism">
+          <div class="panel-title">
+            <i class="fa-solid fa-chart-line" style="color:var(--neon-purple);"></i>
+            Campañas de Anuncios Activas
+          </div>
+          
+          <div id="ads-catalog-alert-container"></div>
+
+          <!-- Mini Tarjetas de Métricas de Anuncios -->
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">
+            <div class="glassmorphism" style="padding: 15px; border-radius: var(--radius-sm); text-align: center; border-color: rgba(168, 85, 247, 0.3);">
+              <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Impresiones Totales</div>
+              <div style="font-size: 1.4rem; font-family: var(--font-display); font-weight: 800; color: var(--neon-purple); margin-top: 4px;" id="ad-total-impressions">0</div>
+            </div>
+            <div class="glassmorphism" style="padding: 15px; border-radius: var(--radius-sm); text-align: center; border-color: rgba(236, 72, 153, 0.3);">
+              <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">Clics Totales</div>
+              <div style="font-size: 1.4rem; font-family: var(--font-display); font-weight: 800; color: var(--neon-pink); margin-top: 4px;" id="ad-total-clicks">0</div>
+            </div>
+            <div class="glassmorphism" style="padding: 15px; border-radius: var(--radius-sm); text-align: center; border-color: rgba(249, 115, 22, 0.3);">
+              <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase;">CTR Promedio</div>
+              <div style="font-size: 1.4rem; font-family: var(--font-display); font-weight: 800; color: var(--neon-orange); margin-top: 4px;" id="ad-average-ctr">0.00%</div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th style="width: 50px;">Vista</th>
+                  <th>Campaña / Anunciante</th>
+                  <th>Métricas (Imp / Clics / CTR)</th>
+                  <th style="text-align: center; width: 80px;">Estado</th>
+                  <th style="text-align: center; width: 60px;">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="admin-ads-tbody">
+                <!-- Cargado dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 

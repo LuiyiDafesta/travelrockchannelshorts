@@ -17,6 +17,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Estado global de la aplicación (se cargará dinámicamente de Supabase)
 const state = {
   videos: [],
+  ads: [], // Anuncios activos cargados desde Supabase
   activeVideoId: 1,
   isMuted: false, // Por defecto siempre activado (solicitud del usuario)
   currentFilter: 'all',
@@ -528,6 +529,28 @@ async function fetchVideosAndComments() {
       }
     }
 
+    // 4. Consultar anuncios activos desde Supabase
+    try {
+      const { data: activeAds, error: adsErr } = await supabase
+        .from('ads')
+        .select('*')
+        .eq('active', true);
+      
+      if (!adsErr && activeAds) {
+        state.ads = activeAds.map(ad => ({
+          id: ad.id,
+          title: ad.title,
+          videoUrl: ad.video_url,
+          thumbnailUrl: ad.thumbnail_url || 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60',
+          redirectUrl: ad.redirect_url || '',
+          duration: ad.duration || 15,
+          isAd: true // Identificador especial para anuncios
+        }));
+      }
+    } catch (e) {
+      console.warn("No se pudieron cargar los anuncios de Supabase:", e);
+    }
+
   } catch (err) {
     console.error("Error al cargar la base de datos Supabase:", err);
   }
@@ -805,7 +828,7 @@ function formatChapterTime(seconds) {
 // A. Renderizar el Feed de Videos (Estructura móvil y desktop híbrida)
 function renderFeed() {
   feedContainer.innerHTML = '';
-  const filtered = getFilteredVideos();
+  const filtered = getFilteredVideos(true);
 
   if (filtered.length === 0) {
     feedContainer.innerHTML = `
@@ -837,8 +860,79 @@ function renderFeed() {
     card.setAttribute('data-video-id', video.id);
     card.id = `short-card-${video.id}`;
 
-    // Layout inmersivo híbrido
-    card.innerHTML = `
+    if (video.isAd) {
+      card.className = `short-card ad-card ${isFirst ? 'active-desktop' : ''}`;
+      card.innerHTML = `
+        <div class="desktop-layout">
+          <!-- REPRODUCTOR VERTICAL -->
+          <div class="player-wrapper">
+            <video class="short-video" loop playsinline preload="metadata" src="${video.videoUrl}"></video>
+            <div class="video-overlay"></div>
+            
+            <div class="play-pause-hud"><i class="fa-solid fa-play"></i></div>
+            
+            <!-- Badge de Publicidad -->
+            <div class="ad-badge-indicator">
+              <i class="fa-solid fa-bullhorn"></i> Publicidad Patrocinada
+            </div>
+
+            <!-- Botón Saltar Anuncio (Skip) -->
+            <button class="btn-skip-ad" id="btn-skip-ad-${video.id}" style="pointer-events: none;">
+              Saltar en 5...
+            </button>
+
+            <!-- Info Flotante del Anunciante -->
+            <div class="video-info-panel" style="bottom: 74px !important;">
+              <span class="school-badge" style="background: var(--primary-gradient); box-shadow: var(--neon-glow-pink);"><i class="fa-solid fa-rectangle-ad"></i> ANUNCIO</span>
+              <h3 class="video-title-text">${video.title}</h3>
+              <p class="video-desc-text">Patrocinador oficial de TravelRock. Hacé clic en "Saber más" para ver esta oferta exclusiva.</p>
+            </div>
+
+            <!-- Barra de Control Integrada Estilo Netflix (Simplificada para Ads) -->
+            <div class="embedded-control-bar">
+              <div class="embedded-controls-top">
+                <div class="embedded-video-title">Anuncio - ${video.title}</div>
+                <div class="embedded-controls-right">
+                  <button class="embedded-btn btn-embedded-mute" title="Sonido/Silencio">
+                    <i class="fa-solid ${state.isMuted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="embedded-timeline-wrapper ad-timeline-wrapper" style="pointer-events: none;">
+                <div class="embedded-timeline-bar">
+                  <div class="embedded-timeline-fill"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botón CTA flotante inmersivo (Móvil) -->
+            <a href="${video.redirectUrl}" target="_blank" class="ad-cta-button-mobile ad-cta-trigger" data-ad-id="${Math.abs(video.id)}">
+              <span>Saber Más ⚡</span>
+            </a>
+          </div>
+
+          <!-- PANEL LATERAL DE DETALLES DEL ANUNCIANTE (Desktop) -->
+          <div class="side-panel ad-side-panel">
+            <div class="side-panel-body" style="justify-content: center; gap: 30px;">
+              <div class="ad-sponsor-card glassmorphism" style="padding: 30px; border-radius: var(--radius-lg); text-align: center; border-color: var(--neon-pink); background: rgba(168, 85, 247, 0.05); box-shadow: var(--neon-glow-pink);">
+                <div class="lock-crown-icon" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%); border-color: var(--neon-pink); width: 72px; height: 72px; margin: 0 auto 20px;">
+                  <i class="fa-solid fa-rectangle-ad" style="color: var(--neon-pink); filter: drop-shadow(0 0 10px rgba(236, 72, 153, 0.6)); font-size: 2rem;"></i>
+                </div>
+                <span class="school-badge" style="background: var(--primary-gradient); box-shadow: var(--neon-glow-pink); font-size: 0.8rem; padding: 4px 14px; margin-bottom: 15px;">ANUNCIANTE OFICIAL 🌟</span>
+                <h2 style="font-family: var(--font-display); font-size: 1.8rem; font-weight: 900; margin-bottom: 12px; line-height: 1.2;">${video.title}</h2>
+                <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 30px;">TravelRock te trae los momentos de tu vida con la mejor compañía. Visitá nuestro sitio oficial o hacé clic abajo para conocer descuentos exclusivos para tu viaje de egresados.</p>
+                <a href="${video.redirectUrl}" target="_blank" class="premium-checkout-btn ad-cta-trigger" data-ad-id="${Math.abs(video.id)}" style="text-decoration: none; max-width: 320px; margin: 0 auto; padding: 14px 28px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                  <span>Visitar Sitio Oficial 🌐</span>
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      // Layout inmersivo híbrido
+      card.innerHTML = `
       <div class="desktop-layout">
         
         <!-- REPRODUCTOR VERTICAL -->
@@ -1429,6 +1523,122 @@ function setupVideoControls(card, videoData) {
 
   const timelineWrapper = card.querySelector('.embedded-timeline-wrapper');
   const timelineFill = card.querySelector('.embedded-timeline-fill');
+
+  if (videoData.isAd) {
+    // 1. Contador para botón Saltar Anuncio (Skip)
+    const btnSkipAd = card.querySelector(`.btn-skip-ad`);
+    let skipSeconds = 5;
+    
+    // Función para manejar el tick del temporizador
+    const skipTimerTick = () => {
+      if (video.paused) return; // solo restar si está reproduciendo
+      
+      if (skipSeconds > 0) {
+        btnSkipAd.textContent = `Saltar en ${skipSeconds}...`;
+        skipSeconds--;
+      } else {
+        btnSkipAd.textContent = `Saltar anuncio ⏩`;
+        btnSkipAd.style.pointerEvents = 'auto'; // Permitir clicks
+        btnSkipAd.classList.add('active');
+        clearInterval(skipInterval);
+      }
+    };
+    
+    // Iniciar tick al reproducir
+    let skipInterval = null;
+    video.addEventListener('play', () => {
+      // Registrar la impresión cuando empieza a reproducir por primera vez
+      if (!video.dataset.impressionRecorded) {
+        video.dataset.impressionRecorded = 'true';
+        recordAdImpression(Math.abs(videoData.id));
+      }
+      
+      if (!skipInterval && skipSeconds >= 0) {
+        skipInterval = setInterval(skipTimerTick, 1000);
+      }
+    });
+    
+    video.addEventListener('pause', () => {
+      if (skipInterval) {
+        clearInterval(skipInterval);
+        skipInterval = null;
+      }
+    });
+    
+    // Configurar click en saltar anuncio
+    if (btnSkipAd) {
+      btnSkipAd.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (skipInterval) clearInterval(skipInterval);
+        
+        // Buscar el siguiente video en el feed con anuncios
+        const filtered = getFilteredVideos(true);
+        const currentIndex = filtered.findIndex(v => v.id === videoData.id);
+        if (currentIndex !== -1 && currentIndex < filtered.length - 1) {
+          const nextVideoData = filtered[currentIndex + 1];
+          state.activeVideoId = nextVideoData.id;
+          
+          if (window.innerWidth >= 992) {
+            document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
+            const targetCard = document.getElementById(`short-card-${nextVideoData.id}`);
+            if (targetCard) targetCard.classList.add('active-desktop');
+          } else {
+            const targetCard = document.getElementById(`short-card-${nextVideoData.id}`);
+            if (targetCard) {
+              targetCard.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+          
+          setTimeout(playActiveVideo, 200);
+        } else {
+          // Si es el último, pausar el video
+          video.pause();
+        }
+      });
+    }
+
+    // 2. Registrar clics de CTA
+    const ctaTriggers = card.querySelectorAll('.ad-cta-trigger');
+    ctaTriggers.forEach(trigger => {
+      trigger.addEventListener('click', () => {
+        recordAdClick(Math.abs(videoData.id));
+      });
+    });
+
+    // 3. Mute centralizado
+    if (btnEmbeddedMute) {
+      btnEmbeddedMute.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.isMuted = !state.isMuted;
+        updateMuteIconGlobally();
+      });
+    }
+
+    // Doble tap o clic simple en reproductor de anuncio (solo Play/Pause, no likes)
+    playerWrapper.addEventListener('click', (e) => {
+      if (e.target.closest('.embedded-control-bar') || e.target.closest('.btn-skip-ad') || e.target.closest('.ad-cta-button-mobile')) {
+        return;
+      }
+      if (video.paused) {
+        video.play().catch(err => console.log(err));
+      } else {
+        video.pause();
+      }
+    });
+    
+    // Sincronizar timeline en timeupdate para ads
+    video.addEventListener('timeupdate', () => {
+      if (video.duration) {
+        const percentage = (video.currentTime / video.duration) * 100;
+        if (timelineFill) {
+          timelineFill.style.width = `${percentage}%`;
+        }
+      }
+    });
+
+    // Desactivar comentarios / likes para ads
+    return;
+  }
 
   // A. Eventos de Reproducción y Mute
 
@@ -2208,19 +2418,24 @@ function playActiveVideo() {
   if (!activeCard) return;
 
   // Actualizar metadatos de SEO y Open Graph dinámicamente para los buscadores/IAs del cliente
-  const activeVideo = state.videos.find(v => v.id === state.activeVideoId);
+  const activeVideo = state.activeVideoId < 0
+    ? state.ads.find(ad => ad.id === Math.abs(state.activeVideoId))
+    : state.videos.find(v => v.id === state.activeVideoId);
+    
   if (activeVideo) {
-    const cleanSchool = activeVideo.school ? activeVideo.school.split(' - ')[0] : '';
-    document.title = `${activeVideo.title} | ${cleanSchool} | TravelRock Channel`;
+    const cleanSchool = activeVideo.school ? activeVideo.school.split(' - ')[0] : 'ANUNCIO';
+    document.title = activeVideo.isAd 
+      ? `Patrocinado: ${activeVideo.title} | TravelRock`
+      : `${activeVideo.title} | ${cleanSchool} | TravelRock Channel`;
     
     const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) metaDesc.setAttribute('content', activeVideo.description || '');
+    if (metaDesc) metaDesc.setAttribute('content', activeVideo.description || activeVideo.title || '');
     
     const ogTitle = document.querySelector('meta[property="og:title"]');
-    if (ogTitle) ogTitle.setAttribute('content', `${activeVideo.title} - ${cleanSchool}`);
+    if (ogTitle) ogTitle.setAttribute('content', activeVideo.isAd ? `Patrocinado: ${activeVideo.title}` : `${activeVideo.title} - ${cleanSchool}`);
     
     const ogDesc = document.querySelector('meta[property="og:description"]');
-    if (ogDesc) ogDesc.setAttribute('content', activeVideo.description || '');
+    if (ogDesc) ogDesc.setAttribute('content', activeVideo.description || activeVideo.title || '');
 
     const ogImage = document.querySelector('meta[property="og:image"]');
     if (ogImage) ogImage.setAttribute('content', activeVideo.thumbnailUrl || '');
@@ -2257,9 +2472,10 @@ function playActiveVideo() {
 
 // Precarga del siguiente video (Prefetch inteligente)
 function preloadNextVideo(currentId) {
-  const currentIndex = state.videos.findIndex(v => v.id === currentId);
-  if (currentIndex !== -1 && currentIndex < state.videos.length - 1) {
-    const nextVideoData = state.videos[currentIndex + 1];
+  const filtered = getFilteredVideos(true);
+  const currentIndex = filtered.findIndex(v => v.id === currentId);
+  if (currentIndex !== -1 && currentIndex < filtered.length - 1) {
+    const nextVideoData = filtered[currentIndex + 1];
     const nextCard = document.getElementById(`short-card-${nextVideoData.id}`);
     if (nextCard) {
       const nextVideoElement = nextCard.querySelector('.short-video');
@@ -2268,8 +2484,32 @@ function preloadNextVideo(currentId) {
   }
 }
 
+// Incrementar impresiones de anuncios en Supabase
+async function recordAdImpression(adId) {
+  try {
+    const { data: currentAd } = await supabase.from('ads').select('impressions').eq('id', adId).single();
+    if (currentAd) {
+      await supabase.from('ads').update({ impressions: (currentAd.impressions || 0) + 1 }).eq('id', adId);
+    }
+  } catch (err) {
+    console.warn("Error al registrar impresión de anuncio:", err);
+  }
+}
+
+// Incrementar clics de anuncios en Supabase
+async function recordAdClick(adId) {
+  try {
+    const { data: currentAd } = await supabase.from('ads').select('clicks').eq('id', adId).single();
+    if (currentAd) {
+      await supabase.from('ads').update({ clicks: (currentAd.clicks || 0) + 1 }).eq('id', adId);
+    }
+  } catch (err) {
+    console.warn("Error al registrar clic de anuncio:", err);
+  }
+}
+
 // Obtener lista filtrada de videos combinando categoría y búsqueda
-export function getFilteredVideos() {
+export function getFilteredVideos(includeAds = false) {
   let list = state.videos;
   
   // A. Filtrar por Categoría chip activa
@@ -2294,6 +2534,25 @@ export function getFilteredVideos() {
       (v.collection_name && v.collection_name.toLowerCase().includes(query)) ||
       (v.tags && v.tags.toLowerCase().includes(query))
     );
+  }
+  
+  // Intercalar anuncios dinámicamente si includeAds es true y el usuario es común (no premium) y hay anuncios
+  const isPremium = clientSession && clientSession.is_premium;
+  if (includeAds && !isPremium && state.ads && state.ads.length > 0) {
+    let result = [];
+    let adIndex = 0;
+    for (let i = 0; i < list.length; i++) {
+      result.push(list[i]);
+      if ((i + 1) % 4 === 0) {
+        const ad = state.ads[adIndex % state.ads.length];
+        result.push({
+          ...ad,
+          id: -ad.id // ID negativo para identificarlo como anuncio
+        });
+        adIndex++;
+      }
+    }
+    return result;
   }
   
   return list;
@@ -2440,7 +2699,7 @@ function setupKeyboardNavigation() {
       return;
     }
 
-    const filtered = getFilteredVideos();
+    const filtered = getFilteredVideos(true);
     const currentIndex = filtered.findIndex(v => v.id === state.activeVideoId);
 
     if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
@@ -2493,6 +2752,7 @@ if (recentlyPlayed.length === 0 && state.videos.length >= 3) {
 
 // Registrar un video reproducido en el historial
 function logRecentlyPlayed(id) {
+  if (id < 0) return; // Bypasear anuncios
   // Evitar duplicados moviendo el ID al principio
   recentlyPlayed = recentlyPlayed.filter(vidId => vidId !== id);
   recentlyPlayed.unshift(id);

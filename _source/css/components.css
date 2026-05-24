@@ -3188,5 +3188,137 @@
   bottom: 64px !important;
 }
 
+/* ==========================================================================
+   SISTEMA DE PUBLICIDAD VERTICAL (TRAVELROCK ADS)
+   ========================================================================== */
+
+/* Insignia de Publicidad */
+.ad-badge-indicator {
+  position: absolute;
+  top: 25px;
+  left: 20px;
+  background: rgba(8, 8, 10, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1.5px solid var(--neon-pink);
+  box-shadow: var(--neon-glow-pink);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  animation: pulseNeonPink 2s infinite alternate;
+}
+
+@keyframes pulseNeonPink {
+  0% { box-shadow: 0 0 5px rgba(236, 72, 153, 0.4); border-color: rgba(236, 72, 153, 0.6); }
+  100% { box-shadow: 0 0 15px rgba(236, 72, 153, 0.9); border-color: rgba(236, 72, 153, 1); }
+}
+
+/* Botón Saltar Anuncio (Skip) */
+.btn-skip-ad {
+  position: absolute;
+  bottom: 80px;
+  right: 0px;
+  background: rgba(8, 8, 10, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-right: none;
+  color: var(--text-secondary);
+  padding: 10px 24px 10px 20px;
+  border-radius: 30px 0 0 30px;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 10;
+  transition: all var(--transition-fast);
+}
+
+.btn-skip-ad.active {
+  color: #fff;
+  border-color: var(--neon-pink);
+  background: rgba(236, 72, 153, 0.2);
+  box-shadow: -5px 0 15px rgba(236, 72, 153, 0.3);
+}
+
+.btn-skip-ad.active:hover {
+  background: rgba(236, 72, 153, 0.3);
+  transform: translateX(-4px);
+}
+
+/* Botón CTA móvil de Anuncio */
+.ad-cta-button-mobile {
+  position: absolute;
+  bottom: 0px;
+  left: 0;
+  width: 100%;
+  height: 52px;
+  background: linear-gradient(90deg, var(--neon-pink) 0%, var(--neon-purple) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+  text-decoration: none;
+  text-transform: uppercase;
+  z-index: 10;
+  box-shadow: 0 -4px 15px rgba(236, 72, 153, 0.4);
+  transition: all var(--transition-normal);
+}
+
+.ad-cta-button-mobile:hover {
+  background: linear-gradient(90deg, #f43f5e 0%, #a855f7 100%);
+  filter: brightness(1.1);
+  letter-spacing: 2px;
+}
+
+.ad-cta-button-mobile span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: pulseText 1.5s infinite alternate;
+}
+
+@keyframes pulseText {
+  0% { transform: scale(1); text-shadow: 0 0 5px rgba(255,255,255,0.4); }
+  100% { transform: scale(1.05); text-shadow: 0 0 12px rgba(255,255,255,0.9); }
+}
+
+/* Sidebar de Anuncio (Desktop) */
+.ad-side-panel {
+  background: linear-gradient(180deg, rgba(8, 8, 10, 0.95) 0%, rgba(23, 15, 30, 0.98) 100%) !important;
+  border-left: 1.5px dashed rgba(236, 72, 153, 0.3) !important;
+}
+
+.ad-sponsor-card {
+  transition: transform var(--transition-normal);
+}
+
+.ad-sponsor-card:hover {
+  transform: translateY(-5px);
+}
+
+/* Deshabilitar timeline interacción para Anuncios */
+.ad-timeline-wrapper {
+  cursor: default !important;
+}
+
+/* Ocultar barra flotante integrada normal */
+.ad-card .settings-menu-wrapper {
+  display: none !important;
+}
+
 
 
