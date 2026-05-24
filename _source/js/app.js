@@ -2150,9 +2150,11 @@ function setupIntersectionObserver() {
         // Reproducir este
         video.muted = state.isMuted;
         video.play().catch(err => {
-          console.log("Autoplay bloqueado esperando interacción del usuario", err);
-          // Si el autoplay falla, mostramos el botón de unmute grande como indicador
-          card.querySelector('.unmute-overlay-btn').classList.add('visible');
+          console.warn("Autoplay con sonido bloqueado por el navegador. Intentando reproducir silenciado...", err);
+          video.muted = true;
+          state.isMuted = true;
+          updateMuteIconGlobally();
+          video.play().catch(e => console.error("Autoplay silenciado también falló:", e));
         });
 
         // Configuración de interfaz Desktop (Modo Cine)
@@ -2224,14 +2226,12 @@ function playActiveVideo() {
   video.muted = state.isMuted;
   video.currentTime = 0; // Iniciar desde el principio
   video.play()
-    .then(() => {
-      if (!state.isMuted) {
-        unmuteBtn.classList.remove('visible');
-      }
-    })
     .catch(err => {
-      console.log("Esperando interacción para reproducir:", err);
-      unmuteBtn.classList.add('visible');
+      console.warn("Autoplay con sonido bloqueado en inicio. Intentando reproducir silenciado...", err);
+      video.muted = true;
+      state.isMuted = true;
+      updateMuteIconGlobally();
+      video.play().catch(e => console.error("Autoplay silenciado también falló:", e));
     });
 
   // Actualizar UI activa en desktop
