@@ -14,6 +14,33 @@ const supabaseUrl = 'https://qtrcutddajulnwyzdwtc.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0cmN1dGRkYWp1bG53eXpkd3RjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NjE2MTYsImV4cCI6MjA5NTAzNzYxNn0.d7Pfif2JYI9UJzNdDUAtFTEoYFGWmwFQuCq_b3ZNIWM';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// safeStorage: Wrapper robusto para localStorage para soportar modo incógnito / navegación privada sin excepciones
+const memoryStore = {};
+const safeStorage = {
+  getItem: (key) => {
+    try {
+      return window.localStorage.getItem(key);
+    } catch (e) {
+      return memoryStore[key] || null;
+    }
+  },
+  setItem: (key, value) => {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch (e) {
+      memoryStore[key] = String(value);
+    }
+  },
+  removeItem: (key) => {
+    try {
+      window.localStorage.removeItem(key);
+    } catch (e) {
+      delete memoryStore[key];
+    }
+  }
+};
+const localStorage = safeStorage;
+
 // Estado global de la aplicación (se cargará dinámicamente de Supabase)
 const state = {
   videos: [],
