@@ -3321,5 +3321,49 @@
   display: none !important;
 }
 
+/* Gesto Pull to Refresh Premium */
+.pull-to-refresh-indicator {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(18, 18, 23, 0.85);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1.5px solid var(--glass-border);
+  color: var(--neon-pink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  z-index: 1000;
+  transition: opacity 0.2s ease, top 0.2s ease;
+  opacity: 0;
+  box-shadow: var(--shadow-premium), var(--neon-glow-pink);
+  pointer-events: none;
+}
+
+.pull-to-refresh-indicator.pulling {
+  opacity: 1;
+}
+
+.pull-to-refresh-indicator.loading {
+  top: 80px !important;
+  opacity: 1;
+}
+
+.pull-to-refresh-indicator.loading .spinner-icon {
+  animation: spin-refresh 1s linear infinite;
+}
+
+@keyframes spin-refresh {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+
 
 

@@ -651,6 +651,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Configurar observador inteligente para reproducción automática en móviles
   setupIntersectionObserver();
 
+  // Configurar gesto tirar para recargar (Pull-to-Refresh) en móvil
+  setupPullToRefresh();
+
   // Soporte de navegación por teclado en Desktop
   setupKeyboardNavigation();
 
@@ -2945,3 +2948,86 @@ function triggerConfetti() {
     animation.onfinish = () => confetti.remove();
   }, 35);
 }
+
+// Habilitar Gesto Pull-to-Refresh en Móvil
+function setupPullToRefresh() {
+  const feedView = document.getElementById('shorts-feed-view');
+  if (!feedView) return;
+
+  // Creamos e inyectamos el indicador dinámicamente si no existe
+  let indicator = document.getElementById('pull-to-refresh-indicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'pull-to-refresh-indicator';
+    indicator.className = 'pull-to-refresh-indicator';
+    indicator.innerHTML = '<i class="fa-solid fa-arrows-rotate spinner-icon"></i>';
+    feedView.appendChild(indicator);
+  }
+
+  let startY = 0;
+  let currentY = 0;
+  let isPulling = false;
+  const threshold = 90; // Distancia para activar recarga
+
+  feedView.addEventListener('touchstart', (e) => {
+    // Solo permitir pull-to-refresh si estamos en el tope superior
+    if (feedView.scrollTop === 0) {
+      startY = e.touches[0].pageY;
+      isPulling = true;
+      indicator.classList.remove('loading');
+      indicator.style.top = '-60px';
+      indicator.style.opacity = '0';
+    } else {
+      isPulling = false;
+    }
+  }, { passive: true });
+
+  feedView.addEventListener('touchmove', (e) => {
+    if (!isPulling) return;
+
+    currentY = e.touches[0].pageY;
+    const dy = currentY - startY;
+
+    if (dy > 0) {
+      // Registrar que estamos deslizando hacia abajo
+      indicator.classList.add('pulling');
+      // Limitar el estiramiento máximo (resistencia física)
+      const pullDist = Math.min(dy * 0.4, 120); 
+      indicator.style.top = `${-60 + pullDist}px`;
+      indicator.style.opacity = `${Math.min(pullDist / 60, 1)}`;
+      
+      // Si pasa el umbral, cambiar color para feedback
+      if (pullDist >= 60) {
+        indicator.style.color = 'var(--neon-purple)';
+        indicator.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+      } else {
+        indicator.style.color = 'var(--neon-pink)';
+        indicator.style.borderColor = 'var(--glass-border)';
+      }
+    }
+  }, { passive: true });
+
+  feedView.addEventListener('touchend', () => {
+    if (!isPulling) return;
+    isPulling = false;
+    indicator.classList.remove('pulling');
+
+    const topVal = parseInt(indicator.style.top || '-60');
+    if (topVal >= -20) {
+      // Activar animación de carga
+      indicator.classList.add('loading');
+      indicator.style.top = '80px';
+      indicator.style.opacity = '1';
+      
+      // Recargar la página (esto también limpia la caché móvil gracias al cache busting ?v=1.0.8)
+      setTimeout(() => {
+        location.reload();
+      }, 800);
+    } else {
+      // Cancelar y ocultar
+      indicator.style.top = '-60px';
+      indicator.style.opacity = '0';
+    }
+  });
+}
+
