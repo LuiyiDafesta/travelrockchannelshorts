@@ -3362,6 +3362,71 @@
   to { transform: rotate(360deg); }
 }
 
+/* ==========================================================================
+   MÓVIL ADICIONAL Y DETALLES DEL CANAL (TikTok/Reels Style Redesign)
+   ========================================================================== */
+
+/* Clases de Visibilidad en móvil/desktop */
+.mobile-only-action {
+  display: none !important;
+}
+
+.desktop-only-action {
+  display: flex !important;
+}
+
+/* Caja del canal (Egresados) al estilo de un Canal/TikTok */
+.video-info-channel-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.channel-avatar {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-gradient);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: #fff;
+  font-size: 0.95rem;
+  box-shadow: var(--neon-glow-pink);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.channel-meta {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.channel-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #fff;
+  letter-spacing: -0.3px;
+  text-shadow: 0 1px 5px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.video-episode-number {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+}
+
 
 
 

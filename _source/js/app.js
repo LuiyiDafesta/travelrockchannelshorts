@@ -229,6 +229,7 @@ function updateUserUI() {
 
 // Abrir modal de autenticación
 function openAuthModal(defaultTab = 'login') {
+  pauseAllVideos(); // Pausar videos activos en login
   const modal = document.getElementById('client-auth-modal');
   if (modal) {
     modal.classList.add('active');
@@ -1031,19 +1032,84 @@ function renderFeed() {
               <span class="action-count">Compartir</span>
             </div>
 
-            <div class="action-btn-wrapper">
+            <!-- Botón Mute para Móvil (Siempre visible en barra lateral) -->
+            <div class="action-btn-wrapper mobile-only-action">
+              <button class="action-btn btn-embedded-mute" title="Sonido/Silencio">
+                <i class="fa-solid ${state.isMuted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i>
+              </button>
+              <span class="action-count">Sonido</span>
+            </div>
+
+            <!-- Botón Ajustes para Móvil (Siempre visible en barra lateral) -->
+            <div class="action-btn-wrapper mobile-only-action settings-menu-wrapper">
+              <button class="action-btn btn-embedded-settings" title="Ajustes">
+                <i class="fa-solid fa-gear"></i>
+              </button>
+              <span class="action-count">Ajustes</span>
+              
+              <!-- Popover de Ajustes para Móviles -->
+              <div class="settings-popover glassmorphism hidden">
+                <div class="settings-title">Ajustes</div>
+                <div class="settings-options">
+                  <!-- Velocidad -->
+                  <div class="settings-row" id="settings-row-speed-mobile-${video.id}">
+                    <div class="settings-row-left">
+                      <i class="fa-solid fa-gauge-high"></i>
+                      <span>Velocidad</span>
+                    </div>
+                    <div class="settings-row-right">
+                      <span class="current-speed-text">Normal</span>
+                      <i class="fa-solid fa-chevron-right"></i>
+                    </div>
+                    <div class="settings-submenu speed-submenu hidden">
+                      <div class="submenu-item" data-speed="0.5">0.5x</div>
+                      <div class="submenu-item active" data-speed="1.0">Normal</div>
+                      <div class="submenu-item" data-speed="1.5">1.5x</div>
+                      <div class="submenu-item" data-speed="2.0">2.0x</div>
+                    </div>
+                  </div>
+                  <!-- Calidad -->
+                  <div class="settings-row" id="settings-row-quality-mobile-${video.id}">
+                    <div class="settings-row-left">
+                      <i class="fa-solid fa-sliders"></i>
+                      <span>Calidad</span>
+                    </div>
+                    <div class="settings-row-right">
+                      <span class="current-quality-text">Automático</span>
+                      <i class="fa-solid fa-chevron-right"></i>
+                    </div>
+                    <div class="settings-submenu quality-submenu hidden">
+                      <div class="submenu-item active" data-quality="auto">Automático</div>
+                      <div class="submenu-item" data-quality="1080p">1080p (Full HD)</div>
+                      <div class="submenu-item" data-quality="720p">720p (HD)</div>
+                      <div class="submenu-item" data-quality="480p">480p (SD)</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="action-btn-wrapper desktop-only-action">
               <button class="action-btn btn-fullscreen">
                 <i class="fa-solid fa-expand"></i>
               </button>
             </div>
           </div>
 
-          <!-- Info Flotante (badge, título y descripción) -->
+          <!-- Info Flotante Rediseñada Estilo Canal Egresados (TikTok/Screenshot style) -->
           <div class="video-info-panel">
-            <span class="school-badge"><i class="fa-solid fa-graduation-cap"></i> ${video.school}${video.province ? ` (${video.province})` : ''}</span>
-            ${video.is_premium ? `
-              <span class="school-badge" style="background: var(--primary-gradient); box-shadow: var(--neon-glow-pink); margin-left: 6px; text-transform: uppercase;"><i class="fa-solid fa-crown" style="color: #fde047; font-size: 0.75rem;"></i> PRO</span>
-            ` : ''}
+            <!-- Fila del Canal/Egresados con su avatar circular -->
+            <div class="video-info-channel-row">
+              <div class="channel-avatar">TR</div>
+              <div class="channel-meta">
+                <span class="channel-name">${(video.school || 'General').split(' - ')[0]}</span>
+                <span class="video-episode-number">${video.collection_name ? `E${video.episode_number || 1}` : 'Short'}</span>
+              </div>
+              ${video.is_premium ? `
+                <span class="school-badge" style="background: var(--primary-gradient); box-shadow: var(--neon-glow-pink); margin-left: 2px; text-transform: uppercase; font-size: 0.6rem; padding: 2px 6px;"><i class="fa-solid fa-crown" style="color: #fde047; font-size: 0.65rem;"></i> PRO</span>
+              ` : ''}
+            </div>
+            
             <h3 class="video-title-text">${video.title}</h3>
             <p class="video-desc-text">${video.description}</p>
           </div>
@@ -1540,14 +1606,12 @@ function setupVideoControls(card, videoData) {
   const unmuteBtn = card.querySelector('.unmute-overlay-btn');
   const chapterItems = card.querySelectorAll('.chapter-timeline-item');
 
-  // Nuevos Controles del Panel Integrado Estilo Netflix
-  const btnEmbeddedMute = card.querySelector('.btn-embedded-mute');
-  const btnEmbeddedSettings = card.querySelector('.btn-embedded-settings');
-  const settingsPopover = card.querySelector('.settings-popover');
-  const speedRow = card.querySelector(`#settings-row-speed-${videoData.id}`);
-  const qualityRow = card.querySelector(`#settings-row-quality-${videoData.id}`);
-  const speedSubmenu = speedRow?.querySelector('.speed-submenu');
-  const qualitySubmenu = qualityRow?.querySelector('.quality-submenu');
+  // Nuevos Controles del Panel Integrado Estilo Netflix y Barra Móvil
+  const btnEmbeddedMute = card.querySelectorAll('.btn-embedded-mute'); // queryAll
+  const btnEmbeddedSettingsList = card.querySelectorAll('.btn-embedded-settings'); // queryAll
+  const settingsPopoverList = card.querySelectorAll('.settings-popover'); // queryAll
+  const speedRows = card.querySelectorAll('[id^="settings-row-speed-"]'); // queryAll
+  const qualityRows = card.querySelectorAll('[id^="settings-row-quality-"]'); // queryAll
   const currentSpeedText = card.querySelector('.current-speed-text');
   const currentQualityText = card.querySelector('.current-quality-text');
 
@@ -1637,10 +1701,12 @@ function setupVideoControls(card, videoData) {
 
     // 3. Mute centralizado
     if (btnEmbeddedMute) {
-      btnEmbeddedMute.addEventListener('click', (e) => {
-        e.stopPropagation();
-        state.isMuted = !state.isMuted;
-        updateMuteIconGlobally();
+      btnEmbeddedMute.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.isMuted = !state.isMuted;
+          updateMuteIconGlobally();
+        });
       });
     }
 
@@ -1771,70 +1837,80 @@ function setupVideoControls(card, videoData) {
   // B. Menú de Ajustes Popover (Velocidad y Calidad)
 
   // Toggle Popover de Ajustes
-  if (btnEmbeddedSettings && settingsPopover) {
-    btnEmbeddedSettings.addEventListener('click', (e) => {
+  btnEmbeddedSettingsList.forEach(btn => {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      settingsPopover.classList.toggle('hidden');
-      // Ocultar submenús al abrir/cerrar
-      if (speedSubmenu) speedSubmenu.classList.add('hidden');
-      if (qualitySubmenu) qualitySubmenu.classList.add('hidden');
+      const popover = btn.closest('.settings-menu-wrapper')?.querySelector('.settings-popover');
+      if (popover) {
+        popover.classList.toggle('hidden');
+        // Ocultar submenús
+        popover.querySelector('.speed-submenu')?.classList.add('hidden');
+        popover.querySelector('.quality-submenu')?.classList.add('hidden');
+      }
     });
-  }
+  });
 
   // Cerrar popover si se hace clic afuera del wrapper de ajustes
   document.addEventListener('click', (e) => {
-    if (settingsPopover && !settingsPopover.classList.contains('hidden')) {
-      if (!e.target.closest('.settings-menu-wrapper')) {
-        settingsPopover.classList.add('hidden');
-      }
+    if (!e.target.closest('.settings-menu-wrapper')) {
+      settingsPopoverList.forEach(popover => popover.classList.add('hidden'));
     }
   });
 
   // Abrir submenú de velocidad
-  if (speedRow && speedSubmenu) {
-    speedRow.addEventListener('click', (e) => {
+  speedRows.forEach(row => {
+    row.addEventListener('click', (e) => {
       e.stopPropagation();
-      speedSubmenu.classList.remove('hidden');
-      if (qualitySubmenu) qualitySubmenu.classList.add('hidden');
+      const submenu = row.querySelector('.speed-submenu');
+      if (submenu) {
+        submenu.classList.remove('hidden');
+        row.closest('.settings-popover')?.querySelector('.quality-submenu')?.classList.add('hidden');
+      }
     });
-  }
+  });
 
   // Abrir submenú de calidad
-  if (qualityRow && qualitySubmenu) {
-    qualityRow.addEventListener('click', (e) => {
+  qualityRows.forEach(row => {
+    row.addEventListener('click', (e) => {
       e.stopPropagation();
-      qualitySubmenu.classList.remove('hidden');
-      if (speedSubmenu) speedSubmenu.classList.add('hidden');
+      const submenu = row.querySelector('.quality-submenu');
+      if (submenu) {
+        submenu.classList.remove('hidden');
+        row.closest('.settings-popover')?.querySelector('.speed-submenu')?.classList.add('hidden');
+      }
     });
-  }
+  });
 
   // Clic en items de Velocidad
-  if (speedSubmenu) {
-    speedSubmenu.querySelectorAll('.submenu-item').forEach(item => {
+  card.querySelectorAll('.speed-submenu').forEach(submenu => {
+    submenu.querySelectorAll('.submenu-item').forEach(item => {
       item.addEventListener('click', (e) => {
         e.stopPropagation();
         const speedVal = parseFloat(item.getAttribute('data-speed'));
         if (!isNaN(speedVal)) {
-          video.dataset.currentSpeed = speedVal; // Guardar velocidad en dataset para persistencia
+          video.dataset.currentSpeed = speedVal;
           video.playbackRate = speedVal;
-          video.defaultPlaybackRate = speedVal; // Evitar que el loop del navegador lo resetee
+          video.defaultPlaybackRate = speedVal;
           
-          // Actualizar estado activo en la UI del submenú
-          speedSubmenu.querySelectorAll('.submenu-item').forEach(i => i.classList.remove('active'));
-          item.classList.add('active');
+          // Actualizar estado activo en todos los submenús de velocidad de esta tarjeta
+          card.querySelectorAll('.speed-submenu').forEach(sub => {
+            sub.querySelectorAll('.submenu-item').forEach(i => {
+              if (parseFloat(i.getAttribute('data-speed')) === speedVal) i.classList.add('active');
+              else i.classList.remove('active');
+            });
+          });
 
           // Actualizar texto en la fila principal
-          if (currentSpeedText) {
-            currentSpeedText.textContent = speedVal === 1.0 ? 'Normal' : `${speedVal}x`;
-          }
+          card.querySelectorAll('.current-speed-text').forEach(el => {
+            el.textContent = speedVal === 1.0 ? 'Normal' : `${speedVal}x`;
+          });
 
-          // Ocultar submenú y popover
-          speedSubmenu.classList.add('hidden');
-          settingsPopover.classList.add('hidden');
+          // Ocultar todos los popovers
+          settingsPopoverList.forEach(popover => popover.classList.add('hidden'));
         }
       });
     });
-  }
+  });
 
   // Buscar o crear spinner dinámico de carga de calidad
   let qualitySpinner = playerWrapper.querySelector('.quality-loader-spinner');
@@ -1846,8 +1922,8 @@ function setupVideoControls(card, videoData) {
   }
 
   // Clic en items de Calidad (Carga simulada premium)
-  if (qualitySubmenu) {
-    qualitySubmenu.querySelectorAll('.submenu-item').forEach(item => {
+  card.querySelectorAll('.quality-submenu').forEach(submenu => {
+    submenu.querySelectorAll('.submenu-item').forEach(item => {
       item.addEventListener('click', (e) => {
         e.stopPropagation();
         const qualityVal = item.getAttribute('data-quality');
@@ -1860,33 +1936,36 @@ function setupVideoControls(card, videoData) {
         setTimeout(() => {
           qualitySpinner.classList.remove('active');
           
-          // Actualizar estado activo en la UI del submenú
-          qualitySubmenu.querySelectorAll('.submenu-item').forEach(i => i.classList.remove('active'));
-          item.classList.add('active');
+          // Actualizar estado activo en todos los submenús de calidad de esta tarjeta
+          card.querySelectorAll('.quality-submenu').forEach(sub => {
+            sub.querySelectorAll('.submenu-item').forEach(i => {
+              if (i.getAttribute('data-quality') === qualityVal) i.classList.add('active');
+              else i.classList.remove('active');
+            });
+          });
 
           // Actualizar texto en la fila principal
-          if (currentQualityText) {
-            const labelMap = {
-              'auto': 'Automático',
-              '1080p': '1080p (Full HD)',
-              '720p': '720p (HD)',
-              '480p': '480p (SD)'
-            };
-            currentQualityText.textContent = labelMap[qualityVal] || 'Automático';
-          }
+          const labelMap = {
+            'auto': 'Automático',
+            '1080p': '1080p (Full HD)',
+            '720p': '720p (HD)',
+            '480p': '480p (SD)'
+          };
+          card.querySelectorAll('.current-quality-text').forEach(el => {
+            el.textContent = labelMap[qualityVal] || 'Automático';
+          });
 
           // Reanudar video si estaba reproduciendo
           if (!wasPaused) {
             video.play().catch(err => console.log(err));
           }
 
-          // Ocultar submenú y popover
-          qualitySubmenu.classList.add('hidden');
-          settingsPopover.classList.add('hidden');
+          // Ocultar todos los popovers
+          settingsPopoverList.forEach(popover => popover.classList.add('hidden'));
         }, 800);
       });
     });
-  }
+  });
 
   // C. Barra de Progreso y Drag-to-Seek Móvil/Desktop Híbrido
   let isDraggingTimeline = false;
@@ -2449,6 +2528,16 @@ function setupIntersectionObserver() {
         
         // Pausar todos los demás primero
         pauseAllVideos();
+
+        // BLOQUEO DE SWIPE EN PUBLICIDADES (Las publicidades se quedan para obligarte a verlas)
+        const isAd = id < 0;
+        if (isAd) {
+          feedContainer.style.overflowY = 'hidden';
+          feedContainer.style.touchAction = 'none';
+        } else {
+          feedContainer.style.overflowY = 'scroll';
+          feedContainer.style.touchAction = 'pan-y';
+        }
         
         // Reproducir este
         video.muted = state.isMuted;
@@ -2491,6 +2580,18 @@ function playActiveVideo() {
   if (feedView && feedView.classList.contains('hidden')) {
     pauseAllVideos();
     return;
+  }
+
+  // BLOQUEO DE SWIPE EN PUBLICIDADES (Las publicidades se quedan para obligarte a verlas)
+  const isAdVideo = state.activeVideoId < 0;
+  if (feedView) {
+    if (isAdVideo) {
+      feedView.style.overflowY = 'hidden';
+      feedView.style.touchAction = 'none';
+    } else {
+      feedView.style.overflowY = 'scroll';
+      feedView.style.touchAction = 'pan-y';
+    }
   }
 
   const activeCard = document.getElementById(`short-card-${state.activeVideoId}`);

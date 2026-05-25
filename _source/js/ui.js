@@ -71,6 +71,7 @@ export function initNavigation(onViewChange) {
 
   // 4. Modal de Suscripción Premium
   const openPremiumModal = () => {
+    document.querySelectorAll('.short-video').forEach(v => v.pause()); // Pausar videos al abrir suscripción
     if (premiumCheckoutModal) {
       premiumCheckoutModal.classList.add('active');
     }
@@ -133,6 +134,7 @@ export function initNavigation(onViewChange) {
 
 // Función para alternar visualmente entre Feed y Explorer
 export function switchView(targetView) {
+  document.querySelectorAll('.short-video').forEach(v => v.pause()); // Pausar videos al cambiar de pestaña
   if (targetView === 'feed') {
     // Activar botón del Sidebar
     if (sidebarBtnFeed) sidebarBtnFeed.classList.add('active');
