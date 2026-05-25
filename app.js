@@ -893,7 +893,7 @@ function renderFeed() {
         <div class="desktop-layout">
           <!-- REPRODUCTOR VERTICAL -->
           <div class="player-wrapper">
-            <video class="short-video" loop playsinline preload="metadata" src="${video.videoUrl}"></video>
+            <video class="short-video" muted loop playsinline preload="metadata" src="${video.videoUrl}"></video>
             <div class="video-overlay"></div>
             
             <div class="play-pause-hud"><i class="fa-solid fa-play"></i></div>
@@ -965,7 +965,7 @@ function renderFeed() {
         <!-- REPRODUCTOR VERTICAL -->
         <div class="player-wrapper">
           <!-- Video Nativo -->
-          <video class="short-video" loop playsinline preload="metadata" src="${video.videoUrl}"></video>
+          <video class="short-video" muted loop playsinline preload="metadata" src="${video.videoUrl}"></video>
           
           <!-- Capa de Sombreado de UI -->
           <div class="video-overlay"></div>
@@ -1641,15 +1641,19 @@ function setupVideoControls(card, videoData) {
       });
     }
 
-    // Doble tap o clic simple en reproductor de anuncio (solo Play/Pause, no likes)
     playerWrapper.addEventListener('click', (e) => {
       if (e.target.closest('.embedded-control-bar') || e.target.closest('.btn-skip-ad') || e.target.closest('.ad-cta-button-mobile')) {
         return;
       }
-      if (video.paused) {
-        video.play().catch(err => console.log(err));
+      if (state.isMuted) {
+        state.isMuted = false;
+        updateMuteIconGlobally();
       } else {
-        video.pause();
+        if (video.paused) {
+          video.play().catch(err => console.log(err));
+        } else {
+          video.pause();
+        }
       }
     });
     
@@ -2040,11 +2044,15 @@ function setupVideoControls(card, videoData) {
       }, 800);
 
       giveLike();
-    } else {
       // Clic simple: Play/Pause del video con pequeña demora para evitar conflictos
       if (tapTimeout) clearTimeout(tapTimeout);
       tapTimeout = setTimeout(() => {
-        togglePlayPause();
+        if (state.isMuted) {
+          state.isMuted = false;
+          updateMuteIconGlobally();
+        } else {
+          togglePlayPause();
+        }
         tapTimeout = null;
       }, 250);
     }
@@ -2562,6 +2570,49 @@ export function getFilteredVideos(includeAds = false) {
       (v.tags && v.tags.toLowerCase().includes(query))
     );
   }
+
+  // C. Ordenamiento Inteligente: agrupar videos por colección y ordenarlos por número de episodio secuencial.
+  // Los videos que no pertenecen a ninguna colección mantendrán su orden original.
+  const collections = {};
+  const singleVideos = [];
+
+  list.forEach(v => {
+    if (v.collection_name) {
+      const colName = v.collection_name.trim();
+      if (!collections[colName]) {
+        collections[colName] = [];
+      }
+      collections[colName].push(v);
+    } else {
+      singleVideos.push(v);
+    }
+  });
+
+  // Ordenar episodios dentro de cada colección secuencialmente
+  for (const colName in collections) {
+    collections[colName].sort((a, b) => (a.episode_number || 999) - (b.episode_number || 999));
+  }
+
+  // Re-aplanar la lista agrupada: primero colecciones ordenadas por su video más reciente, y luego videos sueltos
+  let sortedList = [];
+  const collectionsArray = Object.keys(collections).map(colName => {
+    const vids = collections[colName];
+    const maxId = Math.max(...vids.map(v => v.id));
+    return { name: colName, videos: vids, maxId };
+  });
+
+  // Ordenar colecciones por maxId descendente
+  collectionsArray.sort((a, b) => b.maxId - a.maxId);
+
+  // Agregar videos de colecciones
+  collectionsArray.forEach(c => {
+    sortedList = sortedList.concat(c.videos);
+  });
+
+  // Agregar videos sueltos ordenados por ID descendente (más nuevos primero)
+  singleVideos.sort((a, b) => b.id - a.id);
+  sortedList = sortedList.concat(singleVideos);
+  list = sortedList;
   
   // Intercalar anuncios dinámicamente si includeAds es true y el usuario es común (no premium) y hay anuncios
   const isPremium = clientSession && clientSession.is_premium;

@@ -17,34 +17,45 @@
   
   .mobile-header {
     display: flex !important;
+    background: rgba(10, 10, 12, 0.4) !important; /* Esmerilado ultra premium */
+    backdrop-filter: blur(12px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
   }
   
   .mobile-tab-bar {
     display: flex !important;
+    background: rgba(10, 10, 12, 0.5) !important; /* Esmerilado ultra premium */
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
   }
   
-  /* Ajuste del main wrapper para móvil con header superior y tab bar inferior */
+  /* Ajuste del main wrapper para móvil (100% de la pantalla para vista de Shorts fluida tipo TikTok) */
   .main-wrapper {
     margin-left: 0 !important;
-    margin-top: 60px !important;
-    margin-bottom: 60px !important;
-    height: calc(100vh - 120px) !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    height: 100dvh !important;
     width: 100% !important;
   }
   
-  /* El wrapper del reproductor ocupa todo el ancho y alto disponible */
+  /* El wrapper del reproductor ocupa el 100% real de la pantalla notch-to-notch */
   .player-wrapper {
-    height: 100%;
-    max-height: 100%;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border: none !important;
+    aspect-ratio: auto !important;
   }
   
   .short-card {
-    padding: 0;
-    height: 100% !important;
-    min-height: 100% !important;
+    padding: 0 !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    width: 100% !important;
   }
 
   /* Ajuste de márgenes del header y categorías */
@@ -54,11 +65,15 @@
   
   .categories-container {
     padding: 12px 16px;
+    top: 60px !important;
+    background: linear-gradient(to bottom, rgba(8, 8, 10, 0.95) 0%, transparent 100%) !important;
   }
 
+  /* El Explorer (Catálogo Netflix) sí se empuja hacia abajo para no quedar tapado por el header */
   .explorer-view {
-    padding: 24px 16px 100px;
+    padding: 120px 16px 100px !important; /* Pushed down to sit below header & dynamic category chips */
     height: 100% !important;
+    overflow-y: auto !important;
   }
 
   .explorer-hero {
@@ -86,6 +101,24 @@
   
   .netflix-card-title {
     font-size: 0.75rem;
+  }
+
+  /* Mover acciones flotantes e info un poco más arriba para que no queden tapados por la barra de pestañas */
+  .video-actions {
+    bottom: 90px !important;
+    right: 12px !important;
+  }
+
+  .video-info-panel {
+    bottom: 90px !important;
+    left: 16px !important;
+    right: 76px !important;
+  }
+
+  .unmute-overlay-btn {
+    width: 64px !important;
+    height: 64px !important;
+    font-size: 1.5rem !important;
   }
 }
 
