@@ -2570,7 +2570,7 @@ export function getFilteredVideos(includeAds = false) {
     let adIndex = 0;
     for (let i = 0; i < list.length; i++) {
       result.push(list[i]);
-      if ((i + 1) % 4 === 0) {
+      if ((i + 1) % 2 === 0) {
         const ad = state.ads[adIndex % state.ads.length];
         result.push({
           ...ad,
