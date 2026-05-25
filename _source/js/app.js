@@ -7,7 +7,7 @@
  */
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { initNavigation, switchView, triggerLikeAnimation } from './ui.js';
+import { initNavigation, switchView, triggerLikeAnimation } from './ui.js?v=1.1.0';
 
 // 1. CONEXIÓN A SUPABASE
 const supabaseUrl = 'https://qtrcutddajulnwyzdwtc.supabase.co';
