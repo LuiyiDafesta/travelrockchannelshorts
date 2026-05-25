@@ -4,11 +4,11 @@
  * Orquesta la reproducción inteligente de videos, Intersection Observer,
  * autoplay con sonido centralizado, me gusta dinámicos, comentarios locales
  * y la renderización en móvil/desktop.
- * Version 1.1.1
+ * Version 1.1.2
  */
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { initNavigation, switchView, triggerLikeAnimation } from './ui.js?v=1.1.1';
+import { initNavigation, switchView, triggerLikeAnimation } from './ui.js?v=1.1.2';
 
 // 1. CONEXIÓN A SUPABASE
 const supabaseUrl = 'https://qtrcutddajulnwyzdwtc.supabase.co';
@@ -2512,9 +2512,9 @@ function updateMuteIconGlobally() {
 // Setup del Intersection Observer para Móviles (detección de scroll vertical snap)
 function setupIntersectionObserver() {
   const observerOptions = {
-    root: feedContainer,
+    root: null, // Usar el viewport del navegador (evita fallos silenciosos en Safari iOS y Chrome Mobile)
     rootMargin: '0px',
-    threshold: 0.6 // El video debe estar al menos al 60% visible para activarse
+    threshold: 0.5 // 50% visible para dispararse de forma más rápida y responsiva
   };
 
   const observer = new IntersectionObserver((entries) => {

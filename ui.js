@@ -3,7 +3,7 @@
  * 
  * Controla la navegación entre vistas (Feed vs Netflix), selección de categorías,
  * y efectos estéticos del menú lateral (sidebar) y barra inferior de pestañas (tab bar).
- * Version 1.1.1
+ * Version 1.1.2
  */
 
 // Elementos de la interfaz
