@@ -1238,8 +1238,8 @@ function renderFeed() {
           </div>
         </div>
 
-      </div>
     `;
+    }
 
     feedContainer.appendChild(card);
     
