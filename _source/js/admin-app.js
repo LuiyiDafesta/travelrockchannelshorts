@@ -48,11 +48,15 @@ let videoDuration = 0;
 let deleteTargetId = null;
 let dynamicCategories = [];
 let dynamicCollections = [];
+let loadedAds = [];
 
 // Elementos de Edición y CRUD
 const editVideoModal = document.getElementById('edit-video-modal');
 const btnEditCancel = document.getElementById('btn-edit-cancel');
 const editVideoForm = document.getElementById('edit-video-form');
+const editAdModal = document.getElementById('edit-ad-modal');
+const btnEditAdCancel = document.getElementById('btn-edit-ad-cancel');
+const editAdForm = document.getElementById('edit-ad-form');
 const categoryForm = document.getElementById('category-form');
 const collectionForm = document.getElementById('collection-form');
 
@@ -203,12 +207,20 @@ document.addEventListener('DOMContentLoaded', () => {
   if (editVideoForm) {
     editVideoForm.addEventListener('submit', saveVideoEdit);
   }
+  if (editAdForm) {
+    editAdForm.addEventListener('submit', saveAdEdit);
+  }
   if (adUploadForm) {
     adUploadForm.addEventListener('submit', publishAd);
   }
   if (btnEditCancel) {
     btnEditCancel.addEventListener('click', () => {
       editVideoModal.style.display = 'none';
+    });
+  }
+  if (btnEditAdCancel) {
+    btnEditAdCancel.addEventListener('click', () => {
+      editAdModal.style.display = 'none';
     });
   }
 
@@ -1654,6 +1666,8 @@ async function loadAds() {
 
     if (error) throw error;
 
+    loadedAds = ads || [];
+
     if (!ads || ads.length === 0) {
       adminAdsTbody.innerHTML = `
         <tr>
@@ -1711,7 +1725,10 @@ async function loadAds() {
               <span>${ad.active ? 'Activo' : 'Pausado'}</span>
             </button>
           </td>
-          <td style="text-align: center;">
+          <td style="text-align: center; display: flex; gap: 6px; justify-content: center; align-items: center; min-height: 55px;">
+            <button class="btn-edit-ad" data-id="${ad.id}" style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.2); color: #c084fc; border-radius: var(--radius-xs); padding: 6px 12px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all var(--transition-fast);">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
             <button class="btn-delete-ad" data-id="${ad.id}" data-url="${ad.video_url}" data-thumb="${ad.thumbnail_url}" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; border-radius: var(--radius-xs); padding: 6px 12px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all var(--transition-fast);">
               <i class="fa-solid fa-trash-can"></i>
             </button>
@@ -1745,6 +1762,18 @@ async function loadAds() {
           console.error("Error al actualizar estado del anuncio:", err);
           showAlert(adsCatalogAlertContainer, 'error', `Error: ${err.message}`);
           btn.disabled = false;
+        }
+      });
+    });
+
+    // Asignar eventos de edición de anuncios
+    const editAdBtns = adminAdsTbody.querySelectorAll('.btn-edit-ad');
+    editAdBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = parseInt(btn.getAttribute('data-id'));
+        const ad = loadedAds.find(a => a.id === id);
+        if (ad) {
+          openAdEditModal(ad);
         }
       });
     });
@@ -2001,3 +2030,65 @@ function updateAdProgressBar(percentage, statusText) {
   adUploadPercentText.textContent = `${percentage}%`;
   adUploadStatusText.textContent = statusText;
 }
+
+// F. Abrir Modal de Edición de Anuncio
+function openAdEditModal(ad) {
+  if (!editAdModal) return;
+  
+  document.getElementById('edit-ad-id').value = ad.id;
+  document.getElementById('edit-ad-title').value = ad.title || '';
+  document.getElementById('edit-ad-redirect-url').value = ad.redirect_url || '';
+  document.getElementById('edit-ad-duration').value = ad.duration || 15;
+  document.getElementById('edit-ad-target-province').value = ad.target_province || '';
+  
+  // Limpiar alerta anterior
+  const alertContainer = document.getElementById('edit-ad-alert-container');
+  if (alertContainer) alertContainer.innerHTML = '';
+  
+  editAdModal.style.display = 'flex';
+}
+
+// G. Guardar Edición del Anuncio (Update)
+async function saveAdEdit(e) {
+  e.preventDefault();
+  
+  const idVal = document.getElementById('edit-ad-id').value;
+  const titleVal = document.getElementById('edit-ad-title').value.trim();
+  const redirectUrlVal = document.getElementById('edit-ad-redirect-url').value.trim();
+  const durationVal = parseInt(document.getElementById('edit-ad-duration').value) || 15;
+  const provinceVal = document.getElementById('edit-ad-target-province').value.trim();
+  
+  const alertContainer = document.getElementById('edit-ad-alert-container');
+  const submitBtn = document.getElementById('btn-edit-ad-submit');
+  
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span>Guardando...</span> <i class="fa-solid fa-spinner fa-spin"></i>';
+  
+  try {
+    // Actualizar en la tabla ads de Supabase
+    const { error } = await supabase
+      .from('ads')
+      .update({
+        title: titleVal,
+        redirect_url: redirectUrlVal,
+        duration: durationVal,
+        target_province: provinceVal || null
+      })
+      .eq('id', idVal);
+      
+    if (error) throw error;
+    
+    showAlert(adsCatalogAlertContainer, 'success', '<i class="fa-solid fa-check"></i> El anuncio de publicidad se ha actualizado correctamente.');
+    editAdModal.style.display = 'none';
+    
+    loadAds();
+    updateStats();
+  } catch (err) {
+    console.error("Error al editar anuncio:", err);
+    showAlert(alertContainer, 'error', `Error al guardar cambios: ${err.message}`);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<span>Guardar Cambios</span> <i class="fa-solid fa-circle-check"></i>';
+  }
+}
+
