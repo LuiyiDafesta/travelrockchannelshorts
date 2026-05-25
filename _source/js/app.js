@@ -1827,10 +1827,12 @@ function setupVideoControls(card, videoData) {
 
   // Click en botón mute de la barra integrada
   if (btnEmbeddedMute) {
-    btnEmbeddedMute.addEventListener('click', (e) => {
-      e.stopPropagation();
-      state.isMuted = !state.isMuted;
-      updateMuteIconGlobally();
+    btnEmbeddedMute.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.isMuted = !state.isMuted;
+        updateMuteIconGlobally();
+      });
     });
   }
 
