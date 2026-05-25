@@ -177,6 +177,9 @@
   top: 0;
   left: 0;
   transition: opacity var(--transition-normal), transform var(--transition-normal);
+  touch-action: pan-y; /* Solo permitir scroll vertical, evitar interferencia horizontal */
+  -webkit-overflow-scrolling: touch; /* Scroll nativo suave en iOS */
+  overscroll-behavior-y: contain; /* Contener el overscroll dentro del feed */
 }
 
 .feed-view.hidden {
@@ -3180,14 +3183,9 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Forzar posición de Info Panel arriba del embedded-bar y ocultar Mute flotante central */
-.unmute-overlay-btn {
-  display: none !important;
-}
-
-.video-info-panel {
-  bottom: 64px !important;
-}
+/* Nota: .unmute-overlay-btn se controla con la clase .visible en JS.
+   NO ocultar globalmente para que funcione en móvil.
+   La barra embedded-control-bar maneja sus propios controles de mute. */
 
 /* ==========================================================================
    SISTEMA DE PUBLICIDAD VERTICAL (TRAVELROCK ADS)
@@ -3259,7 +3257,7 @@
 /* Botón CTA móvil de Anuncio */
 .ad-cta-button-mobile {
   position: absolute;
-  bottom: 0px;
+  bottom: 65px; /* Encima de la barra de pestañas móvil (60px + margen) */
   left: 0;
   width: 100%;
   height: 52px;

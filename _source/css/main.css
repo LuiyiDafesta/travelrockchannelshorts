@@ -73,6 +73,9 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scrollbar-width: none; /* Firefox */
+  overscroll-behavior: none; /* Bloquear pull-to-refresh nativo del navegador */
+  touch-action: manipulation; /* Eliminar 300ms tap delay y bloquear zoom accidental */
+  -webkit-tap-highlight-color: transparent; /* Eliminar highlight azul al tocar en Android */
 }
 
 /* Ocultar scrollbars globalmente */

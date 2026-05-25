@@ -1674,6 +1674,47 @@ function setupVideoControls(card, videoData) {
     return;
   }
 
+  // AUTO-HIDE DE CONTROLES EN MÓVIL (3 segundos de inactividad)
+  const embeddedBar = card.querySelector('.embedded-control-bar');
+  let controlsHideTimer = null;
+  const isMobileDevice = window.innerWidth < 992;
+
+  function showMobileControls() {
+    if (!isMobileDevice || !embeddedBar) return;
+    embeddedBar.style.opacity = '1';
+    embeddedBar.style.visibility = 'visible';
+    embeddedBar.style.transform = 'translateY(0)';
+    resetControlsTimer();
+  }
+
+  function hideMobileControls() {
+    if (!isMobileDevice || !embeddedBar) return;
+    embeddedBar.style.opacity = '0';
+    embeddedBar.style.visibility = 'hidden';
+    embeddedBar.style.transform = 'translateY(10px)';
+  }
+
+  function resetControlsTimer() {
+    if (controlsHideTimer) clearTimeout(controlsHideTimer);
+    controlsHideTimer = setTimeout(hideMobileControls, 3000);
+  }
+
+  if (isMobileDevice && embeddedBar) {
+    // Mostrar controles inicialmente por 3 segundos
+    showMobileControls();
+
+    // Al tocar cualquier parte del player-wrapper, mostrar controles
+    playerWrapper.addEventListener('touchstart', () => {
+      showMobileControls();
+    }, { passive: true });
+
+    // Mantener controles visibles al interactuar con ellos
+    embeddedBar.addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      resetControlsTimer();
+    }, { passive: true });
+  }
+
   // A. Eventos de Reproducción y Mute
 
   // Evento play del video: Sincroniza interfaz y asegura volumen

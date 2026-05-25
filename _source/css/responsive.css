@@ -21,6 +21,9 @@
     backdrop-filter: blur(12px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    /* Safe-area para iPhone con notch/Dynamic Island */
+    padding-top: env(safe-area-inset-top, 0px) !important;
+    height: calc(60px + env(safe-area-inset-top, 0px)) !important;
   }
   
   .mobile-tab-bar {
@@ -29,6 +32,9 @@
     backdrop-filter: blur(16px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
     border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+    /* Safe-area para iPhone con barra inferior */
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    height: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
   }
   
   /* Ajuste del main wrapper para móvil (100% de la pantalla para vista de Shorts fluida tipo TikTok) */
@@ -71,7 +77,9 @@
 
   /* El Explorer (Catálogo Netflix) sí se empuja hacia abajo para no quedar tapado por el header */
   .explorer-view {
-    padding: 120px 16px 100px !important; /* Pushed down to sit below header & dynamic category chips */
+    padding: 100px 16px 80px !important; /* Espacio para header y tab-bar con safe-areas */
+    padding-top: calc(100px + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
     height: 100% !important;
     overflow-y: auto !important;
   }
@@ -103,14 +111,14 @@
     font-size: 0.75rem;
   }
 
-  /* Mover acciones flotantes e info un poco más arriba para que no queden tapados por la barra de pestañas */
+  /* Mover acciones flotantes e info más arriba para que no queden tapados por la barra de pestañas y controles */
   .video-actions {
-    bottom: 90px !important;
+    bottom: calc(130px + env(safe-area-inset-bottom, 0px)) !important;
     right: 12px !important;
   }
 
   .video-info-panel {
-    bottom: 90px !important;
+    bottom: calc(130px + env(safe-area-inset-bottom, 0px)) !important;
     left: 16px !important;
     right: 76px !important;
   }
@@ -119,6 +127,25 @@
     width: 64px !important;
     height: 64px !important;
     font-size: 1.5rem !important;
+  }
+
+  /* Barra de controles embebida se posiciona encima de la tab-bar */
+  .embedded-control-bar {
+    bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    border-radius: 0 !important;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.6) 65%, rgba(0, 0, 0, 0) 100%) !important;
+  }
+
+  /* Botón CTA de anuncios encima de la tab-bar */
+  .ad-cta-button-mobile {
+    bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Botón de skip ad también se sube */
+  .btn-skip-ad {
+    bottom: calc(140px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
