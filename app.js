@@ -2302,7 +2302,10 @@ function setupVideoControls(card, videoData) {
     const tapLength = currentTime - lastTap;
 
     if (tapLength < 300 && tapLength > 0) {
+      // DOBLE TOQUE: Dar Me Gusta (Sin pausar ni reproducir)
       e.preventDefault();
+      
+      // Cancelar el play/pause programado por el primer toque
       if (tapTimeout) {
         clearTimeout(tapTimeout);
         tapTimeout = null;
@@ -2348,8 +2351,11 @@ function setupVideoControls(card, videoData) {
       }
 
       giveLike();
-      // Clic simple: Play/Pause del video con pequeña demora para evitar conflictos
+    } else {
+      // TOQUE SIMPLE: Programar Play/Pause con una pequeña demora de 250ms
+      // para permitir cancelar si el usuario hace un segundo toque del doble click
       if (tapTimeout) clearTimeout(tapTimeout);
+      
       tapTimeout = setTimeout(() => {
         if (state.isMuted) {
           state.isMuted = false;
