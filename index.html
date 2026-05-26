@@ -26,6 +26,8 @@
   
   <!-- Hoja de Estilos Unificada y Minificada (Assets de Producción para Ferozo) -->
   <link rel="stylesheet" href="app.min.css?v=1.1.2">
+  <!-- Hoja de Estilos UX/UI Premium de Alta Fidelidad -->
+  <link rel="stylesheet" href="custom-ux.css?v=1.2.0">
 </head>
 <body>
 
@@ -373,6 +375,94 @@
       </div>
     </div>
   </div>
+
+  <!-- F. CAJÓN DE COMENTARIOS MÓVIL DESLIZABLE (Bottom Sheet de Alta Fidelidad) -->
+  <div class="mobile-comments-drawer" id="mobile-comments-drawer">
+    <div class="drawer-drag-handler" id="drawer-drag-handler">
+      <div class="drawer-drag-line"></div>
+    </div>
+    <div class="drawer-header">
+      <h3><i class="fa-solid fa-comments"></i> Anécdotas de los Chicos</h3>
+      <button class="drawer-close-btn" id="btn-close-comments-drawer">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div class="drawer-comments-body" id="drawer-comments-body">
+      <!-- Generado dinámicamente por JS -->
+    </div>
+    <div class="drawer-footer">
+      <input type="text" class="drawer-comment-input" id="drawer-comment-input" placeholder="Sumá tu anécdota al viaje...">
+      <button class="drawer-comment-submit" id="btn-drawer-comment-submit">
+        <i class="fa-solid fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- G. MODAL DE ATAJOS DE TECLADO DESKTOP -->
+  <div class="shortcuts-legend-modal" id="shortcuts-legend-modal">
+    <div class="shortcuts-card">
+      <div class="shortcuts-header">
+        <div class="shortcuts-icon-container">
+          <i class="fa-solid fa-keyboard"></i>
+        </div>
+        <h2>Atajos de Teclado Premium</h2>
+        <p class="modal-subtitle">Navegación fluida estilo Home Cinema</p>
+      </div>
+      <div class="shortcuts-list">
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Siguiente Momentazo</span>
+          <div class="shortcut-keys">
+            <kbd class="key-cap">↓</kbd>
+            <kbd class="key-cap">S</kbd>
+          </div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Momentazo Anterior</span>
+          <div class="shortcut-keys">
+            <kbd class="key-cap">↑</kbd>
+            <kbd class="key-cap">W</kbd>
+          </div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Reproducir / Pausar</span>
+          <div class="shortcut-keys">
+            <kbd class="key-cap">Espacio</kbd>
+            <kbd class="key-cap">K</kbd>
+          </div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Dar Me Gusta (Like)</span>
+          <div class="shortcut-keys">
+            <kbd class="key-cap">L</kbd>
+          </div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Silenciar / Activar Sonido</span>
+          <div class="shortcut-keys">
+            <kbd class="key-cap">M</kbd>
+          </div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Abrir / Cerrar Comentarios</span>
+          <div class="shortcut-keys">
+            <kbd class="key-cap">C</kbd>
+          </div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Ver esta Guía de Ayuda</span>
+          <div class="shortcut-keys">
+            <kbd class="key-cap">?</kbd>
+          </div>
+        </div>
+      </div>
+      <button class="shortcuts-close-btn" id="btn-close-shortcuts-modal">Entendido ❄️</button>
+    </div>
+  </div>
+
+  <!-- H. BOTÓN FLOTANTE TRIGGER DE ATAJOS EN PC -->
+  <button class="shortcuts-trigger-desktop" id="shortcuts-trigger-desktop" title="Ver atajos de teclado (?)" aria-label="Ver atajos de teclado">
+    <i class="fa-solid fa-keyboard"></i>
+  </button>
 
   <!-- Script Principal de Base de Datos y Lógica (ES Modules) -->
   <script type="module" src="app.js?v=1.1.2"></script>

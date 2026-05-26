@@ -8,7 +8,7 @@
  */
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { initNavigation, switchView, triggerLikeAnimation } from './ui.js?v=1.1.2';
+import { initNavigation, switchView, triggerLikeAnimation, setCommentsDrawerState, setShortcutsModalState } from './ui.js?v=1.1.2';
 
 // 1. CONEXIÓN A SUPABASE
 const supabaseUrl = 'https://qtrcutddajulnwyzdwtc.supabase.co';
@@ -819,6 +819,150 @@ document.addEventListener('DOMContentLoaded', async () => {
       }, 300);
     });
   }
+
+  // ----------------------------------------------------------------------
+  // COMENTARIOS EN BOTTOM SHEET DRAWER Y GESTO DE CIERRE MÓVIL
+  // ----------------------------------------------------------------------
+  const btnCloseCommentsDrawer = document.getElementById('btn-close-comments-drawer');
+  const btnDrawerCommentSubmit = document.getElementById('btn-drawer-comment-submit');
+  const drawerCommentInput = document.getElementById('drawer-comment-input');
+  const drawer = document.getElementById('mobile-comments-drawer');
+  const dragHandler = document.getElementById('drawer-drag-handler');
+
+  // Cerrar Drawer móvil
+  if (btnCloseCommentsDrawer) {
+    btnCloseCommentsDrawer.addEventListener('click', () => {
+      setCommentsDrawerState(false);
+    });
+  }
+
+  // Submit de Comentario en Drawer
+  async function handleDrawerCommentSubmit() {
+    if (!clientSession) {
+      openAuthModal('login');
+      return;
+    }
+    if (!drawerCommentInput) return;
+    
+    const text = drawerCommentInput.value.trim();
+    const videoIdAttr = drawerCommentInput.getAttribute('data-id');
+    const videoId = videoIdAttr ? parseInt(videoIdAttr) : state.activeVideoId;
+    if (!text || isNaN(videoId)) return;
+
+    const defaultUser = clientSession.user_name || clientSession.email.split('@')[0];
+
+    try {
+      const { data, error } = await supabase
+        .from('comments')
+        .insert([{ video_id: videoId, user_name: defaultUser, text: text }])
+        .select();
+
+      if (error) throw error;
+
+      const newComment = { user: defaultUser, text: text, time: "Ahora" };
+      if (!state.comments[videoId]) state.comments[videoId] = [];
+      state.comments[videoId].unshift(newComment);
+
+      drawerCommentInput.value = '';
+
+      // Refrescar cajón
+      const drawerBody = document.getElementById('drawer-comments-body');
+      if (drawerBody) drawerBody.innerHTML = renderCommentsHtml(videoId);
+
+      // Refrescar comentarios en panel lateral Desktop (si está cargado)
+      const commentsListEl = document.getElementById(`comments-list-${videoId}`);
+      if (commentsListEl) commentsListEl.innerHTML = renderCommentsHtml(videoId);
+
+      // Actualizar conteos
+      const card = document.getElementById(`short-card-${videoId}`);
+      if (card) {
+        const commentCountElements = card.querySelectorAll('.comment-count-text');
+        commentCountElements.forEach(el => el.textContent = state.comments[videoId].length);
+      }
+
+      if (navigator.vibrate) navigator.vibrate(15); // Haptic de éxito
+    } catch (err) {
+      console.error("Error al guardar comentario desde drawer:", err);
+    }
+  }
+
+  if (btnDrawerCommentSubmit) {
+    btnDrawerCommentSubmit.addEventListener('click', handleDrawerCommentSubmit);
+  }
+  if (drawerCommentInput) {
+    drawerCommentInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleDrawerCommentSubmit();
+    });
+  }
+
+  // Gesto táctil inercial: Deslizar hacia abajo sobre el drag handler para cerrar
+  let drawerStartY = 0;
+  let drawerCurrentY = 0;
+  if (dragHandler && drawer) {
+    dragHandler.addEventListener('touchstart', (e) => {
+      drawerStartY = e.touches[0].pageY;
+      drawerCurrentY = drawerStartY;
+    }, { passive: true });
+    
+    dragHandler.addEventListener('touchmove', (e) => {
+      drawerCurrentY = e.touches[0].pageY;
+      const dy = drawerCurrentY - drawerStartY;
+      if (dy > 0) {
+        drawer.style.transform = `translateY(${dy}px)`;
+        drawer.style.transition = 'none';
+      }
+    }, { passive: true });
+    
+    dragHandler.addEventListener('touchend', () => {
+      drawer.style.transition = '';
+      const dy = drawerCurrentY - drawerStartY;
+      if (dy > 120) {
+        setCommentsDrawerState(false);
+      } else {
+        drawer.style.transform = '';
+      }
+    });
+  }
+
+  // Cerrar drawer al hacer tap fuera
+  document.addEventListener('click', (e) => {
+    if (drawer && drawer.classList.contains('open') && !drawer.contains(e.target) && !e.target.closest('.btn-comments-mobile') && !e.target.closest('#mobile-comments-drawer') && !e.target.closest('.comment-submit-btn')) {
+      setCommentsDrawerState(false);
+    }
+  });
+
+  // ----------------------------------------------------------------------
+  // MODAL DE ATAJOS DE TECLADO DESKTOP
+  // ----------------------------------------------------------------------
+  const shortcutsTriggerDesktop = document.getElementById('shortcuts-trigger-desktop');
+  const btnCloseShortcutsModal = document.getElementById('btn-close-shortcuts-modal');
+  const shortcutsModal = document.getElementById('shortcuts-legend-modal');
+
+  if (shortcutsTriggerDesktop) {
+    shortcutsTriggerDesktop.addEventListener('click', () => {
+      setShortcutsModalState(true);
+    });
+  }
+
+  if (btnCloseShortcutsModal) {
+    btnCloseShortcutsModal.addEventListener('click', () => {
+      setShortcutsModalState(false);
+    });
+  }
+
+  // Cerrar modal de atajos al hacer click fuera
+  if (shortcutsModal) {
+    shortcutsModal.addEventListener('click', (e) => {
+      if (e.target === shortcutsModal) {
+        setShortcutsModalState(false);
+      }
+    });
+  }
+
+  // ----------------------------------------------------------------------
+  // INICIAR MOTOR DE ILUMINACIÓN ADAPTATIVA (AMBILIGHT)
+  // ----------------------------------------------------------------------
+  startAmbilightEngine();
 });
 
 // ----------------------------------------------------------------------
@@ -2163,11 +2307,45 @@ function setupVideoControls(card, videoData) {
         clearTimeout(tapTimeout);
         tapTimeout = null;
       }
-      // Animación de corazón
-      doubleHeart.className = 'double-tap-heart animate';
-      setTimeout(() => {
-        doubleHeart.classList.remove('animate');
-      }, 800);
+      
+      // Emisión de partículas de corazones de alta fidelidad estilo Instagram
+      const rect = playerWrapper.getBoundingClientRect();
+      const clickX = e.clientX ? (e.clientX - rect.left) : (rect.width / 2);
+      const clickY = e.clientY ? (e.clientY - rect.top) : (rect.height / 2);
+      
+      // Lanzar feedback haptic si está en móvil
+      if (navigator.vibrate) navigator.vibrate([15, 10, 15]);
+      
+      for (let i = 0; i < 6; i++) {
+        const heartParticle = document.createElement('div');
+        heartParticle.className = 'particle-heart';
+        heartParticle.innerHTML = '<i class="fa-solid fa-heart"></i>';
+        
+        // Tonos de fucsia, fucsia-rosa, púrpura y cian glacial
+        const useCyan = Math.random() > 0.8;
+        const color = useCyan 
+          ? `hsl(${180 + Math.random() * 30}, 90%, 60%)` // Cian glacial
+          : `hsl(${300 + Math.random() * 50}, 95%, 65%)`; // Rosa / Violeta
+          
+        heartParticle.style.color = color;
+        heartParticle.style.left = `${clickX}px`;
+        heartParticle.style.top = `${clickY}px`;
+        
+        // Generar trayectorias curvas aleatorias a través de CSS Custom Properties
+        const xSwayMid = (Math.random() - 0.5) * 100;
+        const xSwayEnd = (Math.random() - 0.5) * 180;
+        const rotAngleMid = (Math.random() - 0.5) * 60;
+        const rotAngleEnd = (Math.random() - 0.5) * 120;
+        
+        heartParticle.style.setProperty('--x-sway-mid', `${xSwayMid}px`);
+        heartParticle.style.setProperty('--x-sway-end', `${xSwayEnd}px`);
+        heartParticle.style.setProperty('--rot-angle-mid', `${rotAngleMid}deg`);
+        heartParticle.style.setProperty('--rot-angle-end', `${rotAngleEnd}deg`);
+        heartParticle.style.animationDelay = `${i * 60}ms`;
+        
+        playerWrapper.appendChild(heartParticle);
+        setTimeout(() => heartParticle.remove(), 1000);
+      }
 
       giveLike();
       // Clic simple: Play/Pause del video con pequeña demora para evitar conflictos
@@ -2320,18 +2498,27 @@ function setupVideoControls(card, videoData) {
     });
   }
 
-  // En móvil, click en comentarios abre un alert o simulación rápida
+  // En móvil, click en comentarios abre el bottom sheet premium
   commentsMobileBtn.addEventListener('click', () => {
     if (!clientSession) {
       openAuthModal('login');
       return;
     }
-    const cList = state.comments[videoData.id] || [];
-    if (cList.length === 0) {
-      alert("Aún no hay comentarios. ¡Sé el primero!");
-    } else {
-      alert(`Anécdotas en Bariloche:\n\n` + cList.map(c => `• ${c.user}: ${c.text}`).join('\n'));
+    
+    // Inyectar comentarios en el drawer deslizable
+    const drawerBody = document.getElementById('drawer-comments-body');
+    if (drawerBody) {
+      drawerBody.innerHTML = renderCommentsHtml(videoData.id);
     }
+    
+    // Configurar ID activo en el input del drawer para asociarlo
+    const drawerInput = document.getElementById('drawer-comment-input');
+    if (drawerInput) {
+      drawerInput.setAttribute('data-id', videoData.id);
+    }
+    
+    // Abrir cajón deslizable con haptic feedback
+    setCommentsDrawerState(true);
   });
 
   // 1. Botón Replay de Show Card
@@ -2921,14 +3108,19 @@ function updateAppOnFilterOrSearch() {
 function setupKeyboardNavigation() {
   document.addEventListener('keydown', (e) => {
     // Si el usuario está escribiendo en comentarios o en la búsqueda, ignorar shortcuts
-    if (document.activeElement.classList.contains('comment-input') || document.activeElement.id === 'catalog-search-input') {
+    if (document.activeElement.classList.contains('comment-input') || 
+        document.activeElement.classList.contains('drawer-comment-input') || 
+        document.activeElement.id === 'catalog-search-input') {
       return;
     }
 
     const filtered = getFilteredVideos(true);
     const currentIndex = filtered.findIndex(v => v.id === state.activeVideoId);
+    const activeCard = document.getElementById(`short-card-${state.activeVideoId}`);
 
-    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+    const key = e.key.toLowerCase();
+
+    if (e.key === 'ArrowDown' || key === 's') {
       // Siguiente video
       if (currentIndex < filtered.length - 1) {
         e.preventDefault();
@@ -2940,7 +3132,7 @@ function setupKeyboardNavigation() {
           document.getElementById(`short-card-${state.activeVideoId}`).scrollIntoView({ behavior: 'smooth' });
         }
       }
-    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+    } else if (e.key === 'ArrowUp' || key === 'w') {
       // Video anterior
       if (currentIndex > 0) {
         e.preventDefault();
@@ -2952,15 +3144,44 @@ function setupKeyboardNavigation() {
           document.getElementById(`short-card-${state.activeVideoId}`).scrollIntoView({ behavior: 'smooth' });
         }
       }
-    } else if (e.key === ' ') {
-      // Espacio: Play/Pause del video activo
+    } else if (e.key === ' ' || key === 'k') {
+      // Espacio o 'K': Play/Pause del video activo
       e.preventDefault();
-      const activeCard = document.getElementById(`short-card-${state.activeVideoId}`);
       if (activeCard) {
         const video = activeCard.querySelector('.short-video');
-        if (video.paused) video.play();
-        else video.pause();
+        if (video) {
+          if (video.paused) video.play().catch(err => console.log(err));
+          else video.pause();
+        }
       }
+    } else if (key === 'l') {
+      // 'L': Dar Me Gusta (Click programático al botón de me gusta de la tarjeta activa)
+      e.preventDefault();
+      if (activeCard) {
+        const likeBtn = activeCard.querySelector('.btn-like');
+        if (likeBtn) likeBtn.click();
+      }
+    } else if (key === 'm') {
+      // 'M': Mute/Unmute global
+      e.preventDefault();
+      state.isMuted = !state.isMuted;
+      updateMuteIconGlobally();
+    } else if (key === 'c') {
+      // 'C': Foco en el cajón de comentarios (Desktop) o abrir cajón (Móvil)
+      e.preventDefault();
+      if (activeCard) {
+        if (window.innerWidth < 992) {
+          const commentsMobileBtn = activeCard.querySelector('.btn-comments-mobile');
+          if (commentsMobileBtn) commentsMobileBtn.click();
+        } else {
+          const commentInput = activeCard.querySelector('.comment-input');
+          if (commentInput) commentInput.focus();
+        }
+      }
+    } else if (e.key === '?' || e.key === '¿') {
+      // '?': Mostrar panel de atajos de teclado
+      e.preventDefault();
+      setShortcutsModalState(true);
     }
   });
 }
@@ -3141,13 +3362,19 @@ function setupPullToRefresh() {
       indicator.style.top = `${-60 + pullDist}px`;
       indicator.style.opacity = `${Math.min(pullDist / 60, 1)}`;
       
+      // Calcular y aplicar ángulo de rotación para el copo de nieve
+      const pullAngle = Math.min(dy * 2.2, 360);
+      indicator.style.setProperty('--pull-angle', `${pullAngle}deg`);
+      
       // Si pasa el umbral, cambiar color para feedback
       if (pullDist >= 60) {
-        indicator.style.color = 'var(--neon-purple)';
-        indicator.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+        indicator.style.color = 'var(--neon-cyan)';
+        indicator.style.borderColor = 'rgba(6, 182, 212, 0.4)';
+        indicator.style.boxShadow = 'var(--shadow-neon-cyan)';
       } else {
         indicator.style.color = 'var(--neon-pink)';
         indicator.style.borderColor = 'var(--glass-border)';
+        indicator.style.boxShadow = 'none';
       }
     }
   }, { passive: true });
@@ -3174,5 +3401,59 @@ function setupPullToRefresh() {
       indicator.style.opacity = '0';
     }
   });
+}
+
+// ----------------------------------------------------------------------
+// ILUMINACIÓN AMBIENTAL ADAPTATIVA (Ambilight Engine)
+// ----------------------------------------------------------------------
+let ambilightInterval = null;
+const ambilightCanvas = document.createElement('canvas');
+ambilightCanvas.width = 10;
+ambilightCanvas.height = 10;
+const ambilightCtx = ambilightCanvas.getContext('2d');
+
+function startAmbilightEngine() {
+  if (ambilightInterval) clearInterval(ambilightInterval);
+  
+  ambilightInterval = setInterval(() => {
+    // Buscar el video activo en reproducción
+    const activeCard = document.getElementById(`short-card-${state.activeVideoId}`);
+    if (!activeCard) return;
+    
+    const video = activeCard.querySelector('.short-video');
+    if (!video || video.paused || video.ended || document.hidden) return;
+    
+    try {
+      // Dibujar frame en canvas miniatura para calcular promedio
+      ambilightCtx.drawImage(video, 0, 0, 10, 10);
+      const frameData = ambilightCtx.getImageData(0, 0, 10, 10).data;
+      
+      let r = 0, g = 0, b = 0;
+      for (let i = 0; i < frameData.length; i += 4) {
+        r += frameData[i];
+        g += frameData[i+1];
+        b += frameData[i+2];
+      }
+      const count = frameData.length / 4;
+      r = Math.max(10, Math.floor(r / count));
+      g = Math.max(10, Math.floor(g / count));
+      b = Math.max(10, Math.floor(b / count));
+      
+      const root = document.documentElement;
+      // Proyectar color primario
+      root.style.setProperty('--neon-purple', `rgb(${r}, ${g}, ${b})`);
+      
+      // Proyectar color complementario o desplazado para aurora 2
+      const r2 = Math.min(255, r + 45);
+      const g2 = Math.max(0, g - 25);
+      const b2 = Math.min(255, b + 55);
+      root.style.setProperty('--neon-pink', `rgb(${r2}, ${g2}, ${b2})`);
+      
+      // Proyectar color invertido en baja opacidad para aurora 3
+      root.style.setProperty('--neon-orange', `rgb(${b}, ${g}, ${r})`);
+    } catch (e) {
+      // Captura silenciosa para evitar bloqueos CORS si hay urls externas
+    }
+  }, 1400);
 }
 

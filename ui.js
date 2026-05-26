@@ -192,3 +192,29 @@ function resetPremiumModalSteps() {
     step3.classList.add('hidden');
   }
 }
+
+// Abrir/Cerrar Cajón de Comentarios Móvil
+export function setCommentsDrawerState(isOpen) {
+  const drawer = document.getElementById('mobile-comments-drawer');
+  if (!drawer) return;
+  
+  if (isOpen) {
+    drawer.classList.add('open');
+    if (navigator.vibrate) navigator.vibrate(15); // Feedback háptico premium
+  } else {
+    drawer.classList.remove('open');
+    if (navigator.vibrate) navigator.vibrate(10); // Feedback háptico premium
+  }
+}
+
+// Abrir/Cerrar Modal de Atajos de Teclado
+export function setShortcutsModalState(isOpen) {
+  const modal = document.getElementById('shortcuts-legend-modal');
+  if (!modal) return;
+  
+  if (isOpen) {
+    modal.classList.add('active');
+  } else {
+    modal.classList.remove('active');
+  }
+}
