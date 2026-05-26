@@ -1492,14 +1492,14 @@ function renderFeed() {
 }
 
 // B. Renderizar Filas de Carruseles Estilo Netflix en el Explorer
-function renderNetflixRows() {
+function renderNetflixRows(filteredVideos = state.videos) {
   netflixContainer.innerHTML = '';
   
   // Agrupar videos por colección de forma dinámica
   const collectionsMap = {};
   const uncategorizedVideos = [];
   
-  state.videos.forEach(video => {
+  filteredVideos.forEach(video => {
     if (video.collection_name) {
       const colName = video.collection_name.trim();
       if (!collectionsMap[colName]) {
@@ -1580,14 +1580,14 @@ function renderNetflixRows() {
 }
 
 // B2. Renderizar Carrusel TOP 5 Ranking Popularidad Estilo Netflix
-function renderNetflixRanking() {
+function renderNetflixRanking(filteredVideos = state.videos) {
   const rankingContainer = document.getElementById('netflix-ranking-container');
   if (!rankingContainer) return;
   
   rankingContainer.innerHTML = '';
   
   // Obtener los top 5 videos más vistos/populares (ordenados por likes de mayor a menor)
-  const popularVideos = [...state.videos]
+  const popularVideos = [...filteredVideos]
     .sort((a, b) => (b.likes || 0) - (a.likes || 0))
     .slice(0, 5);
     
@@ -1596,8 +1596,7 @@ function renderNetflixRanking() {
     return;
   }
   
-  // Si estamos filtrando o buscando, se ocultará desde updateAppOnFilterOrSearch
-  rankingContainer.style.display = state.currentFilter === 'all' ? 'block' : 'none';
+  rankingContainer.style.display = 'block';
   
   rankingContainer.innerHTML = `
     <div class="netflix-row ranking-row">
@@ -1654,14 +1653,14 @@ function renderNetflixRanking() {
 }
 
 // B1. Renderizar Carrusel de "Últimos Agregados" (Tarjetas Grandes estilo Hero)
-function renderNetflixFeatured() {
+function renderNetflixFeatured(filteredVideos = state.videos) {
   const featuredContainer = document.getElementById('netflix-featured-container');
   if (!featuredContainer) return;
   
   featuredContainer.innerHTML = '';
   
   // Obtener los últimos 4 videos subidos/agregados (ordenados por ID descendente)
-  const latestVideos = [...state.videos]
+  const latestVideos = [...filteredVideos]
     .sort((a, b) => b.id - a.id)
     .slice(0, 4);
     
@@ -1670,8 +1669,7 @@ function renderNetflixFeatured() {
     return;
   }
   
-  // Controlar visibilidad del contenedor de destacados en la vista general
-  featuredContainer.style.display = state.currentFilter === 'all' ? 'block' : 'none';
+  featuredContainer.style.display = 'block';
   
   featuredContainer.innerHTML = `
     <div class="netflix-row featured-row">
@@ -3400,19 +3398,17 @@ function updateAppOnFilterOrSearch() {
     if (netflixRankingContainer) netflixRankingContainer.style.display = 'none';
     if (gridSectionTitle) gridSectionTitle.textContent = `Resultados de Búsqueda para "${searchInput.value.trim()}" (${filtered.length})`;
   } else {
-    // Si no hay búsqueda:
-    if (state.currentFilter === 'all') {
-      // Mostrar destacados, carruseles y ranking
-      if (netflixFeaturedContainer) netflixFeaturedContainer.style.display = 'block';
-      if (netflixRowsContainer) netflixRowsContainer.style.display = 'block';
-      if (netflixRankingContainer) netflixRankingContainer.style.display = 'block';
-      if (gridSectionTitle) gridSectionTitle.textContent = 'Todos los Momentos';
-    } else {
-      // Ocultar destacados, carruseles y ranking, y mostrar momentos de la categoría seleccionada
-      if (netflixFeaturedContainer) netflixFeaturedContainer.style.display = 'none';
-      if (netflixRowsContainer) netflixRowsContainer.style.display = 'none';
-      if (netflixRankingContainer) netflixRankingContainer.style.display = 'none';
-      if (gridSectionTitle) gridSectionTitle.textContent = `${categoryLabels[state.currentFilter]} (${filtered.length})`;
+    // Si no hay búsqueda: renderizar destacados, ranking y filas de forma dinámica usando la lista filtrada!
+    renderNetflixFeatured(filtered);
+    renderNetflixRanking(filtered);
+    renderNetflixRows(filtered);
+    
+    if (gridSectionTitle) {
+      if (state.currentFilter === 'all') {
+        gridSectionTitle.textContent = 'Todos los Momentos';
+      } else {
+        gridSectionTitle.textContent = `${categoryLabels[state.currentFilter]} (${filtered.length})`;
+      }
     }
   }
   
