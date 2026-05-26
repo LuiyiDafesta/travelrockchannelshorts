@@ -14,6 +14,15 @@ import { initNavigation, switchView, triggerLikeAnimation, setCommentsDrawerStat
 const supabaseUrl = 'https://qtrcutddajulnwyzdwtc.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0cmN1dGRkYWp1bG53eXpkd3RjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NjE2MTYsImV4cCI6MjA5NTAzNzYxNn0.d7Pfif2JYI9UJzNdDUAtFTEoYFGWmwFQuCq_b3ZNIWM';
 const supabase = createClient(supabaseUrl, supabaseKey);
+// publicSupabase (o supabaseAnon) asegura que las consultas de lectura siempre actúen de forma anónima
+// para eludir filtros RLS de roles 'authenticated' que restringen videos para usuarios logueados
+const supabaseAnon = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  }
+});
 
 // safeStorage: Wrapper robusto para localStorage para soportar modo incógnito / navegación privada sin excepciones
 const memoryStore = {};
@@ -178,8 +187,11 @@ function updateUserUI() {
       }
       if (premiumSidebarCard) premiumSidebarCard.style.display = 'none';
       if (mobileHeaderPremiumBtn) {
-        mobileHeaderPremiumBtn.style.color = '#fde047';
-        mobileHeaderPremiumBtn.style.textShadow = '0 0 10px rgba(253, 224, 71, 0.6)';
+        mobileHeaderPremiumBtn.classList.add('hidden'); // Ocultar corona premium para usuarios PRO
+      }
+      const tabBtnPremium = document.getElementById('tab-btn-premium');
+      if (tabBtnPremium) {
+        tabBtnPremium.classList.add('hidden'); // Ocultar pestaña Premium para usuarios PRO
       }
     } else {
       if (sidebarRoleBadge) {
@@ -188,8 +200,13 @@ function updateUserUI() {
       }
       if (premiumSidebarCard) premiumSidebarCard.style.display = 'block';
       if (mobileHeaderPremiumBtn) {
+        mobileHeaderPremiumBtn.classList.remove('hidden'); // Mostrar corona premium para usuarios no PRO
         mobileHeaderPremiumBtn.style.color = '';
         mobileHeaderPremiumBtn.style.textShadow = '';
+      }
+      const tabBtnPremium = document.getElementById('tab-btn-premium');
+      if (tabBtnPremium) {
+        tabBtnPremium.classList.remove('hidden'); // Mostrar pestaña Premium para usuarios no PRO
       }
     }
 
@@ -210,8 +227,13 @@ function updateUserUI() {
     if (mobileUserAvatar) mobileUserAvatar.classList.add('hidden');
     if (premiumSidebarCard) premiumSidebarCard.style.display = 'block';
     if (mobileHeaderPremiumBtn) {
+      mobileHeaderPremiumBtn.classList.remove('hidden'); // Mostrar para invitados
       mobileHeaderPremiumBtn.style.color = '';
       mobileHeaderPremiumBtn.style.textShadow = '';
+    }
+    const tabBtnPremium = document.getElementById('tab-btn-premium');
+    if (tabBtnPremium) {
+      tabBtnPremium.classList.remove('hidden'); // Mostrar pestaña Premium para invitados
     }
 
     if (sidebarBtnAdmin) sidebarBtnAdmin.classList.add('hidden');
@@ -476,8 +498,8 @@ function getRelativeTime(date) {
 // Cargar dinámicamente videos y comentarios desde Supabase
 async function fetchVideosAndComments() {
   try {
-    // 1. Consultar todos los videos
-    const { data: videos, error: vErr } = await supabase
+    // 1. Consultar todos los videos usando el cliente anon para evitar filtros RLS de usuarios autenticados
+    const { data: videos, error: vErr } = await supabaseAnon
       .from('videos')
       .select('*')
       .order('id', { ascending: false });
@@ -504,8 +526,8 @@ async function fetchVideosAndComments() {
       tags: v.tags
     }));
 
-    // 2. Consultar todos los comentarios
-    const { data: comments, error: cErr } = await supabase
+    // 2. Consultar todos los comentarios usando el cliente anon
+    const { data: comments, error: cErr } = await supabaseAnon
       .from('comments')
       .select('*')
       .order('id', { ascending: false });
@@ -528,8 +550,8 @@ async function fetchVideosAndComments() {
       });
     });
 
-    // 3. Consultar todas las categorías dinámicamente
-    const { data: dbCategories, error: catErr } = await supabase
+    // 3. Consultar todas las categorías dinámicamente usando el cliente anon
+    const { data: dbCategories, error: catErr } = await supabaseAnon
       .from('categories')
       .select('*')
       .order('name');
@@ -558,9 +580,9 @@ async function fetchVideosAndComments() {
       }
     }
 
-    // 4. Consultar anuncios activos desde Supabase
+    // 4. Consultar anuncios activos desde Supabase usando el cliente anon
     try {
-      const { data: activeAds, error: adsErr } = await supabase
+      const { data: activeAds, error: adsErr } = await supabaseAnon
         .from('ads')
         .select('*')
         .eq('active', true);
