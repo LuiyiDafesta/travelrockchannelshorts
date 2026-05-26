@@ -2940,6 +2940,17 @@ function trackScrollFocus() {
 function pauseAllVideos() {
   document.querySelectorAll('.short-video').forEach(video => {
     video.pause();
+    if (video.dataset.prerollPlaying === 'true') {
+      video.src = video.dataset.originalSrc;
+      delete video.dataset.prerollPlaying;
+      delete video.dataset.originalSrc;
+      const overlay = video.parentElement.querySelector('.preroll-ad-overlay');
+      if (overlay) overlay.remove();
+      if (video.prerollInterval) {
+        clearInterval(video.prerollInterval);
+        delete video.prerollInterval;
+      }
+    }
   });
 }
 
@@ -3001,6 +3012,14 @@ function playActiveVideo() {
   
   pauseAllVideos();
   
+  // PRE-ROLL AD SYSTEM (YouTube Style Ad injection)
+  const isPremium = clientSession && clientSession.is_premium;
+  if (state.activeVideoId >= 0 && !isPremium && state.ads && state.ads.length > 0 && Math.random() < 0.35) {
+    const ad = state.ads[Math.floor(Math.random() * state.ads.length)];
+    triggerPreRollAd(activeCard, video, ad, activeVideo.videoUrl);
+    return;
+  }
+  
   video.muted = state.isMuted;
   video.currentTime = 0; // Iniciar desde el principio
   video.play()
@@ -3014,6 +3033,138 @@ function playActiveVideo() {
   if (window.innerWidth >= 992) {
     document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
     activeCard.classList.add('active-desktop');
+  }
+}
+
+// Lanza un anuncio Pre-Roll estilo YouTube antes de reproducir el short
+function triggerPreRollAd(card, video, ad, originalSrc) {
+  const playerWrapper = card.querySelector('.player-wrapper');
+  if (!playerWrapper) return;
+  
+  // Evitar duplicados
+  const existingOverlay = playerWrapper.querySelector('.preroll-ad-overlay');
+  if (existingOverlay) existingOverlay.remove();
+  
+  // Registrar impresión del anuncio
+  recordAdImpression(ad.id).catch(err => console.log(err));
+  
+  // Guardar estado en el elemento de video
+  video.dataset.prerollPlaying = 'true';
+  video.dataset.originalSrc = originalSrc;
+  video.src = ad.videoUrl;
+  video.load();
+  video.muted = state.isMuted;
+  
+  // Crear el overlay HTML
+  const overlay = document.createElement('div');
+  overlay.className = 'preroll-ad-overlay glassmorphism';
+  overlay.style.cssText = `
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 96;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 24px;
+    background: rgba(8, 8, 10, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-sizing: border-box;
+  `;
+  
+  overlay.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+      <span class="school-badge" style="background: var(--primary-gradient); box-shadow: var(--neon-glow-pink); font-size: 0.65rem; padding: 4px 10px; font-weight: 700;"><i class="fa-solid fa-rectangle-ad"></i> ANUNCIO</span>
+      <a href="${ad.redirectUrl}" target="_blank" class="ad-cta-button-mobile ad-cta-trigger" data-ad-id="${ad.id}" style="position: static; transform: none; animation: ad-cta-pulse 2s infinite ease-in-out; font-size: 0.7rem; padding: 6px 16px; border-radius: 20px;">
+        Visitar Web ⚡
+      </a>
+    </div>
+    
+    <div style="text-align: center; margin: 20px 0;">
+      <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 800; color: #fff; margin: 0 0 6px 0; line-height: 1.3;">${ad.title}</h3>
+      <p style="font-size: 0.75rem; color: var(--text-secondary); max-width: 260px; margin: 0 auto; line-height: 1.4;">Patrocinador oficial de TravelRock. Tu video comenzará después del anuncio.</p>
+    </div>
+    
+    <div style="display: flex; justify-content: flex-end; width: 100%;">
+      <button class="btn-skip-ad preroll-skip-btn" style="position: static; padding: 8px 16px; font-weight: 700; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #ccc; border-radius: 8px; font-size: 0.75rem; pointer-events: none; transition: all 0.2s;">
+        Saltar en 5...
+      </button>
+    </div>
+  `;
+  
+  playerWrapper.appendChild(overlay);
+  
+  // Reproducir el anuncio
+  video.play().catch(err => {
+    video.muted = true;
+    video.play().catch(e => console.log("Preroll play error:", e));
+  });
+  
+  // Configurar contador de skip
+  let skipSec = 5;
+  const skipBtn = overlay.querySelector('.preroll-skip-btn');
+  
+  const interval = setInterval(() => {
+    if (video.paused) return; // Pausar cuenta si el video se detiene
+    skipSec--;
+    if (skipSec > 0) {
+      skipBtn.textContent = `Saltar en ${skipSec}...`;
+    } else {
+      clearInterval(interval);
+      delete video.prerollInterval;
+      skipBtn.textContent = 'Saltar Anuncio ⚡';
+      skipBtn.style.pointerEvents = 'auto';
+      skipBtn.style.background = 'var(--primary-gradient)';
+      skipBtn.style.borderColor = 'transparent';
+      skipBtn.style.color = '#fff';
+      skipBtn.style.boxShadow = 'var(--neon-glow-pink)';
+      skipBtn.style.cursor = 'pointer';
+    }
+  }, 1000);
+  
+  video.prerollInterval = interval;
+  
+  // Acción del botón saltar
+  const skipAdAction = () => {
+    clearInterval(interval);
+    delete video.prerollInterval;
+    overlay.remove();
+    
+    // Restaurar video original
+    video.src = originalSrc;
+    delete video.dataset.prerollPlaying;
+    delete video.dataset.originalSrc;
+    video.load();
+    video.muted = state.isMuted;
+    video.play().catch(e => {
+      video.muted = true;
+      video.play().catch(err => console.log(err));
+    });
+  };
+  
+  skipBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    skipAdAction();
+  });
+  
+  // Si el video de anuncio termina solo, continuar al video principal
+  video.addEventListener('ended', function onAdEnded() {
+    if (video.dataset.prerollPlaying === 'true') {
+      video.removeEventListener('ended', onAdEnded);
+      skipAdAction();
+    }
+  });
+  
+  // Configurar click en Visitar Web para registrar clic
+  const ctaTrigger = overlay.querySelector('.ad-cta-trigger');
+  if (ctaTrigger) {
+    ctaTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      recordAdClick(ad.id).catch(err => console.log(err));
+    });
   }
 }
 
