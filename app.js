@@ -2704,8 +2704,9 @@ function updateMuteIconGlobally() {
 
 // Setup del Intersection Observer para Móviles (detección de scroll vertical snap)
 function setupIntersectionObserver() {
+  const feedView = document.getElementById('shorts-feed-view');
   const observerOptions = {
-    root: null, // Usar el viewport del navegador (evita fallos silenciosos en Safari iOS y Chrome Mobile)
+    root: feedView || null, // Contenedor scrollable real para máxima fidelidad e intersección precisa
     rootMargin: '0px',
     threshold: 0.5 // 50% visible para dispararse de forma más rápida y responsiva
   };
