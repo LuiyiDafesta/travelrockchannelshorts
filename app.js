@@ -1831,8 +1831,38 @@ function setupVideoControls(card, videoData) {
           
           setTimeout(playActiveVideo, 200);
         } else {
-          // Si es el último, pausar el video
+          // Si es el último, volvemos al primer video para permitir bucle continuo en el feed sin trabarse
           video.pause();
+          const firstVideoData = filtered[0];
+          if (firstVideoData) {
+            state.activeVideoId = firstVideoData.id;
+            
+            // Forzar desbloqueo de scroll antes de mover el foco para evitar cualquier congelamiento
+            const feedView = document.getElementById('shorts-feed-view');
+            if (feedView) {
+              feedView.style.overflowY = 'scroll';
+              feedView.style.touchAction = 'pan-y';
+            }
+            
+            if (window.innerWidth >= 992) {
+              document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
+              const targetCard = document.getElementById(`short-card-${firstVideoData.id}`);
+              if (targetCard) targetCard.classList.add('active-desktop');
+            } else {
+              const targetCard = document.getElementById(`short-card-${firstVideoData.id}`);
+              if (targetCard) {
+                targetCard.scrollIntoView({ behavior: 'smooth' });
+              }
+            }
+            setTimeout(playActiveVideo, 200);
+          } else {
+            // Fallback si no hay videos
+            const feedView = document.getElementById('shorts-feed-view');
+            if (feedView) {
+              feedView.style.overflowY = 'scroll';
+              feedView.style.touchAction = 'pan-y';
+            }
+          }
         }
       });
     }
@@ -2927,16 +2957,26 @@ function playActiveVideo() {
   }
 }
 
-// Precarga del siguiente video (Prefetch inteligente)
+// Precarga del siguiente video (Prefetch inteligente y buffer agresivo)
 function preloadNextVideo(currentId) {
   const filtered = getFilteredVideos(true);
   const currentIndex = filtered.findIndex(v => v.id === currentId);
-  if (currentIndex !== -1 && currentIndex < filtered.length - 1) {
-    const nextVideoData = filtered[currentIndex + 1];
-    const nextCard = document.getElementById(`short-card-${nextVideoData.id}`);
-    if (nextCard) {
-      const nextVideoElement = nextCard.querySelector('.short-video');
-      nextVideoElement.setAttribute('preload', 'auto');
+  if (currentIndex !== -1) {
+    // Precargar los siguientes 2 videos para tener un colchón de buffering
+    for (let offset = 1; offset <= 2; offset++) {
+      const targetIndex = currentIndex + offset;
+      if (targetIndex < filtered.length) {
+        const nextVideoData = filtered[targetIndex];
+        const nextCard = document.getElementById(`short-card-${nextVideoData.id}`);
+        if (nextCard) {
+          const nextVideoElement = nextCard.querySelector('.short-video');
+          if (nextVideoElement && !nextVideoElement.dataset.preloaded) {
+            nextVideoElement.setAttribute('preload', 'auto');
+            nextVideoElement.load(); // Fuerza al navegador a comenzar la descarga y almacenamiento en buffer inmediatamente
+            nextVideoElement.dataset.preloaded = 'true';
+          }
+        }
+      }
     }
   }
 }
