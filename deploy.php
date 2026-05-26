@@ -39,14 +39,16 @@ if (!is_dir('.git')) {
 
 // 3. COMANDOS DE DESPLIEGUE SECUENCIALES
 $commands = [
-    'git status' => 'Verificando estado actual...',
-    'git reset --hard HEAD' => 'Descartando cambios locales en servidor (seguridad)...',
-    'git pull origin main' => 'Descargando y aplicando últimos cambios de producción...',
-    'git status' => 'Verificando estado consolidado final...'
+    ['cmd' => 'git status', 'desc' => 'Verificando estado actual...'],
+    ['cmd' => 'git reset --hard HEAD', 'desc' => 'Descartando cambios locales en servidor (seguridad)...'],
+    ['cmd' => 'git pull origin main', 'desc' => 'Descargando y aplicando últimos cambios de producción...'],
+    ['cmd' => 'git status', 'desc' => 'Verificando estado consolidado final...']
 ];
 
 $success = true;
-foreach ($commands as $cmd => $desc) {
+foreach ($commands as $step) {
+    $cmd = $step['cmd'];
+    $desc = $step['desc'];
     echo "[PASO] > $desc\n";
     echo "$ > $cmd\n";
     
