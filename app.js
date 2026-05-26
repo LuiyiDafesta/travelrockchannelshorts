@@ -2381,7 +2381,6 @@ function setupVideoControls(card, videoData) {
       }
     }
   }
-  }
 
   likeBtnMobile.addEventListener('click', giveLike);
   if (likeBtnDesktop) likeBtnDesktop.addEventListener('click', giveLike);
