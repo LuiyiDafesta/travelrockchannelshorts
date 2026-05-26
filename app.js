@@ -1789,7 +1789,8 @@ function setupVideoControls(card, videoData) {
       // Registrar la impresión cuando empieza a reproducir por primera vez
       if (!video.dataset.impressionRecorded) {
         video.dataset.impressionRecorded = 'true';
-        recordAdImpression(Math.abs(videoData.id));
+        const originalAdId = Math.abs(videoData.id) % 10000;
+        recordAdImpression(originalAdId);
       }
       
       if (!skipInterval && skipSeconds >= 0) {
@@ -1840,7 +1841,8 @@ function setupVideoControls(card, videoData) {
     const ctaTriggers = card.querySelectorAll('.ad-cta-trigger');
     ctaTriggers.forEach(trigger => {
       trigger.addEventListener('click', () => {
-        recordAdClick(Math.abs(videoData.id));
+        const originalAdId = Math.abs(videoData.id) % 10000;
+        recordAdClick(originalAdId);
       });
     });
 
@@ -2754,8 +2756,6 @@ function setupIntersectionObserver() {
               video.muted = state.isMuted;
               video.play().catch(err => {
                 video.muted = true;
-                state.isMuted = true;
-                updateMuteIconGlobally();
                 video.play().catch(e => console.log("Play fallido:", e));
               });
             }
@@ -2832,8 +2832,6 @@ function trackScrollFocus() {
         video.muted = state.isMuted;
         video.play().catch(err => {
           video.muted = true;
-          state.isMuted = true;
-          updateMuteIconGlobally();
           video.play().catch(e => console.log("Play fallido scroll:", e));
         });
       }
@@ -2880,7 +2878,7 @@ function playActiveVideo() {
 
   // Actualizar metadatos de SEO y Open Graph dinámicamente para los buscadores/IAs del cliente
   const activeVideo = state.activeVideoId < 0
-    ? state.ads.find(ad => ad.id === Math.abs(state.activeVideoId))
+    ? state.ads.find(ad => ad.id === (Math.abs(state.activeVideoId) % 10000))
     : state.videos.find(v => v.id === state.activeVideoId);
     
   if (activeVideo) {
@@ -2919,8 +2917,6 @@ function playActiveVideo() {
     .catch(err => {
       console.warn("Autoplay con sonido bloqueado en inicio. Intentando reproducir silenciado...", err);
       video.muted = true;
-      state.isMuted = true;
-      updateMuteIconGlobally();
       video.play().catch(e => console.error("Autoplay silenciado también falló:", e));
     });
 
@@ -3044,14 +3040,14 @@ export function getFilteredVideos(includeAds = false) {
   const isPremium = clientSession && clientSession.is_premium;
   if (includeAds && !isPremium && state.ads && state.ads.length > 0) {
     let result = [];
-    let adIndex = 0;
+    let adIndex = 1; // Empezar en 1 para evitar ID de 0
     for (let i = 0; i < list.length; i++) {
       result.push(list[i]);
       if ((i + 1) % 2 === 0) {
-        const ad = state.ads[adIndex % state.ads.length];
+        const ad = state.ads[(adIndex - 1) % state.ads.length];
         result.push({
           ...ad,
-          id: -ad.id // ID negativo para identificarlo como anuncio
+          id: -(ad.id + (adIndex * 10000)) // ID negativo y único basado en la posición para evitar colisiones en findIndex
         });
         adIndex++;
       }
