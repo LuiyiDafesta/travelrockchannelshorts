@@ -505,6 +505,9 @@ async function fetchVideosAndComments() {
       .order('id', { ascending: false });
     if (vErr) throw vErr;
     
+    // Obtener likes locales guardados del usuario para persistir la UI
+    const likedVideos = JSON.parse(localStorage.getItem('tr_liked_videos') || '[]');
+
     // Mapear campos de Postgres a nombres de claves esperados en el JS del frontend
     state.videos = (videos || []).map(v => ({
       id: v.id,
@@ -523,7 +526,8 @@ async function fetchVideosAndComments() {
       province: v.province,
       chapters: v.chapters,
       is_premium: v.is_premium,
-      tags: v.tags
+      tags: v.tags,
+      hasLiked: likedVideos.includes(v.id) // Cargar estado de Like persistente
     }));
 
     // 2. Consultar todos los comentarios usando el cliente anon
@@ -1179,7 +1183,7 @@ function renderFeed() {
           <!-- Acciones Flotantes (Visibles en móvil, ocultas en desktop cine) -->
           <div class="video-actions">
             <div class="action-btn-wrapper">
-              <button class="action-btn btn-like" data-id="${video.id}">
+              <button class="action-btn btn-like ${video.hasLiked ? 'liked' : ''}" data-id="${video.id}">
                 <i class="fa-solid fa-heart"></i>
               </button>
               <span class="action-count count-like">${video.likes}</span>
@@ -1360,7 +1364,7 @@ function renderFeed() {
                   <button class="btn-replay-showcard">
                     <i class="fa-solid fa-play"></i> Ver de nuevo
                   </button>
-                  <button class="btn-like-showcard btn-like-desktop" data-id="${video.id}">
+                  <button class="btn-like-showcard btn-like-desktop ${video.hasLiked ? 'liked' : ''}" data-id="${video.id}">
                     <i class="fa-solid fa-heart"></i> <strong class="desktop-like-count">${video.likes}</strong>
                   </button>
                   <button class="btn-share-showcard btn-share-desktop" data-id="${video.id}">
@@ -2304,16 +2308,25 @@ function setupVideoControls(card, videoData) {
   const likeCountTextMobile = card.querySelector('.count-like');
   const likeCountTextDesktop = card.querySelector('.desktop-like-count');
 
-  // Acción de Dar Like
-  async function giveLike() {
+  // Acción de Dar/Quitar Like
+  async function giveLike(forceLike = false) {
     if (!clientSession) {
       openAuthModal('login');
       return;
     }
     const videoObj = state.videos.find(v => v.id === videoData.id);
+    const likedVideos = JSON.parse(localStorage.getItem('tr_liked_videos') || '[]');
+
     if (!videoObj.hasLiked) {
+      // DAR LIKE
       videoObj.likes += 1;
       videoObj.hasLiked = true;
+      
+      // Guardar en localStorage
+      if (!likedVideos.includes(videoData.id)) {
+        likedVideos.push(videoData.id);
+        localStorage.setItem('tr_liked_videos', JSON.stringify(likedVideos));
+      }
       
       // Actualizar interfaz
       likeCountTextMobile.textContent = videoObj.likes;
@@ -2328,16 +2341,46 @@ function setupVideoControls(card, videoData) {
       
       triggerLikeAnimation(likeBtnMobile);
 
-      // Persistir like de forma inmediata en Supabase
+      // Persistir en Supabase usando el cliente anon que tiene permisos de escritura sobre likes
       try {
-        await supabase
+        await supabaseAnon
           .from('videos')
           .update({ likes: videoObj.likes })
           .eq('id', videoData.id);
       } catch (err) {
         console.error("Error al persistir like en Supabase:", err);
       }
+    } else if (!forceLike) {
+      // QUITAR LIKE (UNLIKE) - Solo si no se fuerza (los clicks en botones quitan like, los double-taps no)
+      videoObj.likes = Math.max(0, videoObj.likes - 1);
+      videoObj.hasLiked = false;
+      
+      // Remover de localStorage
+      const updatedLikedVideos = likedVideos.filter(id => id !== videoData.id);
+      localStorage.setItem('tr_liked_videos', JSON.stringify(updatedLikedVideos));
+      
+      // Actualizar interfaz
+      likeCountTextMobile.textContent = videoObj.likes;
+      if (likeCountTextDesktop) likeCountTextDesktop.textContent = videoObj.likes;
+      
+      // Remover clases activas
+      likeBtnMobile.classList.remove('liked');
+      if (likeBtnDesktop) {
+        likeBtnDesktop.classList.remove('liked');
+        likeBtnDesktop.innerHTML = `<i class="fa-solid fa-heart"></i> <strong class="desktop-like-count">${videoObj.likes}</strong>`;
+      }
+
+      // Persistir en Supabase usando el cliente anon
+      try {
+        await supabaseAnon
+          .from('videos')
+          .update({ likes: videoObj.likes })
+          .eq('id', videoData.id);
+      } catch (err) {
+        console.error("Error al persistir unlike en Supabase:", err);
+      }
     }
+  }
   }
 
   likeBtnMobile.addEventListener('click', giveLike);
@@ -2404,7 +2447,7 @@ function setupVideoControls(card, videoData) {
         setTimeout(() => heartParticle.remove(), 1000);
       }
 
-      giveLike();
+      giveLike(true);
     } else {
       // TOQUE SIMPLE: Programar Play/Pause con una pequeña demora de 250ms
       // para permitir cancelar si el usuario hace un segundo toque del doble click
