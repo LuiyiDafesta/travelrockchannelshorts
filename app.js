@@ -2702,66 +2702,150 @@ function updateMuteIconGlobally() {
   });
 }
 
-// Setup del Intersection Observer para Móviles (detección de scroll vertical snap)
+// Setup de seguimiento híbrido (Matemático de Scroll + Observer Fallback) para máxima fidelidad
+let scrollTimeout = null;
+let lastFocusedCardId = null;
+
 function setupIntersectionObserver() {
   const feedView = document.getElementById('shorts-feed-view');
-  const observerOptions = {
-    root: feedView || null, // Contenedor scrollable real para máxima fidelidad e intersección precisa
-    rootMargin: '0px',
-    threshold: 0.5 // 50% visible para dispararse de forma más rápida y responsiva
-  };
+  if (!feedView) return;
 
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      const card = entry.target;
-      const video = card.querySelector('.short-video');
-      const id = parseInt(card.getAttribute('data-video-id'));
+  // 1. Escuchar eventos de Scroll en el reproductor (El método de cálculo matemático más robusto y compatible)
+  feedView.addEventListener('scroll', () => {
+    if (scrollTimeout) clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(trackScrollFocus, 60);
+  }, { passive: true });
 
-      if (entry.isIntersecting) {
-        state.activeVideoId = id;
-        
-        // Registrar en "Continuar Viendo"
-        logRecentlyPlayed(id);
-        
-        // Pausar todos los demás primero
-        pauseAllVideos();
+  // 2. Ejecutar un track inicial al configurar
+  setTimeout(trackScrollFocus, 150);
 
-        // BLOQUEO DE SWIPE EN PUBLICIDADES (Las publicidades se quedan para obligarte a verlas)
-        const isAd = id < 0;
-        if (isAd) {
-          feedContainer.style.overflowY = 'hidden';
-          feedContainer.style.touchAction = 'none';
+  // 3. Fallback / Soporte complementario de IntersectionObserver para navegadores modernos
+  try {
+    const observerOptions = {
+      root: feedView,
+      rootMargin: '0px',
+      threshold: 0.6 // Disparar cuando esté el 60% en foco
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const card = entry.target;
+        const video = card.querySelector('.short-video');
+        const id = parseInt(card.getAttribute('data-video-id'));
+
+        if (entry.isIntersecting) {
+          if (id !== lastFocusedCardId && !isNaN(id)) {
+            state.activeVideoId = id;
+            lastFocusedCardId = id;
+            
+            logRecentlyPlayed(id);
+            pauseAllVideos();
+
+            const isAd = id < 0;
+            if (isAd) {
+              feedView.style.overflowY = 'hidden';
+              feedView.style.touchAction = 'none';
+            } else {
+              feedView.style.overflowY = 'scroll';
+              feedView.style.touchAction = 'pan-y';
+            }
+
+            if (video) {
+              video.muted = state.isMuted;
+              video.play().catch(err => {
+                video.muted = true;
+                state.isMuted = true;
+                updateMuteIconGlobally();
+                video.play().catch(e => console.log("Play fallido:", e));
+              });
+            }
+
+            if (window.innerWidth >= 992) {
+              document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
+              card.classList.add('active-desktop');
+            }
+
+            preloadNextVideo(id);
+          }
         } else {
-          feedContainer.style.overflowY = 'scroll';
-          feedContainer.style.touchAction = 'pan-y';
+          // Si deja de intersecarse por completo, pausar
+          if (video && id !== state.activeVideoId) {
+            video.pause();
+          }
         }
-        
-        // Reproducir este
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.short-card').forEach(card => observer.observe(card));
+  } catch (e) {
+    console.warn("IntersectionObserver no soportado. Usando motor matemático de scroll.");
+  }
+}
+
+// Función matemática de detección de foco central (Calcula cuál es la tarjeta más cercana al centro del contenedor)
+function trackScrollFocus() {
+  const feedView = document.getElementById('shorts-feed-view');
+  if (!feedView || feedView.classList.contains('hidden')) return;
+
+  const cards = feedView.querySelectorAll('.short-card');
+  if (cards.length === 0) return;
+
+  const containerHeight = feedView.clientHeight;
+  const scrollTop = feedView.scrollTop;
+  const viewportCenter = scrollTop + containerHeight / 2;
+
+  let focusedCard = null;
+  let minDistance = Infinity;
+
+  cards.forEach(card => {
+    const cardTop = card.offsetTop;
+    const cardHeight = card.clientHeight;
+    const cardCenter = cardTop + cardHeight / 2;
+
+    const distance = Math.abs(cardCenter - viewportCenter);
+    if (distance < minDistance) {
+      minDistance = distance;
+      focusedCard = card;
+    }
+  });
+
+  if (focusedCard) {
+    const id = parseInt(focusedCard.getAttribute('data-video-id'));
+    if (id !== lastFocusedCardId && !isNaN(id)) {
+      lastFocusedCardId = id;
+      state.activeVideoId = id;
+      
+      logRecentlyPlayed(id);
+      pauseAllVideos();
+      
+      const isAd = id < 0;
+      if (isAd) {
+        feedView.style.overflowY = 'hidden';
+        feedView.style.touchAction = 'none';
+      } else {
+        feedView.style.overflowY = 'scroll';
+        feedView.style.touchAction = 'pan-y';
+      }
+      
+      const video = focusedCard.querySelector('.short-video');
+      if (video) {
         video.muted = state.isMuted;
         video.play().catch(err => {
-          console.warn("Autoplay con sonido bloqueado por el navegador. Intentando reproducir silenciado...", err);
           video.muted = true;
           state.isMuted = true;
           updateMuteIconGlobally();
-          video.play().catch(e => console.error("Autoplay silenciado también falló:", e));
+          video.play().catch(e => console.log("Play fallido scroll:", e));
         });
-
-        // Configuración de interfaz Desktop (Modo Cine)
-        if (window.innerWidth >= 992) {
-          document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
-          card.classList.add('active-desktop');
-        }
-
-        // Pre-carga (prefetch) inteligente del siguiente video de la lista
-        preloadNextVideo(id);
-      } else {
-        video.pause();
       }
-    });
-  }, observerOptions);
 
-  // Observar cada short-card
-  document.querySelectorAll('.short-card').forEach(card => observer.observe(card));
+      if (window.innerWidth >= 992) {
+        document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
+        focusedCard.classList.add('active-desktop');
+      }
+
+      preloadNextVideo(id);
+    }
+  }
 }
 
 // Pausar absolutamente todos los videos
