@@ -4,11 +4,11 @@
  * Orquesta la reproducción inteligente de videos, Intersection Observer,
  * autoplay con sonido centralizado, me gusta dinámicos, comentarios locales
  * y la renderización en móvil/desktop.
- * Version 1.1.2
+ * Version 1.5.0
  */
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-import { initNavigation, switchView, triggerLikeAnimation, setCommentsDrawerState, setShortcutsModalState } from './ui.js?v=1.1.2';
+import { initNavigation, switchView, triggerLikeAnimation, setCommentsDrawerState, setShortcutsModalState } from './ui.js?v=1.5.0';
 
 // 1. CONEXIÓN A SUPABASE
 const supabaseUrl = 'https://qtrcutddajulnwyzdwtc.supabase.co';
@@ -2310,10 +2310,6 @@ function setupVideoControls(card, videoData) {
 
   // Acción de Dar/Quitar Like
   async function giveLike(forceLike = false) {
-    if (!clientSession) {
-      openAuthModal('login');
-      return;
-    }
     const videoObj = state.videos.find(v => v.id === videoData.id);
     const likedVideos = JSON.parse(localStorage.getItem('tr_liked_videos') || '[]');
 
