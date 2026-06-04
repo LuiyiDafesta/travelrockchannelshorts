@@ -3441,10 +3441,12 @@ function updateAppOnFilterOrSearch() {
 // ----------------------------------------------------------------------
 function setupKeyboardNavigation() {
   document.addEventListener('keydown', (e) => {
-    // Si el usuario está escribiendo en comentarios o en la búsqueda, ignorar shortcuts
-    if (document.activeElement.classList.contains('comment-input') || 
-        document.activeElement.classList.contains('drawer-comment-input') || 
-        document.activeElement.id === 'catalog-search-input') {
+    // Si el usuario está enfocado en algún campo de entrada, formulario o texto, ignorar accesos rápidos
+    const activeTag = document.activeElement.tagName.toLowerCase();
+    if (activeTag === 'input' || 
+        activeTag === 'textarea' || 
+        activeTag === 'select' || 
+        document.activeElement.isContentEditable) {
       return;
     }
 
