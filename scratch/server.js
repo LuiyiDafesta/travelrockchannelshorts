@@ -281,6 +281,8 @@ if (!fs.existsSync(SHORTS_DIR)) {
 
 // Write a static redirection page with Open Graph metadata for WhatsApp and red social previews
 function writeSeoPage(id, videoUrl, thumbnailUrl, title, school, description) {
+  const cleanVideoUrl = videoUrl ? videoUrl.replace('https://f004.backblazeb2.com/file/', 'https://media.supertourchannel.com.ar/') : '';
+  const cleanThumbnailUrl = thumbnailUrl ? thumbnailUrl.replace('https://f004.backblazeb2.com/file/', 'https://media.supertourchannel.com.ar/') : '';
   const sanitizedTitle = title ? title.replace(/"/g, '&quot;') : '';
   const sanitizedSchool = school ? school.replace(/"/g, '&quot;') : '';
   const sanitizedDesc = description ? description.replace(/"/g, '&quot;') : '';
@@ -299,8 +301,8 @@ function writeSeoPage(id, videoUrl, thumbnailUrl, title, school, description) {
   <meta property="og:type" content="video.other">
   <meta property="og:title" content="${sanitizedTitle} - ${sanitizedSchool}">
   <meta property="og:description" content="${sanitizedDesc || 'Mira este increíble momento en TravelRock Channel Shorts.'}">
-  <meta property="og:image" content="${thumbnailUrl}">
-  <meta property="og:video" content="${videoUrl}">
+  <meta property="og:image" content="${cleanThumbnailUrl}">
+  <meta property="og:video" content="${cleanVideoUrl}">
   <meta property="og:video:type" content="video/mp4">
   <meta property="og:site_name" content="TravelRock Channel">
   
@@ -308,7 +310,7 @@ function writeSeoPage(id, videoUrl, thumbnailUrl, title, school, description) {
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${sanitizedTitle}">
   <meta name="twitter:description" content="${sanitizedDesc || 'Mira este increíble momento en TravelRock Channel Shorts.'}">
-  <meta name="twitter:image" content="${thumbnailUrl}">
+  <meta name="twitter:image" content="${cleanThumbnailUrl}">
   
   <!-- Redirection Script -->
   <script>

@@ -748,7 +748,15 @@ async function loadCatalog() {
 
     if (error) throw error;
 
-    loadedVideos = videos || [];
+    loadedVideos = (videos || []).map(video => {
+      if (video.video_url) {
+        video.video_url = video.video_url.replace('https://f004.backblazeb2.com/file/', 'https://media.supertourchannel.com.ar/');
+      }
+      if (video.thumbnail_url) {
+        video.thumbnail_url = video.thumbnail_url.replace('https://f004.backblazeb2.com/file/', 'https://media.supertourchannel.com.ar/');
+      }
+      return video;
+    });
 
     if (!loadedVideos || loadedVideos.length === 0) {
       adminVideosTbody.innerHTML = `
