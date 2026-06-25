@@ -596,7 +596,9 @@ async function publishShort(e) {
     let uploadTargetUrl = 'api/upload.php';
     let seoTargetUrl = 'api/save-seo.php';
     
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isLocal = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1' || 
+                    window.location.port !== '';
     
     let videoUrl = '';
     let thumbnailUrl = '';
@@ -1405,7 +1407,9 @@ async function saveVideoEdit(e) {
     
     // 2. Actualizar la redirección Open Graph estática para WhatsApp
     if (updatedData) {
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const isLocal = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' || 
+                      window.location.port !== '';
       const seoEndpoint = isLocal ? '/api/save-seo' : 'api/save-seo.php';
       await fetch(seoEndpoint, {
         method: 'POST',
@@ -1674,7 +1678,15 @@ async function loadAds() {
 
     if (error) throw error;
 
-    loadedAds = ads || [];
+    loadedAds = (ads || []).map(ad => {
+      if (ad.video_url) {
+        ad.video_url = ad.video_url.replace('https://f004.backblazeb2.com/file/', 'https://media.supertourchannel.com.ar/');
+      }
+      if (ad.thumbnail_url) {
+        ad.thumbnail_url = ad.thumbnail_url.replace('https://f004.backblazeb2.com/file/', 'https://media.supertourchannel.com.ar/');
+      }
+      return ad;
+    });
 
     if (!ads || ads.length === 0) {
       adminAdsTbody.innerHTML = `
@@ -1950,7 +1962,9 @@ async function publishAd(e) {
 
   try {
     let uploadTargetUrl = 'api/upload.php';
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isLocal = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1' || 
+                    window.location.port !== '';
     
     let videoUrl = '';
     let thumbnailUrl = '';

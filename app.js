@@ -164,15 +164,15 @@ function updateUserUI() {
     // Usuario Logueado
     if (sidebarBtnLogin) sidebarBtnLogin.classList.add('hidden');
     if (sidebarUserLogged) sidebarUserLogged.classList.remove('hidden');
-    
+
     const dispName = clientSession.user_name || clientSession.email.split('@')[0];
-    
+
     if (sidebarUserName) sidebarUserName.textContent = dispName;
     if (sidebarUserAvatar) {
       sidebarUserAvatar.textContent = dispName.charAt(0).toUpperCase();
       sidebarUserAvatar.style.background = generateAvatarStyle(dispName);
     }
-    
+
     if (mobileAuthBtn) mobileAuthBtn.classList.add('hidden');
     if (mobileUserAvatar) {
       mobileUserAvatar.classList.remove('hidden');
@@ -222,7 +222,7 @@ function updateUserUI() {
     // Invitado (No Logueado)
     if (sidebarBtnLogin) sidebarBtnLogin.classList.remove('hidden');
     if (sidebarUserLogged) sidebarUserLogged.classList.add('hidden');
-    
+
     if (mobileAuthBtn) mobileAuthBtn.classList.remove('hidden');
     if (mobileUserAvatar) mobileUserAvatar.classList.add('hidden');
     if (premiumSidebarCard) premiumSidebarCard.style.display = 'block';
@@ -275,20 +275,20 @@ function switchAuthTab(tab) {
   const btnSubmitIcon = document.getElementById('btn-auth-icon');
   const modalSubtitle = document.getElementById('auth-modal-subtitle');
   const alertContainer = document.getElementById('auth-alert-container');
-  
+
   if (alertContainer) alertContainer.innerHTML = '';
-  
+
   if (tab === 'login') {
     btnTabLogin.classList.add('active');
     btnTabLogin.style.background = 'var(--primary-gradient)';
     btnTabLogin.style.boxShadow = 'var(--neon-glow-pink)';
     btnTabLogin.style.color = 'white';
-    
+
     btnTabRegister.classList.remove('active');
     btnTabRegister.style.background = 'transparent';
     btnTabRegister.style.boxShadow = 'none';
     btnTabRegister.style.color = 'var(--text-secondary)';
-    
+
     if (groupUsername) groupUsername.classList.add('hidden');
     if (btnSubmitText) btnSubmitText.textContent = 'Ingresar ahora';
     if (btnSubmitIcon) btnSubmitIcon.className = 'fa-solid fa-right-to-bracket';
@@ -298,12 +298,12 @@ function switchAuthTab(tab) {
     btnTabRegister.style.background = 'var(--primary-gradient)';
     btnTabRegister.style.boxShadow = 'var(--neon-glow-pink)';
     btnTabRegister.style.color = 'white';
-    
+
     btnTabLogin.classList.remove('active');
     btnTabLogin.style.background = 'transparent';
     btnTabLogin.style.boxShadow = 'none';
     btnTabLogin.style.color = 'var(--text-secondary)';
-    
+
     if (groupUsername) groupUsername.classList.remove('hidden');
     if (btnSubmitText) btnSubmitText.textContent = 'Registrarse y comenzar';
     if (btnSubmitIcon) btnSubmitIcon.className = 'fa-solid fa-user-plus';
@@ -319,7 +319,7 @@ async function handleClientAuthSubmit() {
   const userinput = document.getElementById('auth-username');
   const alertContainer = document.getElementById('auth-alert-container');
   const submitBtn = document.getElementById('btn-auth-submit');
-  
+
   if (!emailInput.value || !passInput.value || (!isLogin && !userinput.value)) {
     showAlert('Por favor, completa todos los campos requeridos.', 'danger');
     return;
@@ -346,7 +346,7 @@ async function handleClientAuthSubmit() {
         email: emailInput.value.trim(),
         password: passInput.value
       });
-      
+
       if (error) {
         // Fallback local especial para el administrador semilla
         if (emailInput.value.trim().toLowerCase() === 'lsnetinformatica2024@gmail.com' && passInput.value === 'Luiyi260879@') {
@@ -404,16 +404,16 @@ async function handleClientAuthSubmit() {
         }
         throw error;
       }
-      
+
       // 2. Traer perfil
       const { data: profile, error: pError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', data.user.id)
         .single();
-        
+
       if (pError) throw pError;
-      
+
       clientSession = profile;
       localStorage.setItem('tr_client_session', JSON.stringify(profile));
       showAlert('¡Bienvenido de nuevo, ' + profile.user_name + '! 🎉', 'success');
@@ -426,15 +426,15 @@ async function handleClientAuthSubmit() {
       const email = emailInput.value.trim();
       const password = passInput.value;
       const username = userinput.value.trim();
-      
+
       // 1. Registrar en Supabase
       const { data, error } = await supabase.auth.signUp({
         email: email,
         password: password
       });
-      
+
       if (error) throw error;
-      
+
       const userId = data.user ? data.user.id : 'local_' + Date.now();
       const newProfile = {
         id: userId,
@@ -452,7 +452,7 @@ async function handleClientAuthSubmit() {
       } catch (pErr) {
         console.error("Falla guardando perfil en base de datos:", pErr);
       }
-      
+
       // 3. Registrar localmente para fallback inmediato
       localStorage.setItem(`tr_local_auth_${email.toLowerCase()}`, JSON.stringify({
         id: userId,
@@ -488,7 +488,7 @@ function getRelativeTime(date) {
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
-  
+
   if (diffMins < 1) return "Ahora";
   if (diffMins < 60) return `Hace ${diffMins}m`;
   if (diffHours < 24) return `Hace ${diffHours}h`;
@@ -504,7 +504,7 @@ async function fetchVideosAndComments() {
       .select('*')
       .order('id', { ascending: false });
     if (vErr) throw vErr;
-    
+
     // Obtener likes locales guardados del usuario para persistir la UI
     const likedVideos = JSON.parse(localStorage.getItem('tr_liked_videos') || '[]');
 
@@ -543,9 +543,9 @@ async function fetchVideosAndComments() {
       if (!state.comments[c.video_id]) {
         state.comments[c.video_id] = [];
       }
-      
+
       const relative = getRelativeTime(new Date(c.created_at));
-      
+
       state.comments[c.video_id].push({
         id: c.id,
         user: c.user_name,
@@ -571,7 +571,7 @@ async function fetchVideosAndComments() {
       const urlParams = new URLSearchParams(window.location.search);
       const queryVid = urlParams.get('v');
       const parsedQueryVid = queryVid ? parseInt(queryVid) : null;
-      
+
       if (parsedQueryVid && state.videos.some(v => v.id === parsedQueryVid)) {
         state.activeVideoId = parsedQueryVid;
       } else {
@@ -590,13 +590,13 @@ async function fetchVideosAndComments() {
         .from('ads')
         .select('*')
         .eq('active', true);
-      
+
       if (!adsErr && activeAds) {
         state.ads = activeAds.map(ad => ({
           id: ad.id,
           title: ad.title,
-          videoUrl: ad.video_url,
-          thumbnailUrl: ad.thumbnail_url || 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60',
+          videoUrl: ad.video_url ? ad.video_url.replace('https://f004.backblazeb2.com/file/', 'https://media.supertourchannel.com.ar/') : '',
+          thumbnailUrl: ad.thumbnail_url ? ad.thumbnail_url.replace('https://f004.backblazeb2.com/file/', 'https://media.supertourchannel.com.ar/') : 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60',
           redirectUrl: ad.redirect_url || '',
           duration: ad.duration || 15,
           isAd: true // Identificador especial para anuncios
@@ -630,7 +630,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       emociones: 'fa-solid fa-heart',
       bienvenida: 'fa-solid fa-hand-wave'
     };
-    
+
     let html = `<button class="category-chip active" data-category="all">⚡ Todos los Momentos</button>`;
     state.dynamicCategories.forEach(cat => {
       const icon = iconMap[cat.key] || 'fa-solid fa-tag';
@@ -654,7 +654,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderNetflixRanking();
   renderNetflixRows();
   renderNetflixGrid(state.videos); // Renderizar grilla de catálogo inicial
-  
+
   // Inicializar navegación de UI
   initNavigation((action, data) => {
     if (action === 'feed' || action === 'explorer') {
@@ -758,7 +758,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       e.stopPropagation();
       try {
         await supabase.auth.signOut();
-      } catch (err) {}
+      } catch (err) { }
       clientSession = null;
       localStorage.removeItem('tr_client_session');
       updateUserUI();
@@ -806,7 +806,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (clientSession) {
           clientSession.is_premium = true;
           localStorage.setItem('tr_client_session', JSON.stringify(clientSession));
-          
+
           try {
             // Guardar en la base de datos Supabase profiles
             await supabase
@@ -825,7 +825,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           } catch (err) {
             console.error("Error actualizando estado premium del usuario en la base de datos:", err);
           }
-          
+
           updateUserUI();
         }
       }, 2000);
@@ -869,7 +869,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     if (!drawerCommentInput) return;
-    
+
     const text = drawerCommentInput.value.trim();
     const videoIdAttr = drawerCommentInput.getAttribute('data-id');
     const videoId = videoIdAttr ? parseInt(videoIdAttr) : state.activeVideoId;
@@ -929,7 +929,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       drawerStartY = e.touches[0].pageY;
       drawerCurrentY = drawerStartY;
     }, { passive: true });
-    
+
     dragHandler.addEventListener('touchmove', (e) => {
       drawerCurrentY = e.touches[0].pageY;
       const dy = drawerCurrentY - drawerStartY;
@@ -938,7 +938,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         drawer.style.transition = 'none';
       }
     }, { passive: true });
-    
+
     dragHandler.addEventListener('touchend', () => {
       drawer.style.transition = '';
       const dy = drawerCurrentY - drawerStartY;
@@ -1045,17 +1045,17 @@ function renderFeed() {
 
   filtered.forEach((video, index) => {
     const isFirst = index === 0;
-    
+
     // Calcular episodios de la misma colección (Configurables en Supabase) o escuela
     const episodes = video.collection_name
       ? state.videos.filter(v => v.collection_name === video.collection_name).sort((a, b) => (a.episode_number || 0) - (b.episode_number || 0))
       : state.videos.filter(v => v.school === video.school || v.category === video.category);
-      
+
     // Calcular sugerencias del catálogo que no correspondan a la colección activa
     const suggested = video.collection_name
       ? state.videos.filter(v => v.collection_name !== video.collection_name)
       : state.videos.filter(v => v.id !== video.id);
-      
+
     // Crear contenedor del short-card
     const card = document.createElement('div');
     card.className = `short-card ${isFirst ? 'active-desktop' : ''}`;
@@ -1378,29 +1378,29 @@ function renderFeed() {
             <div class="experience-box">
               <h4>La anécdota del día ❄️</h4>
               <p class="desc-container">
-                ${video.description.length > 130 
-                  ? `<span class="desc-short">${video.description.substring(0, 130)}...</span>
+                ${video.description.length > 130
+          ? `<span class="desc-short">${video.description.substring(0, 130)}...</span>
                      <span class="desc-full hidden">${video.description}</span>
                      <button class="btn-more-desc">MÁS</button>`
-                  : `<span>${video.description}</span>`
-                }
+          : `<span>${video.description}</span>`
+        }
               </p>
               ${video.tags ? `
                 <div class="video-tags-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
                   ${video.tags.split(',').map(tag => {
-                    const cleanTag = tag.trim();
-                    if (!cleanTag) return '';
-                    return `<span class="tag-pill-badge" data-tag="${cleanTag}" style="cursor: pointer; background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.25); color: #c084fc; padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: all var(--transition-fast);"><i class="fa-solid fa-tag"></i> #${cleanTag}</span>`;
-                  }).join('')}
+          const cleanTag = tag.trim();
+          if (!cleanTag) return '';
+          return `<span class="tag-pill-badge" data-tag="${cleanTag}" style="cursor: pointer; background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.25); color: #c084fc; padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: all var(--transition-fast);"><i class="fa-solid fa-tag"></i> #${cleanTag}</span>`;
+        }).join('')}
                 </div>
               ` : ''}
             </div>
 
             <!-- Bloque 2.5: Capítulos del Video (Timeline Interactivo) -->
-            ${(function() {
-              const chs = parseChapters(video.chapters);
-              if (chs.length === 0) return '';
-              return `
+            ${(function () {
+          const chs = parseChapters(video.chapters);
+          if (chs.length === 0) return '';
+          return `
                 <div class="video-chapters-box">
                   <h4>Capítulos del Video 🎬</h4>
                   <div class="chapters-timeline">
@@ -1413,7 +1413,7 @@ function renderFeed() {
                   </div>
                 </div>
               `;
-            })()}
+        })()}
 
             <!-- Bloque 3: Carrusel A (Episodios del Tema/Colección) -->
             <div class="side-panel-carousel">
@@ -1426,15 +1426,15 @@ function renderFeed() {
               </div>
               <div class="carousel-track" id="episodes-track-${video.id}">
                 ${episodes.map((ep, epIdx) => {
-                  const isActive = ep.id === video.id;
-                  return `
+          const isActive = ep.id === video.id;
+          return `
                     <div class="carousel-card ${isActive ? 'active' : ''}" data-video-id="${ep.id}">
                       <img src="${ep.thumbnailUrl}" alt="${ep.title}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=300&auto=format&fit=crop&q=60';">
                       <span class="carousel-card-badge">M${ep.episode_number || (epIdx + 1)}</span>
                       ${isActive ? '<div class="active-badge"><i class="fa-solid fa-play"></i></div>' : ''}
                     </div>
                   `;
-                }).join('')}
+        }).join('')}
               </div>
             </div>
 
@@ -1449,13 +1449,13 @@ function renderFeed() {
               </div>
               <div class="carousel-track" id="suggested-track-${video.id}">
                 ${suggested.map((sug) => {
-                  return `
+          return `
                     <div class="carousel-card" data-video-id="${sug.id}">
                       <img src="${sug.thumbnailUrl}" alt="${sug.title}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=300&auto=format&fit=crop&q=60';">
                       <span class="carousel-card-badge tag-badge">${sug.categoryLabel ? sug.categoryLabel.split(' ')[0] : 'Short'}</span>
                     </div>
                   `;
-                }).join('')}
+        }).join('')}
               </div>
             </div>
 
@@ -1482,7 +1482,7 @@ function renderFeed() {
     }
 
     feedContainer.appendChild(card);
-    
+
     // Configurar interacciones particulares para este video
     setupVideoControls(card, video);
   });
@@ -1494,11 +1494,11 @@ function renderFeed() {
 // B. Renderizar Filas de Carruseles Estilo Netflix en el Explorer
 function renderNetflixRows(filteredVideos = state.videos) {
   netflixContainer.innerHTML = '';
-  
+
   // Agrupar videos por colección de forma dinámica
   const collectionsMap = {};
   const uncategorizedVideos = [];
-  
+
   filteredVideos.forEach(video => {
     if (video.collection_name) {
       const colName = video.collection_name.trim();
@@ -1556,10 +1556,10 @@ function renderNetflixRows(filteredVideos = state.videos) {
     card.addEventListener('click', () => {
       const id = parseInt(card.getAttribute('data-video-id'));
       state.activeVideoId = id;
-      
+
       // Cambiar a vista feed
       switchView('feed');
-      
+
       // En Desktop: Buscar el card en el DOM y marcarlo activo
       if (window.innerWidth >= 992) {
         document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
@@ -1583,21 +1583,21 @@ function renderNetflixRows(filteredVideos = state.videos) {
 function renderNetflixRanking(filteredVideos = state.videos) {
   const rankingContainer = document.getElementById('netflix-ranking-container');
   if (!rankingContainer) return;
-  
+
   rankingContainer.innerHTML = '';
-  
+
   // Obtener los top 5 videos más vistos/populares (ordenados por likes de mayor a menor)
   const popularVideos = [...filteredVideos]
     .sort((a, b) => (b.likes || 0) - (a.likes || 0))
     .slice(0, 5);
-    
+
   if (popularVideos.length === 0) {
     rankingContainer.style.display = 'none';
     return;
   }
-  
+
   rankingContainer.style.display = 'block';
-  
+
   rankingContainer.innerHTML = `
     <div class="netflix-row ranking-row">
       <h3 class="row-title"><i class="fa-solid fa-fire" style="color: var(--neon-orange); margin-right: 6px;"></i> Los 5 Más Vistos de la Semana</h3>
@@ -1622,17 +1622,17 @@ function renderNetflixRanking(filteredVideos = state.videos) {
       </div>
     </div>
   `;
-  
+
   // Agregar event listener para clicks en las tarjetas de ranking
   const rankingCards = rankingContainer.querySelectorAll('.ranking-card');
   rankingCards.forEach(card => {
     card.addEventListener('click', () => {
       const id = parseInt(card.getAttribute('data-video-id'));
       state.activeVideoId = id;
-      
+
       // Cambiar a vista feed
       switchView('feed');
-      
+
       // En Desktop: Buscar el card en el DOM y marcarlo activo
       if (window.innerWidth >= 992) {
         document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
@@ -1645,7 +1645,7 @@ function renderNetflixRanking(filteredVideos = state.videos) {
           targetCard.scrollIntoView({ behavior: 'smooth' });
         }
       }
-      
+
       // Reproducir
       setTimeout(playActiveVideo, 200);
     });
@@ -1656,30 +1656,30 @@ function renderNetflixRanking(filteredVideos = state.videos) {
 function renderNetflixFeatured(filteredVideos = state.videos) {
   const featuredContainer = document.getElementById('netflix-featured-container');
   if (!featuredContainer) return;
-  
+
   featuredContainer.innerHTML = '';
-  
+
   // Obtener los últimos 4 videos subidos/agregados (ordenados por ID descendente)
   const latestVideos = [...filteredVideos]
     .sort((a, b) => b.id - a.id)
     .slice(0, 4);
-    
+
   if (latestVideos.length === 0) {
     featuredContainer.style.display = 'none';
     return;
   }
-  
+
   featuredContainer.style.display = 'block';
-  
+
   featuredContainer.innerHTML = `
     <div class="netflix-row featured-row">
       <h3 class="row-title"><i class="fa-solid fa-sparkles" style="color: var(--neon-pink); margin-right: 6px;"></i> Los Últimos Agregados</h3>
       <div class="row-carousel featured-carousel">
         ${latestVideos.map(video => {
-          // Extraer las tags o categorías secundarias para mostrar como géneros
-          const genresList = video.tags ? video.tags.split(',').slice(0, 2).map(t => t.trim()).join(' · ') : (video.categoryLabel || 'Exclusivo');
-          
-          return `
+    // Extraer las tags o categorías secundarias para mostrar como géneros
+    const genresList = video.tags ? video.tags.split(',').slice(0, 2).map(t => t.trim()).join(' · ') : (video.categoryLabel || 'Exclusivo');
+
+    return `
             <div class="featured-card" data-video-id="${video.id}">
               <img class="featured-card-img" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
               <div class="featured-card-overlay">
@@ -1692,21 +1692,21 @@ function renderNetflixFeatured(filteredVideos = state.videos) {
               </div>
             </div>
           `;
-        }).join('')}
+  }).join('')}
       </div>
     </div>
   `;
-  
+
   // Agregar clicks en las tarjetas destacadas
   const featuredCards = featuredContainer.querySelectorAll('.featured-card');
   featuredCards.forEach(card => {
     card.addEventListener('click', () => {
       const id = parseInt(card.getAttribute('data-video-id'));
       state.activeVideoId = id;
-      
+
       // Cambiar a vista feed
       switchView('feed');
-      
+
       // En Desktop: Buscar el card en el DOM y marcarlo activo
       if (window.innerWidth >= 992) {
         document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
@@ -1719,7 +1719,7 @@ function renderNetflixFeatured(filteredVideos = state.videos) {
           targetCard.scrollIntoView({ behavior: 'smooth' });
         }
       }
-      
+
       // Reproducir
       setTimeout(playActiveVideo, 200);
     });
@@ -1751,7 +1751,7 @@ function renderCommentsHtml(videoId) {
   if (videoComments.length === 0) {
     return `<p class="no-comments-text" style="color:var(--text-muted); font-size:0.75rem; text-align:center; padding:10px;">¡Sé el primero en comentar!</p>`;
   }
-  
+
   return videoComments.map(c => `
     <div class="comment-item">
       <div class="comment-avatar" style="background: ${getAvatarGradient(c.user)}">
@@ -1791,11 +1791,11 @@ function setupVideoControls(card, videoData) {
     // 1. Contador para botón Saltar Anuncio (Skip)
     const btnSkipAd = card.querySelector(`.btn-skip-ad`);
     let skipSeconds = 5;
-    
+
     // Función para manejar el tick del temporizador
     const skipTimerTick = () => {
       if (video.paused) return; // solo restar si está reproduciendo
-      
+
       if (skipSeconds > 0) {
         btnSkipAd.textContent = `Saltar en ${skipSeconds}...`;
         skipSeconds--;
@@ -1806,7 +1806,7 @@ function setupVideoControls(card, videoData) {
         clearInterval(skipInterval);
       }
     };
-    
+
     // Iniciar tick al reproducir
     let skipInterval = null;
     video.addEventListener('play', () => {
@@ -1816,32 +1816,32 @@ function setupVideoControls(card, videoData) {
         const originalAdId = Math.abs(videoData.id) % 10000;
         recordAdImpression(originalAdId);
       }
-      
+
       if (!skipInterval && skipSeconds >= 0) {
         skipInterval = setInterval(skipTimerTick, 1000);
       }
     });
-    
+
     video.addEventListener('pause', () => {
       if (skipInterval) {
         clearInterval(skipInterval);
         skipInterval = null;
       }
     });
-    
+
     // Configurar click en saltar anuncio
     if (btnSkipAd) {
       btnSkipAd.addEventListener('click', (e) => {
         e.stopPropagation();
         if (skipInterval) clearInterval(skipInterval);
-        
+
         // Buscar el siguiente video en el feed con anuncios
         const filtered = getFilteredVideos(true);
         const currentIndex = filtered.findIndex(v => v.id === videoData.id);
         if (currentIndex !== -1 && currentIndex < filtered.length - 1) {
           const nextVideoData = filtered[currentIndex + 1];
           state.activeVideoId = nextVideoData.id;
-          
+
           if (window.innerWidth >= 992) {
             document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
             const targetCard = document.getElementById(`short-card-${nextVideoData.id}`);
@@ -1852,7 +1852,7 @@ function setupVideoControls(card, videoData) {
               targetCard.scrollIntoView({ behavior: 'smooth' });
             }
           }
-          
+
           setTimeout(playActiveVideo, 200);
         } else {
           // Si es el último, volvemos al primer video para permitir bucle continuo en el feed sin trabarse
@@ -1860,14 +1860,14 @@ function setupVideoControls(card, videoData) {
           const firstVideoData = filtered[0];
           if (firstVideoData) {
             state.activeVideoId = firstVideoData.id;
-            
+
             // Forzar desbloqueo de scroll antes de mover el foco para evitar cualquier congelamiento
             const feedView = document.getElementById('shorts-feed-view');
             if (feedView) {
               feedView.style.overflowY = 'scroll';
               feedView.style.touchAction = 'pan-y';
             }
-            
+
             if (window.innerWidth >= 992) {
               document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
               const targetCard = document.getElementById(`short-card-${firstVideoData.id}`);
@@ -1926,7 +1926,7 @@ function setupVideoControls(card, videoData) {
         }
       }
     });
-    
+
     // Sincronizar timeline en timeupdate para ads
     video.addEventListener('timeupdate', () => {
       if (video.duration) {
@@ -1987,11 +1987,11 @@ function setupVideoControls(card, videoData) {
   // Evento play del video: Sincroniza interfaz y asegura volumen
   video.addEventListener('play', () => {
     if (unmuteBtn) unmuteBtn.classList.remove('visible');
-    
+
     // Re-aplicar velocidad guardada para evitar reseteos en bucle del navegador
     const savedSpeed = parseFloat(video.dataset.currentSpeed || '1.0');
     video.playbackRate = savedSpeed;
-    
+
     // HUD Animación: Play
     if (playPauseHud) {
       playPauseHud.querySelector('i').className = 'fa-solid fa-play';
@@ -2094,7 +2094,7 @@ function setupVideoControls(card, videoData) {
           video.dataset.currentSpeed = speedVal;
           video.playbackRate = speedVal;
           video.defaultPlaybackRate = speedVal;
-          
+
           // Actualizar estado activo en todos los submenús de velocidad de esta tarjeta
           card.querySelectorAll('.speed-submenu').forEach(sub => {
             sub.querySelectorAll('.submenu-item').forEach(i => {
@@ -2130,7 +2130,7 @@ function setupVideoControls(card, videoData) {
       item.addEventListener('click', (e) => {
         e.stopPropagation();
         const qualityVal = item.getAttribute('data-quality');
-        
+
         // Simular reload / re-búfer con el spinner
         qualitySpinner.classList.add('active');
         const wasPaused = video.paused;
@@ -2138,7 +2138,7 @@ function setupVideoControls(card, videoData) {
 
         setTimeout(() => {
           qualitySpinner.classList.remove('active');
-          
+
           // Actualizar estado activo en todos los submenús de calidad de esta tarjeta
           card.querySelectorAll('.quality-submenu').forEach(sub => {
             sub.querySelectorAll('.submenu-item').forEach(i => {
@@ -2216,13 +2216,13 @@ function setupVideoControls(card, videoData) {
 
     if (video.duration) {
       const percentage = (video.currentTime / video.duration) * 100;
-      
+
       if (!isDraggingTimeline) {
         if (timelineFill) {
           timelineFill.style.width = `${percentage}%`;
         }
       }
-      
+
       // Resaltado dinámico del capítulo activo basado en el tiempo actual de reproducción
       let activeChapter = null;
       chapterItems.forEach(item => {
@@ -2231,7 +2231,7 @@ function setupVideoControls(card, videoData) {
           activeChapter = item;
         }
       });
-      
+
       chapterItems.forEach(item => {
         if (item === activeChapter) {
           item.classList.add('active');
@@ -2315,24 +2315,24 @@ function setupVideoControls(card, videoData) {
       // DAR LIKE
       videoObj.likes += 1;
       videoObj.hasLiked = true;
-      
+
       // Guardar en localStorage
       if (!likedVideos.includes(videoData.id)) {
         likedVideos.push(videoData.id);
         localStorage.setItem('tr_liked_videos', JSON.stringify(likedVideos));
       }
-      
+
       // Actualizar interfaz
       likeCountTextMobile.textContent = videoObj.likes;
       if (likeCountTextDesktop) likeCountTextDesktop.textContent = videoObj.likes;
-      
+
       // Clases activas de Like
       likeBtnMobile.classList.add('liked');
       if (likeBtnDesktop) {
         likeBtnDesktop.classList.add('liked');
         likeBtnDesktop.innerHTML = `<i class="fa-solid fa-heart"></i> <strong class="desktop-like-count">${videoObj.likes}</strong>`;
       }
-      
+
       triggerLikeAnimation(likeBtnMobile);
 
       // Persistir en Supabase usando el cliente anon que tiene permisos de escritura sobre likes
@@ -2348,15 +2348,15 @@ function setupVideoControls(card, videoData) {
       // QUITAR LIKE (UNLIKE) - Solo si no se fuerza (los clicks en botones quitan like, los double-taps no)
       videoObj.likes = Math.max(0, videoObj.likes - 1);
       videoObj.hasLiked = false;
-      
+
       // Remover de localStorage
       const updatedLikedVideos = likedVideos.filter(id => id !== videoData.id);
       localStorage.setItem('tr_liked_videos', JSON.stringify(updatedLikedVideos));
-      
+
       // Actualizar interfaz
       likeCountTextMobile.textContent = videoObj.likes;
       if (likeCountTextDesktop) likeCountTextDesktop.textContent = videoObj.likes;
-      
+
       // Remover clases activas
       likeBtnMobile.classList.remove('liked');
       if (likeBtnDesktop) {
@@ -2394,48 +2394,48 @@ function setupVideoControls(card, videoData) {
     if (tapLength < 300 && tapLength > 0) {
       // DOBLE TOQUE: Dar Me Gusta (Sin pausar ni reproducir)
       e.preventDefault();
-      
+
       // Cancelar el play/pause programado por el primer toque
       if (tapTimeout) {
         clearTimeout(tapTimeout);
         tapTimeout = null;
       }
-      
+
       // Emisión de partículas de corazones de alta fidelidad estilo Instagram
       const rect = playerWrapper.getBoundingClientRect();
       const clickX = e.clientX ? (e.clientX - rect.left) : (rect.width / 2);
       const clickY = e.clientY ? (e.clientY - rect.top) : (rect.height / 2);
-      
+
       // Lanzar feedback haptic si está en móvil
       if (navigator.vibrate) navigator.vibrate([15, 10, 15]);
-      
+
       for (let i = 0; i < 6; i++) {
         const heartParticle = document.createElement('div');
         heartParticle.className = 'particle-heart';
         heartParticle.innerHTML = '<i class="fa-solid fa-heart"></i>';
-        
+
         // Tonos de fucsia, fucsia-rosa, púrpura y cian glacial
         const useCyan = Math.random() > 0.8;
-        const color = useCyan 
+        const color = useCyan
           ? `hsl(${180 + Math.random() * 30}, 90%, 60%)` // Cian glacial
           : `hsl(${300 + Math.random() * 50}, 95%, 65%)`; // Rosa / Violeta
-          
+
         heartParticle.style.color = color;
         heartParticle.style.left = `${clickX}px`;
         heartParticle.style.top = `${clickY}px`;
-        
+
         // Generar trayectorias curvas aleatorias a través de CSS Custom Properties
         const xSwayMid = (Math.random() - 0.5) * 100;
         const xSwayEnd = (Math.random() - 0.5) * 180;
         const rotAngleMid = (Math.random() - 0.5) * 60;
         const rotAngleEnd = (Math.random() - 0.5) * 120;
-        
+
         heartParticle.style.setProperty('--x-sway-mid', `${xSwayMid}px`);
         heartParticle.style.setProperty('--x-sway-end', `${xSwayEnd}px`);
         heartParticle.style.setProperty('--rot-angle-mid', `${rotAngleMid}deg`);
         heartParticle.style.setProperty('--rot-angle-end', `${rotAngleEnd}deg`);
         heartParticle.style.animationDelay = `${i * 60}ms`;
-        
+
         playerWrapper.appendChild(heartParticle);
         setTimeout(() => heartParticle.remove(), 1000);
       }
@@ -2445,7 +2445,7 @@ function setupVideoControls(card, videoData) {
       // TOQUE SIMPLE: Programar Play/Pause con una pequeña demora de 250ms
       // para permitir cancelar si el usuario hace un segundo toque del doble click
       if (tapTimeout) clearTimeout(tapTimeout);
-      
+
       tapTimeout = setTimeout(() => {
         if (state.isMuted) {
           state.isMuted = false;
@@ -2466,7 +2466,7 @@ function setupVideoControls(card, videoData) {
 
   function shareVideo() {
     const shareText = `¡Mirá este momentazo en Bariloche de ${videoData.school}! 🏂🌲 ${videoData.title}`;
-    
+
     if (navigator.share) {
       navigator.share({
         title: 'TravelRock Shorts',
@@ -2476,7 +2476,7 @@ function setupVideoControls(card, videoData) {
     } else {
       // Fallback: Copiar enlace
       navigator.clipboard.writeText(window.location.href);
-      
+
       // Toast elegante flotante
       const toast = document.createElement('div');
       toast.className = 'glassmorphism';
@@ -2498,7 +2498,7 @@ function setupVideoControls(card, videoData) {
       `;
       toast.innerHTML = `<i class="fa-solid fa-check" style="color:var(--neon-pink); margin-right:8px;"></i> ¡Enlace copiado al portapapeles!`;
       document.body.appendChild(toast);
-      
+
       setTimeout(() => {
         toast.style.opacity = '1';
         toast.style.transform = 'translateX(-50%) translateY(0)';
@@ -2573,7 +2573,7 @@ function setupVideoControls(card, videoData) {
 
       // Renderizar
       commentsList.innerHTML = renderCommentsHtml(videoData.id);
-      
+
       // Actualizar conteos
       const commentCountElements = card.querySelectorAll('.comment-count-text');
       commentCountElements.forEach(el => el.textContent = state.comments[videoData.id].length);
@@ -2600,19 +2600,19 @@ function setupVideoControls(card, videoData) {
       openAuthModal('login');
       return;
     }
-    
+
     // Inyectar comentarios en el drawer deslizable
     const drawerBody = document.getElementById('drawer-comments-body');
     if (drawerBody) {
       drawerBody.innerHTML = renderCommentsHtml(videoData.id);
     }
-    
+
     // Configurar ID activo en el input del drawer para asociarlo
     const drawerInput = document.getElementById('drawer-comment-input');
     if (drawerInput) {
       drawerInput.setAttribute('data-id', videoData.id);
     }
-    
+
     // Abrir cajón deslizable con haptic feedback
     setCommentsDrawerState(true);
   });
@@ -2670,17 +2670,17 @@ function setupVideoControls(card, videoData) {
     item.addEventListener('click', (e) => {
       e.stopPropagation();
       const id = parseInt(item.getAttribute('data-video-id'));
-      
+
       // Cambiar video activo
       state.activeVideoId = id;
-      
+
       // En desktop cine: marcar el card activo
       if (window.innerWidth >= 992) {
         document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
         const targetCard = document.getElementById(`short-card-${id}`);
         if (targetCard) targetCard.classList.add('active-desktop');
       }
-      
+
       // Reproducir
       setTimeout(playActiveVideo, 100);
     });
@@ -2694,10 +2694,10 @@ function setupVideoControls(card, videoData) {
       if (!isNaN(seekTime)) {
         video.currentTime = seekTime;
         video.play().catch(err => console.log("Autoplay post-seek bloqueado:", err));
-        
+
         // Reset controls display/timer
         resetMobileControlsTimer();
-        
+
         // Highlight active chapter
         chapterItems.forEach(ci => ci.classList.remove('active'));
         item.classList.add('active');
@@ -2716,13 +2716,13 @@ function setupVideoControls(card, videoData) {
         if (searchInput) {
           searchInput.value = tagQuery;
         }
-        
+
         // Pausar todos los videos de inmediato
         pauseAllVideos();
-        
+
         // Ejecutar búsqueda y actualizar vistas
         state.currentFilter = 'all';
-        
+
         // Actualizar chips de categoría activos en la UI
         document.querySelectorAll('.category-chip').forEach(chip => {
           if (chip.getAttribute('data-category') === 'all') {
@@ -2734,7 +2734,7 @@ function setupVideoControls(card, videoData) {
 
         updateAppOnFilterOrSearch();
         switchView('explorer');
-        
+
         // Scroll suave al catálogo/resultados
         const gridSection = document.getElementById('netflix-grid-section');
         if (gridSection) {
@@ -2827,7 +2827,7 @@ function setupIntersectionObserver() {
           if (id !== lastFocusedCardId && !isNaN(id)) {
             state.activeVideoId = id;
             lastFocusedCardId = id;
-            
+
             logRecentlyPlayed(id);
             pauseAllVideos();
 
@@ -2902,10 +2902,10 @@ function trackScrollFocus() {
     if (id !== lastFocusedCardId && !isNaN(id)) {
       lastFocusedCardId = id;
       state.activeVideoId = id;
-      
+
       logRecentlyPlayed(id);
       pauseAllVideos();
-      
+
       const isAd = id < 0;
       if (isAd) {
         feedView.style.overflowY = 'hidden';
@@ -2914,7 +2914,7 @@ function trackScrollFocus() {
         feedView.style.overflowY = 'scroll';
         feedView.style.touchAction = 'pan-y';
       }
-      
+
       const video = focusedCard.querySelector('.short-video');
       if (video) {
         video.muted = state.isMuted;
@@ -2979,19 +2979,19 @@ function playActiveVideo() {
   const activeVideo = state.activeVideoId < 0
     ? state.ads.find(ad => ad.id === (Math.abs(state.activeVideoId) % 10000))
     : state.videos.find(v => v.id === state.activeVideoId);
-    
+
   if (activeVideo) {
     const cleanSchool = activeVideo.school ? activeVideo.school.split(' - ')[0] : 'ANUNCIO';
-    document.title = activeVideo.isAd 
+    document.title = activeVideo.isAd
       ? `Patrocinado: ${activeVideo.title} | TravelRock`
       : `${activeVideo.title} | ${cleanSchool} | TravelRock Channel`;
-    
+
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) metaDesc.setAttribute('content', activeVideo.description || activeVideo.title || '');
-    
+
     const ogTitle = document.querySelector('meta[property="og:title"]');
     if (ogTitle) ogTitle.setAttribute('content', activeVideo.isAd ? `Patrocinado: ${activeVideo.title}` : `${activeVideo.title} - ${cleanSchool}`);
-    
+
     const ogDesc = document.querySelector('meta[property="og:description"]');
     if (ogDesc) ogDesc.setAttribute('content', activeVideo.description || activeVideo.title || '');
 
@@ -3007,9 +3007,9 @@ function playActiveVideo() {
 
   const video = activeCard.querySelector('.short-video');
   const unmuteBtn = activeCard.querySelector('.unmute-overlay-btn');
-  
+
   pauseAllVideos();
-  
+
   // PRE-ROLL AD SYSTEM (YouTube Style Ad injection)
   const isPremium = clientSession && clientSession.is_premium;
   if (state.activeVideoId >= 0 && !isPremium && state.ads && state.ads.length > 0 && Math.random() < 0.35) {
@@ -3017,7 +3017,7 @@ function playActiveVideo() {
     triggerPreRollAd(activeCard, video, ad, activeVideo.videoUrl);
     return;
   }
-  
+
   video.muted = state.isMuted;
   video.currentTime = 0; // Iniciar desde el principio
   video.play()
@@ -3038,21 +3038,21 @@ function playActiveVideo() {
 function triggerPreRollAd(card, video, ad, originalSrc) {
   const playerWrapper = card.querySelector('.player-wrapper');
   if (!playerWrapper) return;
-  
+
   // Evitar duplicados
   const existingOverlay = playerWrapper.querySelector('.preroll-ad-overlay');
   if (existingOverlay) existingOverlay.remove();
-  
+
   // Registrar impresión del anuncio
   recordAdImpression(ad.id).catch(err => console.log(err));
-  
+
   // Guardar estado en el elemento de video
   video.dataset.prerollPlaying = 'true';
   video.dataset.originalSrc = originalSrc;
   video.src = ad.videoUrl;
   video.load();
   video.muted = state.isMuted;
-  
+
   // Crear el overlay HTML
   const overlay = document.createElement('div');
   overlay.className = 'preroll-ad-overlay glassmorphism';
@@ -3072,7 +3072,7 @@ function triggerPreRollAd(card, video, ad, originalSrc) {
     -webkit-backdrop-filter: blur(16px);
     box-sizing: border-box;
   `;
-  
+
   overlay.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
       <span class="school-badge" style="background: var(--primary-gradient); box-shadow: var(--neon-glow-pink); font-size: 0.65rem; padding: 4px 10px; font-weight: 700;"><i class="fa-solid fa-rectangle-ad"></i> ANUNCIO</span>
@@ -3092,19 +3092,19 @@ function triggerPreRollAd(card, video, ad, originalSrc) {
       </button>
     </div>
   `;
-  
+
   playerWrapper.appendChild(overlay);
-  
+
   // Reproducir el anuncio
   video.play().catch(err => {
     video.muted = true;
     video.play().catch(e => console.log("Preroll play error:", e));
   });
-  
+
   // Configurar contador de skip
   let skipSec = 5;
   const skipBtn = overlay.querySelector('.preroll-skip-btn');
-  
+
   const interval = setInterval(() => {
     if (video.paused) return; // Pausar cuenta si el video se detiene
     skipSec--;
@@ -3122,15 +3122,15 @@ function triggerPreRollAd(card, video, ad, originalSrc) {
       skipBtn.style.cursor = 'pointer';
     }
   }, 1000);
-  
+
   video.prerollInterval = interval;
-  
+
   // Acción del botón saltar
   const skipAdAction = () => {
     clearInterval(interval);
     delete video.prerollInterval;
     overlay.remove();
-    
+
     // Restaurar video original
     video.src = originalSrc;
     delete video.dataset.prerollPlaying;
@@ -3142,12 +3142,12 @@ function triggerPreRollAd(card, video, ad, originalSrc) {
       video.play().catch(err => console.log(err));
     });
   };
-  
+
   skipBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     skipAdAction();
   });
-  
+
   // Si el video de anuncio termina solo, continuar al video principal
   video.addEventListener('ended', function onAdEnded() {
     if (video.dataset.prerollPlaying === 'true') {
@@ -3155,7 +3155,7 @@ function triggerPreRollAd(card, video, ad, originalSrc) {
       skipAdAction();
     }
   });
-  
+
   // Configurar click en Visitar Web para registrar clic
   const ctaTrigger = overlay.querySelector('.ad-cta-trigger');
   if (ctaTrigger) {
@@ -3217,7 +3217,7 @@ async function recordAdClick(adId) {
 // Obtener lista filtrada de videos combinando categoría y búsqueda
 export function getFilteredVideos(includeAds = false) {
   let list = state.videos;
-  
+
   // A. Filtrar por Categoría chip activa
   if (state.currentFilter !== 'all') {
     if (state.currentFilter === 'pro-only') {
@@ -3226,16 +3226,16 @@ export function getFilteredVideos(includeAds = false) {
       list = list.filter(v => v.category === state.currentFilter);
     }
   }
-  
+
   // B. Filtrar por término de búsqueda en input
   const searchInput = document.getElementById('catalog-search-input');
   const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
-  
+
   if (query) {
-    list = list.filter(v => 
-      (v.title && v.title.toLowerCase().includes(query)) || 
-      (v.description && v.description.toLowerCase().includes(query)) || 
-      (v.school && v.school.toLowerCase().includes(query)) || 
+    list = list.filter(v =>
+      (v.title && v.title.toLowerCase().includes(query)) ||
+      (v.description && v.description.toLowerCase().includes(query)) ||
+      (v.school && v.school.toLowerCase().includes(query)) ||
       (v.categoryLabel && v.categoryLabel.toLowerCase().includes(query)) ||
       (v.collection_name && v.collection_name.toLowerCase().includes(query)) ||
       (v.tags && v.tags.toLowerCase().includes(query))
@@ -3284,7 +3284,7 @@ export function getFilteredVideos(includeAds = false) {
   singleVideos.sort((a, b) => b.id - a.id);
   sortedList = sortedList.concat(singleVideos);
   list = sortedList;
-  
+
   // Intercalar anuncios dinámicamente si includeAds es true y el usuario es común (no premium) y hay anuncios
   const isPremium = clientSession && clientSession.is_premium;
   if (includeAds && !isPremium && state.ads && state.ads.length > 0) {
@@ -3303,7 +3303,7 @@ export function getFilteredVideos(includeAds = false) {
     }
     return result;
   }
-  
+
   return list;
 }
 
@@ -3311,9 +3311,9 @@ export function getFilteredVideos(includeAds = false) {
 function renderNetflixGrid(filteredVideos) {
   const gridContainer = document.getElementById('netflix-grid-container');
   if (!gridContainer) return;
-  
+
   gridContainer.innerHTML = '';
-  
+
   if (filteredVideos.length === 0) {
     gridContainer.innerHTML = `
       <div class="glassmorphism" style="padding: 40px; border-radius: 20px; text-align: center; grid-column: 1 / -1; max-width: 320px; margin: 40px auto; border-color: rgba(236, 72, 153, 0.3);">
@@ -3324,7 +3324,7 @@ function renderNetflixGrid(filteredVideos) {
     `;
     return;
   }
-  
+
   gridContainer.innerHTML = filteredVideos.map(video => `
     <div class="netflix-card" data-video-id="${video.id}">
       <img class="netflix-card-img" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
@@ -3337,17 +3337,17 @@ function renderNetflixGrid(filteredVideos) {
       </div>
     </div>
   `).join('');
-  
+
   // Asignar click a cada tarjeta de la grilla para reproducir al instante
   const gridCards = gridContainer.querySelectorAll('.netflix-card');
   gridCards.forEach(card => {
     card.addEventListener('click', () => {
       const id = parseInt(card.getAttribute('data-video-id'));
       state.activeVideoId = id;
-      
+
       // Cambiar a vista feed
       switchView('feed');
-      
+
       // En Desktop: Buscar el card en el DOM y marcarlo activo
       if (window.innerWidth >= 992) {
         document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
@@ -3372,10 +3372,10 @@ function updateAppOnFilterOrSearch() {
   const filtered = getFilteredVideos();
   const searchInput = document.getElementById('catalog-search-input');
   const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
-  
+
   const gridSectionTitle = document.getElementById('grid-section-title');
   const netflixRowsContainer = document.getElementById('netflix-rows-container');
-  
+
   const categoryLabels = { all: 'Todos los Momentos', 'pro-only': 'Contenido PRO 👑' };
   if (state.dynamicCategories) {
     state.dynamicCategories.forEach(c => {
@@ -3387,10 +3387,10 @@ function updateAppOnFilterOrSearch() {
     categoryLabels.lifestyle = 'Lifestyle & Relax';
     categoryLabels.emociones = 'Momentos Mágicos';
   }
-  
+
   const netflixRankingContainer = document.getElementById('netflix-ranking-container');
   const netflixFeaturedContainer = document.getElementById('netflix-featured-container');
-  
+
   if (query) {
     // Si hay búsqueda activa: ocultar destacados, carruseles y ranking
     if (netflixFeaturedContainer) netflixFeaturedContainer.style.display = 'none';
@@ -3402,7 +3402,7 @@ function updateAppOnFilterOrSearch() {
     renderNetflixFeatured(filtered);
     renderNetflixRanking(filtered);
     renderNetflixRows(filtered);
-    
+
     if (gridSectionTitle) {
       if (state.currentFilter === 'all') {
         gridSectionTitle.textContent = 'Todos los Momentos';
@@ -3411,11 +3411,11 @@ function updateAppOnFilterOrSearch() {
       }
     }
   }
-  
+
   // Re-renderizar Grilla Explorer y Feed
   renderNetflixGrid(filtered);
   renderFeed();
-  
+
   // Actualizar video activo si ya no está disponible en la lista filtrada
   if (filtered.length > 0) {
     const isStillAvailable = filtered.some(v => v.id === state.activeVideoId);
@@ -3423,10 +3423,10 @@ function updateAppOnFilterOrSearch() {
       state.activeVideoId = filtered[0].id;
     }
   }
-  
+
   // Reconectar IntersectionObserver para el feed dinámico
   setupIntersectionObserver();
-  
+
   // Controlar reproducción según vista activa
   const feedView = document.getElementById('shorts-feed-view');
   if (feedView && !feedView.classList.contains('hidden')) {
@@ -3443,10 +3443,10 @@ function setupKeyboardNavigation() {
   document.addEventListener('keydown', (e) => {
     // Si el usuario está enfocado en algún campo de entrada, formulario o texto, ignorar accesos rápidos
     const activeTag = document.activeElement.tagName.toLowerCase();
-    if (activeTag === 'input' || 
-        activeTag === 'textarea' || 
-        activeTag === 'select' || 
-        document.activeElement.isContentEditable) {
+    if (activeTag === 'input' ||
+      activeTag === 'textarea' ||
+      activeTag === 'select' ||
+      document.activeElement.isContentEditable) {
       return;
     }
 
@@ -3461,7 +3461,7 @@ function setupKeyboardNavigation() {
       if (currentIndex < filtered.length - 1) {
         e.preventDefault();
         state.activeVideoId = filtered[currentIndex + 1].id;
-        
+
         if (window.innerWidth >= 992) {
           playActiveVideo();
         } else {
@@ -3473,7 +3473,7 @@ function setupKeyboardNavigation() {
       if (currentIndex > 0) {
         e.preventDefault();
         state.activeVideoId = filtered[currentIndex - 1].id;
-        
+
         if (window.innerWidth >= 992) {
           playActiveVideo();
         } else {
@@ -3539,12 +3539,12 @@ function logRecentlyPlayed(id) {
   // Evitar duplicados moviendo el ID al principio
   recentlyPlayed = recentlyPlayed.filter(vidId => vidId !== id);
   recentlyPlayed.unshift(id);
-  
+
   // Limitar historial a los últimos 3 videos reproducidos
   if (recentlyPlayed.length > 3) {
     recentlyPlayed.pop();
   }
-  
+
   localStorage.setItem('tr_recently_played', JSON.stringify(recentlyPlayed));
   updateKeepWatchingSidebar();
 }
@@ -3553,7 +3553,7 @@ function logRecentlyPlayed(id) {
 function updateKeepWatchingSidebar() {
   const listEl = document.getElementById('keep-watching-list');
   if (!listEl) return;
-  
+
   if (recentlyPlayed.length === 0) {
     listEl.innerHTML = `
       <div class="keep-watching-skeleton">
@@ -3566,7 +3566,7 @@ function updateKeepWatchingSidebar() {
     `;
     return;
   }
-  
+
   listEl.innerHTML = recentlyPlayed.map(id => {
     const video = state.videos.find(v => v.id === id);
     if (!video) return '';
@@ -3585,14 +3585,14 @@ function updateKeepWatchingSidebar() {
       </div>
     `;
   }).join('');
-  
+
   // Asignar click para reproducir instantáneamente el video seleccionado
   listEl.querySelectorAll('.keep-watching-item').forEach(item => {
     item.addEventListener('click', () => {
       const id = parseInt(item.getAttribute('data-video-id'));
       state.activeVideoId = id;
       switchView('feed');
-      
+
       if (window.innerWidth >= 992) {
         document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
         const targetCard = document.getElementById(`short-card-${id}`);
@@ -3603,7 +3603,7 @@ function updateKeepWatchingSidebar() {
           targetCard.scrollIntoView({ behavior: 'smooth' });
         }
       }
-      
+
       setTimeout(playActiveVideo, 200);
     });
   });
@@ -3616,12 +3616,12 @@ function triggerConfetti() {
   const duration = 3000;
   const animationEnd = Date.now() + duration;
   const colors = ['#a855f7', '#ec4899', '#f97316', '#22c55e', '#3b82f6'];
-  
+
   const interval = setInterval(() => {
     if (Date.now() > animationEnd) {
       return clearInterval(interval);
     }
-    
+
     // Crear un confeti (elemento DOM circular de color brillante)
     const confetti = document.createElement('div');
     confetti.className = 'confetti-particle';
@@ -3635,9 +3635,9 @@ function triggerConfetti() {
     confetti.style.top = '-10px';
     confetti.style.opacity = Math.random() * 0.7 + 0.3;
     confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
-    
+
     document.body.appendChild(confetti);
-    
+
     // Animar la caída del confeti con una trayectoria curva premium
     const animation = confetti.animate([
       { transform: `translate3d(0, 0, 0) rotate(0deg)`, opacity: confetti.style.opacity },
@@ -3646,7 +3646,7 @@ function triggerConfetti() {
       duration: Math.random() * 1800 + 1200,
       easing: 'cubic-bezier(.1, .7, .3, 1)'
     });
-    
+
     animation.onfinish = () => confetti.remove();
   }, 35);
 }
@@ -3694,14 +3694,14 @@ function setupPullToRefresh() {
       // Registrar que estamos deslizando hacia abajo
       indicator.classList.add('pulling');
       // Limitar el estiramiento máximo (resistencia física)
-      const pullDist = Math.min(dy * 0.4, 120); 
+      const pullDist = Math.min(dy * 0.4, 120);
       indicator.style.top = `${-60 + pullDist}px`;
       indicator.style.opacity = `${Math.min(pullDist / 60, 1)}`;
-      
+
       // Calcular y aplicar ángulo de rotación para el copo de nieve
       const pullAngle = Math.min(dy * 2.2, 360);
       indicator.style.setProperty('--pull-angle', `${pullAngle}deg`);
-      
+
       // Si pasa el umbral, cambiar color para feedback
       if (pullDist >= 60) {
         indicator.style.color = 'var(--neon-cyan)';
@@ -3726,7 +3726,7 @@ function setupPullToRefresh() {
       indicator.classList.add('loading');
       indicator.style.top = '80px';
       indicator.style.opacity = '1';
-      
+
       // Recargar la página (esto también limpia la caché móvil gracias al cache busting ?v=1.0.8)
       setTimeout(() => {
         location.reload();
@@ -3750,41 +3750,41 @@ const ambilightCtx = ambilightCanvas.getContext('2d');
 
 function startAmbilightEngine() {
   if (ambilightInterval) clearInterval(ambilightInterval);
-  
+
   ambilightInterval = setInterval(() => {
     // Buscar el video activo en reproducción
     const activeCard = document.getElementById(`short-card-${state.activeVideoId}`);
     if (!activeCard) return;
-    
+
     const video = activeCard.querySelector('.short-video');
     if (!video || video.paused || video.ended || document.hidden) return;
-    
+
     try {
       // Dibujar frame en canvas miniatura para calcular promedio
       ambilightCtx.drawImage(video, 0, 0, 10, 10);
       const frameData = ambilightCtx.getImageData(0, 0, 10, 10).data;
-      
+
       let r = 0, g = 0, b = 0;
       for (let i = 0; i < frameData.length; i += 4) {
         r += frameData[i];
-        g += frameData[i+1];
-        b += frameData[i+2];
+        g += frameData[i + 1];
+        b += frameData[i + 2];
       }
       const count = frameData.length / 4;
       r = Math.max(10, Math.floor(r / count));
       g = Math.max(10, Math.floor(g / count));
       b = Math.max(10, Math.floor(b / count));
-      
+
       const root = document.documentElement;
       // Proyectar color primario
       root.style.setProperty('--neon-purple', `rgb(${r}, ${g}, ${b})`);
-      
+
       // Proyectar color complementario o desplazado para aurora 2
       const r2 = Math.min(255, r + 45);
       const g2 = Math.max(0, g - 25);
       const b2 = Math.min(255, b + 55);
       root.style.setProperty('--neon-pink', `rgb(${r2}, ${g2}, ${b2})`);
-      
+
       // Proyectar color invertido en baja opacidad para aurora 3
       root.style.setProperty('--neon-orange', `rgb(${b}, ${g}, ${r})`);
     } catch (e) {
