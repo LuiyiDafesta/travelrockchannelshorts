@@ -1531,26 +1531,7 @@ function renderNetflixRows(filteredVideos = state.videos) {
   netflixCards.forEach(card => {
     card.addEventListener('click', () => {
       const id = parseInt(card.getAttribute('data-video-id'));
-      state.activeVideoId = id;
-
-      // Cambiar a vista feed
-      switchView('feed');
-
-      // En Desktop: Buscar el card en el DOM y marcarlo activo
-      if (window.innerWidth >= 992) {
-        document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
-        const targetCard = document.getElementById(`short-card-${id}`);
-        if (targetCard) targetCard.classList.add('active-desktop');
-      } else {
-        // En móvil: Scroll hasta el elemento
-        const targetCard = document.getElementById(`short-card-${id}`);
-        if (targetCard) {
-          targetCard.scrollIntoView({ behavior: 'smooth' });
-        }
-      }
-
-      // Reiniciar y reproducir
-      setTimeout(playActiveVideo, 200);
+      resetFilterAndPlayVideo(id);
     });
   });
 }
@@ -1604,26 +1585,7 @@ function renderNetflixRanking(filteredVideos = state.videos) {
   rankingCards.forEach(card => {
     card.addEventListener('click', () => {
       const id = parseInt(card.getAttribute('data-video-id'));
-      state.activeVideoId = id;
-
-      // Cambiar a vista feed
-      switchView('feed');
-
-      // En Desktop: Buscar el card en el DOM y marcarlo activo
-      if (window.innerWidth >= 992) {
-        document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
-        const targetCard = document.getElementById(`short-card-${id}`);
-        if (targetCard) targetCard.classList.add('active-desktop');
-      } else {
-        // En móvil: Scroll hasta el elemento
-        const targetCard = document.getElementById(`short-card-${id}`);
-        if (targetCard) {
-          targetCard.scrollIntoView({ behavior: 'smooth' });
-        }
-      }
-
-      // Reproducir
-      setTimeout(playActiveVideo, 200);
+      resetFilterAndPlayVideo(id);
     });
   });
 }
@@ -1678,26 +1640,7 @@ function renderNetflixFeatured(filteredVideos = state.videos) {
   featuredCards.forEach(card => {
     card.addEventListener('click', () => {
       const id = parseInt(card.getAttribute('data-video-id'));
-      state.activeVideoId = id;
-
-      // Cambiar a vista feed
-      switchView('feed');
-
-      // En Desktop: Buscar el card en el DOM y marcarlo activo
-      if (window.innerWidth >= 992) {
-        document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
-        const targetCard = document.getElementById(`short-card-${id}`);
-        if (targetCard) targetCard.classList.add('active-desktop');
-      } else {
-        // En móvil: Scroll hasta el elemento
-        const targetCard = document.getElementById(`short-card-${id}`);
-        if (targetCard) {
-          targetCard.scrollIntoView({ behavior: 'smooth' });
-        }
-      }
-
-      // Reproducir
-      setTimeout(playActiveVideo, 200);
+      resetFilterAndPlayVideo(id);
     });
   });
 }
@@ -3320,28 +3263,52 @@ function renderNetflixGrid(filteredVideos) {
   gridCards.forEach(card => {
     card.addEventListener('click', () => {
       const id = parseInt(card.getAttribute('data-video-id'));
-      state.activeVideoId = id;
-
-      // Cambiar a vista feed
-      switchView('feed');
-
-      // En Desktop: Buscar el card en el DOM y marcarlo activo
-      if (window.innerWidth >= 992) {
-        document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
-        const targetCard = document.getElementById(`short-card-${id}`);
-        if (targetCard) targetCard.classList.add('active-desktop');
-      } else {
-        // En móvil: Scroll hasta el elemento
-        const targetCard = document.getElementById(`short-card-${id}`);
-        if (targetCard) {
-          targetCard.scrollIntoView({ behavior: 'smooth' });
-        }
-      }
-
-      // Reiniciar y reproducir
-      setTimeout(playActiveVideo, 200);
+      resetFilterAndPlayVideo(id);
     });
   });
+}
+
+// Helper: Resetear filtro de categoría, re-renderizar feed completo y reproducir un video específico.
+// Se usa al hacer click en cualquier tarjeta del catálogo para garantizar que el video exista en el feed.
+function resetFilterAndPlayVideo(videoId) {
+  // 1. Resetear filtro a "todos"
+  state.currentFilter = 'all';
+  document.querySelectorAll('.category-chip').forEach(chip => {
+    if (chip.getAttribute('data-category') === 'all') {
+      chip.classList.add('active');
+    } else {
+      chip.classList.remove('active');
+    }
+  });
+
+  // 2. Limpiar búsqueda activa
+  const searchInput = document.getElementById('catalog-search-input');
+  if (searchInput) searchInput.value = '';
+
+  // 3. Setear el video activo
+  state.activeVideoId = videoId;
+
+  // 4. Re-renderizar el feed con TODOS los videos para que el card exista en el DOM
+  renderFeed();
+
+  // 5. Cambiar a vista feed
+  switchView('feed');
+
+  // 6. En Desktop: marcar el card activo
+  if (window.innerWidth >= 992) {
+    document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
+    const targetCard = document.getElementById(`short-card-${videoId}`);
+    if (targetCard) targetCard.classList.add('active-desktop');
+  } else {
+    // En móvil: Scroll hasta el elemento
+    const targetCard = document.getElementById(`short-card-${videoId}`);
+    if (targetCard) {
+      targetCard.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+
+  // 7. Reproducir
+  setTimeout(playActiveVideo, 200);
 }
 
 // D. Unificar la actualización de todas las vistas tras buscar o filtrar categorías
@@ -3353,16 +3320,11 @@ function updateAppOnFilterOrSearch() {
   const gridSectionTitle = document.getElementById('grid-section-title');
   const netflixRowsContainer = document.getElementById('netflix-rows-container');
 
-  const categoryLabels = { all: 'Todos los Momentos', 'pro-only': 'Contenido PRO 👑' };
+  const categoryLabels = { all: 'Todos los Momentos' };
   if (state.dynamicCategories) {
     state.dynamicCategories.forEach(c => {
       categoryLabels[c.key] = c.label;
     });
-  } else {
-    categoryLabels.boliche = 'Noches de Boliches';
-    categoryLabels.aventura = 'Aventura Extrema';
-    categoryLabels.lifestyle = 'Lifestyle & Relax';
-    categoryLabels.emociones = 'Momentos Mágicos';
   }
 
   const netflixRankingContainer = document.getElementById('netflix-ranking-container');
@@ -3375,7 +3337,12 @@ function updateAppOnFilterOrSearch() {
     if (netflixRankingContainer) netflixRankingContainer.style.display = 'none';
     if (gridSectionTitle) gridSectionTitle.textContent = `Resultados de Búsqueda para "${searchInput.value.trim()}" (${filtered.length})`;
   } else {
-    // Si no hay búsqueda: renderizar destacados, ranking y filas usando la lista completa (no filtrada por etiqueta)
+    // Sin búsqueda: restaurar visibilidad de TODOS los contenedores
+    if (netflixFeaturedContainer) netflixFeaturedContainer.style.display = '';
+    if (netflixRowsContainer) netflixRowsContainer.style.display = '';
+    if (netflixRankingContainer) netflixRankingContainer.style.display = '';
+
+    // Renderizar destacados, ranking y filas con la lista COMPLETA (no filtrada por etiqueta)
     renderNetflixFeatured(state.videos);
     renderNetflixRanking(state.videos);
     renderNetflixRows(state.videos);
@@ -3384,33 +3351,13 @@ function updateAppOnFilterOrSearch() {
       if (state.currentFilter === 'all') {
         gridSectionTitle.textContent = 'Todos los Momentos';
       } else {
-        gridSectionTitle.textContent = `${categoryLabels[state.currentFilter]} (${filtered.length})`;
+        gridSectionTitle.textContent = `${categoryLabels[state.currentFilter] || state.currentFilter} (${filtered.length})`;
       }
     }
   }
 
-  // Re-renderizar Grilla Explorer y Feed
+  // Solo re-renderizar la Grilla del catálogo (NO el feed del reproductor)
   renderNetflixGrid(filtered);
-  renderFeed();
-
-  // Actualizar video activo si ya no está disponible en la lista filtrada
-  if (filtered.length > 0) {
-    const isStillAvailable = filtered.some(v => v.id === state.activeVideoId);
-    if (!isStillAvailable) {
-      state.activeVideoId = filtered[0].id;
-    }
-  }
-
-  // Reconectar IntersectionObserver para el feed dinámico
-  setupIntersectionObserver();
-
-  // Controlar reproducción según vista activa
-  const feedView = document.getElementById('shorts-feed-view');
-  if (feedView && !feedView.classList.contains('hidden')) {
-    setTimeout(playActiveVideo, 100);
-  } else {
-    pauseAllVideos();
-  }
 }
 
 // ----------------------------------------------------------------------
