@@ -3319,6 +3319,9 @@ function updateAppOnFilterOrSearch() {
 
   const gridSectionTitle = document.getElementById('grid-section-title');
   const netflixRowsContainer = document.getElementById('netflix-rows-container');
+  const netflixRankingContainer = document.getElementById('netflix-ranking-container');
+  const netflixFeaturedContainer = document.getElementById('netflix-featured-container');
+  const gridSection = document.getElementById('netflix-grid-section');
 
   const categoryLabels = { all: 'Todos los Momentos' };
   if (state.dynamicCategories) {
@@ -3327,36 +3330,42 @@ function updateAppOnFilterOrSearch() {
     });
   }
 
-  const netflixRankingContainer = document.getElementById('netflix-ranking-container');
-  const netflixFeaturedContainer = document.getElementById('netflix-featured-container');
+  const isFilterActive = state.currentFilter !== 'all';
 
-  if (query) {
-    // Si hay búsqueda activa: ocultar destacados, carruseles y ranking
+  if (query || isFilterActive) {
+    // Búsqueda activa O etiqueta seleccionada: ocultar carruseles, mostrar solo la grilla de resultados
     if (netflixFeaturedContainer) netflixFeaturedContainer.style.display = 'none';
     if (netflixRowsContainer) netflixRowsContainer.style.display = 'none';
     if (netflixRankingContainer) netflixRankingContainer.style.display = 'none';
-    if (gridSectionTitle) gridSectionTitle.textContent = `Resultados de Búsqueda para "${searchInput.value.trim()}" (${filtered.length})`;
+
+    if (gridSectionTitle) {
+      if (query) {
+        gridSectionTitle.textContent = `Resultados de Búsqueda para "${searchInput.value.trim()}" (${filtered.length})`;
+      } else {
+        gridSectionTitle.textContent = `${categoryLabels[state.currentFilter] || state.currentFilter} (${filtered.length})`;
+      }
+    }
+
+    // Scroll suave hasta la grilla de resultados para que se vean de inmediato
+    if (gridSection && isFilterActive && !query) {
+      gridSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   } else {
-    // Sin búsqueda: restaurar visibilidad de TODOS los contenedores
+    // "Todos los Momentos" sin búsqueda: restaurar visibilidad y renderizar todo
     if (netflixFeaturedContainer) netflixFeaturedContainer.style.display = '';
     if (netflixRowsContainer) netflixRowsContainer.style.display = '';
     if (netflixRankingContainer) netflixRankingContainer.style.display = '';
 
-    // Renderizar destacados, ranking y filas con la lista COMPLETA (no filtrada por etiqueta)
     renderNetflixFeatured(state.videos);
     renderNetflixRanking(state.videos);
     renderNetflixRows(state.videos);
 
     if (gridSectionTitle) {
-      if (state.currentFilter === 'all') {
-        gridSectionTitle.textContent = 'Todos los Momentos';
-      } else {
-        gridSectionTitle.textContent = `${categoryLabels[state.currentFilter] || state.currentFilter} (${filtered.length})`;
-      }
+      gridSectionTitle.textContent = 'Todos los Momentos';
     }
   }
 
-  // Solo re-renderizar la Grilla del catálogo (NO el feed del reproductor)
+  // Re-renderizar la Grilla del catálogo con los resultados filtrados
   renderNetflixGrid(filtered);
 }
 
