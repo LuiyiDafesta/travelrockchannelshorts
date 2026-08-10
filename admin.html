@@ -865,8 +865,8 @@
       <button class="tab-trigger" data-tab="tab-videos" id="trigger-tab-videos"><i class="fa-solid fa-list-check"></i> Gestionar Catálogo</button>
       <button class="tab-trigger" data-tab="tab-comments" id="trigger-tab-comments"><i class="fa-solid fa-comments"></i> Comentarios</button>
       <button class="tab-trigger" data-tab="tab-users" id="trigger-tab-users"><i class="fa-solid fa-users"></i> Gestión de Usuarios</button>
-      <button class="tab-trigger" data-tab="tab-metadata" id="trigger-tab-metadata"><i class="fa-solid fa-tags"></i> Categorías y Colecciones</button>
-      <button class="tab-trigger" data-tab="tab-ads" id="trigger-tab-ads"><i class="fa-solid fa-rectangle-ad"></i> Publicidad 📢</button>
+      <button class="tab-trigger" data-tab="tab-metadata" id="trigger-tab-metadata"><i class="fa-solid fa-tags"></i> Etiquetas y Colecciones</button>
+      <button class="tab-trigger" data-tab="tab-ads" id="trigger-tab-ads" style="display: none;"><i class="fa-solid fa-rectangle-ad"></i> Publicidad 📢</button>
     </nav>
 
     <!-- Pestaña 1: Carga de Videos (Uploader) -->
@@ -933,15 +933,29 @@
 
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label" for="video-category">Categoría del Catálogo</label>
-                <select class="form-select" id="video-category" required>
-                  <option value="">Cargando categorías...</option>
-                </select>
+                <label class="form-label" for="video-category">Etiqueta Principal</label>
+                <div style="display: flex; gap: 8px;">
+                  <select class="form-select" id="video-category" required style="flex: 1;">
+                    <option value="">Cargando etiquetas...</option>
+                  </select>
+                  <button class="premium-btn" type="button" id="btn-add-tag-inline" style="padding: 10px 14px; white-space: nowrap; font-size: 0.8rem; background: var(--primary-gradient); border: none; border-radius: var(--radius-sm); color: white; display: flex; align-items: center; gap: 4px; height: 100%;" title="Agregar nueva etiqueta sobre la marcha">
+                    <i class="fa-solid fa-plus"></i>
+                  </button>
+                </div>
               </div>
               
               <div class="form-group">
-                <label class="form-label" for="video-date">Fecha del Momento</label>
-                <input class="form-input" type="text" id="video-date" required placeholder="22 May 2026">
+                <label class="form-label" for="video-date">Mes de la Temporada</label>
+                <select class="form-select" id="video-date" required>
+                  <option value="Junio">Junio</option>
+                  <option value="Julio">Julio</option>
+                  <option value="Agosto">Agosto</option>
+                  <option value="Septiembre">Septiembre</option>
+                  <option value="Octubre">Octubre</option>
+                  <option value="Noviembre">Noviembre</option>
+                  <option value="Diciembre">Diciembre</option>
+                  <option value="Enero">Enero</option>
+                </select>
               </div>
             </div>
 
@@ -1049,7 +1063,7 @@
               <tr>
                 <th style="width: 70px;">Miniatura</th>
                 <th>Detalles del Short</th>
-                <th>Categoría</th>
+                 <th>Etiqueta</th>
                 <th>Colección / Episodio</th>
                 <th>Colegio</th>
                 <th style="width: 120px; text-align: center;">Membresía</th>
@@ -1128,25 +1142,25 @@
       </div>
     </div>
 
-    <!-- Pestaña 5: Gestión de Categorías y Colecciones -->
+    <!-- Pestaña 5: Gestión de Etiquetas y Colecciones -->
     <div class="tab-content" id="tab-metadata">
       <div style="display: grid; grid-template-columns: 1fr; gap: 30px;" class="metadata-grid-responsive">
         
-        <!-- Gestión de Categorías -->
+        <!-- Gestión de Etiquetas -->
         <div class="glass-panel glassmorphism">
           <div class="panel-title">
-            <i class="fa-solid fa-folder-open" style="color:var(--neon-pink);"></i>
-            Gestión de Categorías
+            <i class="fa-solid fa-tags" style="color:var(--neon-pink);"></i>
+            Gestión de Etiquetas
           </div>
           
           <div id="categories-alert-container"></div>
           
-          <!-- Formulario Agregar Categoría -->
+          <!-- Formulario Agregar Etiqueta -->
           <form id="category-form" onsubmit="return false;" style="margin-bottom: 30px; display: flex; flex-direction: column; gap: 15px;">
             <input type="hidden" id="category-edit-id" value="">
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label" for="category-name">Nombre de la Categoría</label>
+                <label class="form-label" for="category-name">Nombre de la Etiqueta</label>
                 <input class="form-input" type="text" id="category-name" required placeholder="Ej: Fiesta de Disfraces">
               </div>
               <div class="form-group">
@@ -1155,7 +1169,7 @@
               </div>
             </div>
             <button class="premium-btn" type="submit" id="btn-category-submit" style="width: fit-content; padding: 10px 24px;">
-              <span id="btn-category-text">Agregar Categoría</span>
+              <span id="btn-category-text">Agregar Etiqueta</span>
               <i class="fa-solid fa-circle-check"></i>
             </button>
           </form>
@@ -1390,15 +1404,29 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label" for="edit-video-category">Categoría del Catálogo</label>
-            <select class="form-select" id="edit-video-category" required>
-              <option value="">Cargando categorías...</option>
-            </select>
+            <label class="form-label" for="edit-video-category">Etiqueta Principal</label>
+            <div style="display: flex; gap: 8px;">
+              <select class="form-select" id="edit-video-category" required style="flex: 1;">
+                <option value="">Cargando etiquetas...</option>
+              </select>
+              <button class="premium-btn" type="button" id="btn-edit-add-tag-inline" style="padding: 10px 14px; white-space: nowrap; font-size: 0.8rem; background: var(--primary-gradient); border: none; border-radius: var(--radius-sm); color: white; display: flex; align-items: center; gap: 4px; height: 100%;" title="Agregar nueva etiqueta sobre la marcha">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
           </div>
           
           <div class="form-group">
-            <label class="form-label" for="edit-video-date">Fecha del Momento</label>
-            <input class="form-input" type="text" id="edit-video-date" required>
+            <label class="form-label" for="edit-video-date">Mes de la Temporada</label>
+            <select class="form-select" id="edit-video-date" required>
+              <option value="Junio">Junio</option>
+              <option value="Julio">Julio</option>
+              <option value="Agosto">Agosto</option>
+              <option value="Septiembre">Septiembre</option>
+              <option value="Octubre">Octubre</option>
+              <option value="Noviembre">Noviembre</option>
+              <option value="Diciembre">Diciembre</option>
+              <option value="Enero">Enero</option>
+            </select>
           </div>
         </div>
 

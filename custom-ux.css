@@ -8,11 +8,37 @@
 
 /* 1. SISTEMA DE VARIABLES DE DISEÑO PREMIUM (Extendiendo las existentes) */
 :root {
-  --neon-cyan: #06b6d4;
+  --neon-cyan: #ff9900;
   --bg-deep-rgb: 8, 8, 10;
   --transition-spring: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.15);
-  --shadow-neon-pink: 0 0 25px rgba(236, 72, 153, 0.4);
-  --shadow-neon-cyan: 0 0 25px rgba(6, 182, 212, 0.4);
+  --neon-pink: #ff6600 !important;
+  --neon-purple: #ff8800 !important;
+  --neon-orange: #d84315 !important;
+  --primary-gradient: linear-gradient(135deg, #ff9e00 0%, #ff6600 50%, #d84315 100%) !important;
+  --neon-glow-pink: 0 0 20px rgba(255, 102, 0, 0.5) !important;
+  --neon-glow-purple: 0 0 20px rgba(255, 136, 0, 0.5) !important;
+  --glass-border-active: rgba(255, 102, 0, 0.4) !important;
+  --shadow-neon-pink: 0 0 25px rgba(255, 102, 0, 0.45) !important;
+  --shadow-neon-cyan: 0 0 25px rgba(255, 153, 0, 0.45) !important;
+}
+
+/* Logo Estilo Oficial TravelRock */
+.logo-icon {
+  background: #000000 !important;
+  border: 2px solid #ff6600 !important;
+  outline: 1.5px solid #ff6600 !important;
+  outline-offset: -4px !important;
+  border-radius: 8px !important;
+  font-family: var(--font-display) !important;
+  font-weight: 900 !important;
+  box-shadow: 0 0 15px rgba(255, 102, 0, 0.4) !important;
+  transform: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1.35rem !important;
+  letter-spacing: -1.5px !important;
+  padding-right: 1px !important;
 }
 
 /* Transición suave para iluminación adaptativa en fondo Aurora */

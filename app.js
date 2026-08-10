@@ -1495,24 +1495,33 @@ function renderFeed() {
 function renderNetflixRows(filteredVideos = state.videos) {
   netflixContainer.innerHTML = '';
 
-  // Agrupar videos por colección de forma dinámica
-  const collectionsMap = {};
-  const uncategorizedVideos = [];
+  const monthsOrder = ["Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre", "Enero"];
+  const monthsMap = {};
+  monthsOrder.forEach(m => monthsMap[m] = []);
+  const otherVideos = [];
 
   filteredVideos.forEach(video => {
-    if (video.collection_name) {
-      const colName = video.collection_name.trim();
-      if (!collectionsMap[colName]) {
-        collectionsMap[colName] = [];
+    let matched = false;
+    if (video.date) {
+      const dateStr = video.date.toLowerCase();
+      for (const m of monthsOrder) {
+        if (dateStr.includes(m.toLowerCase()) || (m === "Septiembre" && dateStr.includes("sept"))) {
+          monthsMap[m].push(video);
+          matched = true;
+          break;
+        }
       }
-      collectionsMap[colName].push(video);
-    } else {
-      uncategorizedVideos.push(video);
+    }
+    if (!matched) {
+      otherVideos.push(video);
     }
   });
 
-  // Obtener nombres de las colecciones ordenadas alfabéticamente
-  const sortedCollectionNames = Object.keys(collectionsMap).sort();
+  // Ordenar videos dentro de cada mes por ID descendente (los más nuevos primero)
+  monthsOrder.forEach(m => {
+    monthsMap[m].sort((a, b) => b.id - a.id);
+  });
+  otherVideos.sort((a, b) => b.id - a.id);
 
   // Función interna para crear el HTML de una fila
   function createRowHtml(title, videos) {
@@ -1538,16 +1547,16 @@ function renderNetflixRows(filteredVideos = state.videos) {
     return row;
   }
 
-  // Renderizar las filas de colecciones
-  sortedCollectionNames.forEach(colName => {
-    if (collectionsMap[colName].length > 0) {
-      netflixContainer.appendChild(createRowHtml(colName, collectionsMap[colName]));
+  // Renderizar las filas de meses de la temporada en orden
+  monthsOrder.forEach(m => {
+    if (monthsMap[m].length > 0) {
+      netflixContainer.appendChild(createRowHtml(m, monthsMap[m]));
     }
   });
 
-  // Renderizar los videos que no pertenecen a ninguna colección
-  if (uncategorizedVideos.length > 0) {
-    netflixContainer.appendChild(createRowHtml("Otros Momentos", uncategorizedVideos));
+  // Renderizar los videos con fechas heredadas o que no coincidan con la temporada
+  if (otherVideos.length > 0) {
+    netflixContainer.appendChild(createRowHtml("Otros Meses", otherVideos));
   }
 
   // Asignar click a cada tarjeta de Netflix para reproducir al instante
@@ -2014,7 +2023,7 @@ function setupVideoControls(card, videoData) {
 
   // Click simple en pantalla: Play/Pause
   function togglePlayPause() {
-    const userIsPremium = clientSession && clientSession.is_premium;
+    const userIsPremium = true; // Bypassed premium restrictions for now
     if (videoData.is_premium && !userIsPremium && video.currentTime >= 7) {
       if (premiumLockOverlay) premiumLockOverlay.style.display = 'flex';
       return;
@@ -2177,7 +2186,7 @@ function setupVideoControls(card, videoData) {
   const previewIndicator = card.querySelector('.preview-indicator-badge');
 
   function checkPremiumLimit() {
-    const userIsPremium = clientSession && clientSession.is_premium;
+    const userIsPremium = true; // Bypassed premium restrictions for now
     if (videoData.is_premium && !userIsPremium) {
       if (video.currentTime >= 7) {
         video.pause();
@@ -2253,7 +2262,7 @@ function setupVideoControls(card, videoData) {
     const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     let targetTime = pos * video.duration;
 
-    const userIsPremium = clientSession && clientSession.is_premium;
+    const userIsPremium = true; // Bypassed premium restrictions for now
     if (videoData.is_premium && !userIsPremium && targetTime > 7) {
       targetTime = 7;
       if (premiumLockOverlay) premiumLockOverlay.style.display = 'flex';
@@ -3238,7 +3247,8 @@ export function getFilteredVideos(includeAds = false) {
       (v.school && v.school.toLowerCase().includes(query)) ||
       (v.categoryLabel && v.categoryLabel.toLowerCase().includes(query)) ||
       (v.collection_name && v.collection_name.toLowerCase().includes(query)) ||
-      (v.tags && v.tags.toLowerCase().includes(query))
+      (v.tags && v.tags.toLowerCase().includes(query)) ||
+      (v.date && v.date.toLowerCase().includes(query))
     );
   }
 
@@ -3285,9 +3295,9 @@ export function getFilteredVideos(includeAds = false) {
   sortedList = sortedList.concat(singleVideos);
   list = sortedList;
 
-  // Intercalar anuncios dinámicamente si includeAds es true y el usuario es común (no premium) y hay anuncios
-  const isPremium = clientSession && clientSession.is_premium;
-  if (includeAds && !isPremium && state.ads && state.ads.length > 0) {
+  // Deshabilitado el sistema de publicidad para reproducción de corrido sin publicidad
+  const isPremium = true;
+  if (false) {
     let result = [];
     let adIndex = 1; // Empezar en 1 para evitar ID de 0
     for (let i = 0; i < list.length; i++) {

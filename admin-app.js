@@ -207,6 +207,14 @@ document.addEventListener('DOMContentLoaded', () => {
   if (editVideoForm) {
     editVideoForm.addEventListener('submit', saveVideoEdit);
   }
+  const btnAddTagInline = document.getElementById('btn-add-tag-inline');
+  if (btnAddTagInline) {
+    btnAddTagInline.addEventListener('click', () => handleAddTagInline('video-category'));
+  }
+  const btnEditAddTagInline = document.getElementById('btn-edit-add-tag-inline');
+  if (btnEditAddTagInline) {
+    btnEditAddTagInline.addEventListener('click', () => handleAddTagInline('edit-video-category'));
+  }
   if (editAdForm) {
     editAdForm.addEventListener('submit', saveAdEdit);
   }
@@ -339,8 +347,14 @@ async function showDashboard() {
   
   // Establecer fecha por defecto a la actual en el input
   if (videoDate) {
-    const options = { day: 'numeric', month: 'short', year: 'numeric' };
-    videoDate.value = new Date().toLocaleDateString('es-ES', options).replace('.', '');
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const currentMonthName = monthNames[new Date().getMonth()];
+    const validMonths = ["Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre", "Enero"];
+    if (validMonths.includes(currentMonthName)) {
+      videoDate.value = currentMonthName;
+    } else {
+      videoDate.value = "Junio";
+    }
   }
 
   // Cargar estadísticas
@@ -1525,12 +1539,12 @@ async function saveCategory(e) {
       // Update
       const { error } = await supabase.from('categories').update({ name: nameVal, slug: slugVal }).eq('id', editId);
       if (error) throw error;
-      showAlert(document.getElementById('categories-alert-container'), 'success', 'Categoría modificada con éxito.');
+      showAlert(document.getElementById('categories-alert-container'), 'success', 'Etiqueta modificada con éxito.');
     } else {
       // Insert
       const { error } = await supabase.from('categories').insert([{ name: nameVal, slug: slugVal }]);
       if (error) throw error;
-      showAlert(document.getElementById('categories-alert-container'), 'success', 'Categoría agregada con éxito.');
+      showAlert(document.getElementById('categories-alert-container'), 'success', 'Etiqueta agregada con éxito.');
     }
     
     // Reset form
@@ -1543,7 +1557,7 @@ async function saveCategory(e) {
     showAlert(document.getElementById('categories-alert-container'), 'error', `Error: ${err.message}`);
   } finally {
     submitBtn.disabled = false;
-    submitBtn.innerHTML = '<span id="btn-category-text">Agregar Categoría</span> <i class="fa-solid fa-circle-check"></i>';
+    submitBtn.innerHTML = '<span id="btn-category-text">Agregar Etiqueta</span> <i class="fa-solid fa-circle-check"></i>';
   }
 }
 
@@ -2111,6 +2125,48 @@ async function saveAdEdit(e) {
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = '<span>Guardar Cambios</span> <i class="fa-solid fa-circle-check"></i>';
+  }
+}
+
+// H. Función para agregar una etiqueta inline/en caliente desde la carga/edición
+async function handleAddTagInline(targetSelectId) {
+  const tagName = prompt("Ingresa el nombre de la nueva etiqueta (ej: Hoteles):");
+  if (!tagName) return;
+  const trimmedName = tagName.trim();
+  if (!trimmedName) return;
+
+  const tagSlug = trimmedName.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remover acentos
+    .replace(/[^a-z0-9 -]/g, "") // remover caracteres invalidos
+    .replace(/\s+/g, "-") // colapsar espacios a guiones
+    .replace(/-+/g, "-"); // colapsar guiones repetidos
+
+  try {
+    // 1. Insertar en Supabase categories
+    const { data, error } = await supabase
+      .from('categories')
+      .insert([{ name: trimmedName, slug: tagSlug }]);
+    
+    if (error) throw error;
+
+    // 2. Recargar selectores dinámicos
+    await loadUploaderSelects();
+    
+    // Si la función loadCategories está definida, recargar la tabla del admin
+    if (typeof loadCategories === 'function') {
+      loadCategories();
+    }
+
+    // 3. Seleccionar la etiqueta recién creada en el dropdown correspondiente
+    const targetSelect = document.getElementById(targetSelectId);
+    if (targetSelect) {
+      targetSelect.value = tagSlug;
+    }
+
+    alert(`Etiqueta "${trimmedName}" creada con éxito.`);
+  } catch (err) {
+    console.error("Error al crear etiqueta inline:", err);
+    alert(`Error al crear la etiqueta: ${err.message}`);
   }
 }
 
