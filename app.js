@@ -213,7 +213,7 @@ function updateUserUI() {
     renderNetflixFeatured();
     renderNetflixRanking();
     renderNetflixRows();
-    renderNetflixGrid(getFilteredVideos());
+    renderNetflixGrid(getFilteredVideos(false, true));
   }
 }
 
@@ -3191,11 +3191,11 @@ async function recordAdClick(adId) {
 }
 
 // Obtener lista filtrada de videos combinando categoría y búsqueda
-export function getFilteredVideos(includeAds = false) {
+export function getFilteredVideos(includeAds = false, filterByCategory = false) {
   let list = state.videos;
 
   // A. Filtrar por Categoría chip activa
-  if (state.currentFilter !== 'all') {
+  if (filterByCategory && state.currentFilter !== 'all') {
     if (state.currentFilter === 'pro-only') {
       list = list.filter(v => v.is_premium === true);
     } else {
@@ -3346,7 +3346,7 @@ function renderNetflixGrid(filteredVideos) {
 
 // D. Unificar la actualización de todas las vistas tras buscar o filtrar categorías
 function updateAppOnFilterOrSearch() {
-  const filtered = getFilteredVideos();
+  const filtered = getFilteredVideos(false, true);
   const searchInput = document.getElementById('catalog-search-input');
   const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
@@ -3375,10 +3375,10 @@ function updateAppOnFilterOrSearch() {
     if (netflixRankingContainer) netflixRankingContainer.style.display = 'none';
     if (gridSectionTitle) gridSectionTitle.textContent = `Resultados de Búsqueda para "${searchInput.value.trim()}" (${filtered.length})`;
   } else {
-    // Si no hay búsqueda: renderizar destacados, ranking y filas de forma dinámica usando la lista filtrada!
-    renderNetflixFeatured(filtered);
-    renderNetflixRanking(filtered);
-    renderNetflixRows(filtered);
+    // Si no hay búsqueda: renderizar destacados, ranking y filas usando la lista completa (no filtrada por etiqueta)
+    renderNetflixFeatured(state.videos);
+    renderNetflixRanking(state.videos);
+    renderNetflixRows(state.videos);
 
     if (gridSectionTitle) {
       if (state.currentFilter === 'all') {
