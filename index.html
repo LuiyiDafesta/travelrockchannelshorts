@@ -27,7 +27,7 @@
   <!-- Hoja de Estilos Unificada y Minificada (Assets de Producción para Ferozo) -->
   <link rel="stylesheet" href="app.min.css?v=1.7.0">
   <!-- Hoja de Estilos UX/UI Premium de Alta Fidelidad -->
-  <link rel="stylesheet" href="custom-ux.css?v=1.9.1">
+  <link rel="stylesheet" href="custom-ux.css?v=2.1.0">
 </head>
 <body>
 
@@ -129,13 +129,15 @@
         <a href="#" class="footer-link">Términos</a>
         <a href="#" class="footer-link">Privacidad</a>
       </div>
-      <button class="sidebar-lang-btn">
+      <!-- Idioma oculto por ahora (solo español) -->
+      <!-- <button class="sidebar-lang-btn">
         <i class="fa-solid fa-globe"></i> Idioma
-      </button>
+      </button> -->
       
       <div class="sidebar-socials">
         <a href="https://instagram.com" target="_blank" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
-        <a href="https://tiktok.com" target="_blank" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+        <!-- TikTok oculto por ahora -->
+        <!-- <a href="https://tiktok.com" target="_blank" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a> -->
         <a href="https://youtube.com" target="_blank" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a>
         <a href="https://twitter.com" target="_blank" aria-label="X"><i class="fa-brands fa-x-twitter"></i></a>
       </div>
@@ -210,7 +212,7 @@
           <!-- Buscador Premium Integrado -->
           <div class="search-bar-wrapper">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="catalog-search-input" class="search-input" placeholder="Buscar colegio, boliche, excursión o palabra clave...">
+            <input type="text" id="catalog-search-input" class="search-input" placeholder="Buscar por mes (Julio, Agosto...) o etiqueta (Hoteles, Bienvenida...)">
           </div>
         </div>
       </div>
@@ -459,12 +461,12 @@
     </div>
   </div>
 
-  <!-- H. BOTÓN FLOTANTE TRIGGER DE ATAJOS EN PC -->
-  <button class="shortcuts-trigger-desktop" id="shortcuts-trigger-desktop" title="Ver atajos de teclado (?)" aria-label="Ver atajos de teclado">
+  <!-- Botón flotante de atajos de teclado oculto -->
+  <!-- <button class="shortcuts-trigger-desktop" id="shortcuts-trigger-desktop" title="Ver atajos de teclado (?)" aria-label="Ver atajos de teclado">
     <i class="fa-solid fa-keyboard"></i>
-  </button>
+  </button> -->
 
   <!-- Script Principal de Base de Datos y Lógica (ES Modules) -->
-  <script type="module" src="app.js?v=2.0.1"></script>
+  <script type="module" src="app.js?v=2.1.0"></script>
 </body>
 </html>

@@ -1240,7 +1240,7 @@ function renderFeed() {
             <div class="video-info-channel-row">
               <div class="channel-avatar">TR</div>
               <div class="channel-meta">
-                <span class="channel-name">${(video.school || 'General').split(' - ')[0]}</span>
+                <span class="channel-name">TravelRock Channel</span>
                 <span class="video-episode-number">${video.collection_name ? `E${video.episode_number || 1}` : 'Short'}</span>
               </div>
               ${video.is_premium ? `
@@ -1324,7 +1324,7 @@ function renderFeed() {
               <img class="showcard-poster" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
               <div class="showcard-info">
                 <div>
-                  <span class="showcard-tags">${video.categoryLabel} · ${(video.school || 'General').split(' - ')[0]}${video.province ? ` (${video.province})` : ''}</span>
+                  <span class="showcard-tags">${video.categoryLabel || 'Short'}</span>
                   <h2 class="showcard-title">${video.title}</h2>
                 </div>
                 <div class="showcard-actions">
@@ -1504,7 +1504,7 @@ function renderNetflixRows(filteredVideos = state.videos) {
               <div class="netflix-card-premium-badge" style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); color: white; border-radius: 4px; padding: 3px 6px; font-size: 0.65rem; font-weight: 800; display: flex; align-items: center; gap: 3px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2;"><i class="fa-solid fa-crown"></i> PRO</div>
             ` : ''}
             <div class="netflix-card-overlay">
-              <span class="netflix-card-school">${(video.school || 'General').split(' - ')[0]}${video.province ? ` (${video.province})` : ''}</span>
+              <span class="netflix-card-school">${video.categoryLabel || ''}</span>
               <h4 class="netflix-card-title">${video.title}</h4>
             </div>
           </div>
@@ -1570,7 +1570,7 @@ function renderNetflixRanking(filteredVideos = state.videos) {
                 <div class="netflix-card-premium-badge" style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); color: white; border-radius: 4px; padding: 3px 6px; font-size: 0.65rem; font-weight: 800; display: flex; align-items: center; gap: 3px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2;"><i class="fa-solid fa-crown"></i> PRO</div>
               ` : ''}
               <div class="netflix-card-overlay">
-                <span class="netflix-card-school">${(video.school || 'General').split(' - ')[0]}${video.province ? ` (${video.province})` : ''}</span>
+                <span class="netflix-card-school">${video.categoryLabel || ''}</span>
                 <h4 class="netflix-card-title">${video.title}</h4>
               </div>
             </div>
@@ -1621,7 +1621,7 @@ function renderNetflixFeatured(filteredVideos = state.videos) {
             <div class="featured-card" data-video-id="${video.id}">
               <img class="featured-card-img" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
               <div class="featured-card-overlay">
-                <span class="featured-card-school">${(video.school || 'General').split(' - ')[0]}${video.province ? ` (${video.province})` : ''}</span>
+                <span class="featured-card-school">${video.categoryLabel || ''}</span>
                 <h4 class="featured-card-title-logo">${video.title}</h4>
                 <div class="featured-card-genres">${genresList}</div>
                 <button class="featured-card-btn">
@@ -3252,7 +3252,7 @@ function renderNetflixGrid(filteredVideos) {
         <div class="netflix-card-premium-badge" style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); color: white; border-radius: 4px; padding: 3px 6px; font-size: 0.65rem; font-weight: 800; display: flex; align-items: center; gap: 3px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2;"><i class="fa-solid fa-crown"></i> PRO</div>
       ` : ''}
       <div class="netflix-card-overlay">
-        <span class="netflix-card-school">${(video.school || 'General').split(' - ')[0]}${video.province ? ` (${video.province})` : ''}</span>
+        <span class="netflix-card-school">${video.categoryLabel || ''}</span>
         <h4 class="netflix-card-title">${video.title}</h4>
       </div>
     </div>
@@ -3513,7 +3513,7 @@ function updateKeepWatchingSidebar() {
         </div>
         <div class="keep-watching-details">
           <div class="keep-watching-title">${video.title}</div>
-          <div class="keep-watching-meta">${(video.school || 'General').split(' - ')[0]}</div>
+          <div class="keep-watching-meta">${video.categoryLabel || 'Short'}</div>
         </div>
       </div>
     `;
