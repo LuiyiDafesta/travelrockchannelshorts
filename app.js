@@ -674,6 +674,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }, 500);
 
+  // Deep link: si la URL es /video/:id, navegar a ese video directamente
+  const urlMatch = window.location.pathname.match(/^\/video\/(\d+)/);
+  if (urlMatch) {
+    const targetId = parseInt(urlMatch[1], 10);
+    const targetVideo = state.videos.find(v => v.id === targetId);
+    if (targetVideo) {
+      setTimeout(() => {
+        resetFilterAndPlayVideo(targetId);
+      }, 600);
+    }
+  }
+
+  // Navegación con botón "atrás" del navegador
+  window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.videoId) {
+      state.activeVideoId = e.state.videoId;
+      playActiveVideo();
+    } else {
+      // Volvió a la URL raíz — mostrar catálogo
+      const explorerView = document.getElementById('netflix-explorer-view');
+      const feedView = document.getElementById('shorts-feed-view');
+      if (explorerView) explorerView.classList.remove('hidden');
+      if (feedView) feedView.classList.add('hidden');
+      pauseAllVideos();
+      document.title = 'TravelRock Channel Shorts - Bariloche Temporada 2026';
+    }
+  });
+
   // Inicializar sidebar de "Continuar Viendo"
   updateKeepWatchingSidebar();
 
@@ -2930,6 +2958,18 @@ function playActiveVideo() {
 
     const ogImage = document.querySelector('meta[property="og:image"]');
     if (ogImage) ogImage.setAttribute('content', activeVideo.thumbnailUrl || '');
+
+    // URL dinámica por video para tracking en analytics (Google Analytics, etc.)
+    if (!activeVideo.isAd && state.activeVideoId >= 0) {
+      const videoSlug = (activeVideo.school || activeVideo.title || 'video').split(' - ')[0].toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const newUrl = `/video/${state.activeVideoId}/${videoSlug}`;
+      if (window.location.pathname !== newUrl) {
+        history.pushState({ videoId: state.activeVideoId }, document.title, newUrl);
+      }
+      // Actualizar og:url dinámico
+      const ogUrl = document.querySelector('meta[property="og:url"]');
+      if (ogUrl) ogUrl.setAttribute('content', `https://shorts.supertourchannel.com.ar${newUrl}`);
+    }
   }
 
   // Registrar en "Continuar Viendo"

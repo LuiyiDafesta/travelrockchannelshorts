@@ -85,3 +85,17 @@ ServerSignature Off
 <IfModule mod_headers.c>
     Header always append X-Frame-Options SAMEORIGIN
 </IfModule>
+
+# 7. SPA ROUTING (Single Page Application)
+# Redirige todas las rutas /video/* a index.html para deep links y tracking por video
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # No reescribir archivos o directorios que existen fisicamente
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Redirigir rutas de video al index.html (SPA)
+    RewriteRule ^video/ index.html [L]
+</IfModule>
