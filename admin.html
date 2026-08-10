@@ -14,7 +14,7 @@
   <!-- Estilos del Sistema Principal -->
   <link rel="stylesheet" href="app.min.css?v=1.0.8">
   <!-- Hoja de Estilos UX/UI Premium de Alta Fidelidad -->
-  <link rel="stylesheet" href="custom-ux.css?v=1.8.3">
+  <link rel="stylesheet" href="custom-ux.css?v=1.8.4">
 
   <style>
     /* Estilos Específicos del Administrador con Acentuación Aurora */
@@ -937,7 +937,7 @@
               <div class="form-group">
                 <label class="form-label" for="video-category">Etiqueta Principal</label>
                 <div style="display: flex; gap: 8px;">
-                  <select class="form-select" id="video-category" style="flex: 1;">
+                  <select class="form-select" id="video-category" required style="flex: 1;">
                     <option value="">Cargando etiquetas...</option>
                   </select>
                   <button class="premium-btn" type="button" id="btn-add-tag-inline" style="padding: 10px 14px; white-space: nowrap; font-size: 0.8rem; background: var(--primary-gradient); border: none; border-radius: var(--radius-sm); color: white; display: flex; align-items: center; gap: 4px; height: 100%;" title="Agregar nueva etiqueta sobre la marcha">
@@ -1013,7 +1013,7 @@
 
             <div class="form-group">
               <label class="form-label" for="video-description">Descripción / Anécdota</label>
-              <textarea class="form-textarea" id="video-description" rows="3" required placeholder="Describe lo que pasó en el video, las risas, quién se cayó o qué DJ estaba tocando..."></textarea>
+              <textarea class="form-textarea" id="video-description" rows="3" placeholder="Describe lo que pasó en el video, las risas, quién se cayó o qué DJ estaba tocando..."></textarea>
             </div>
 
             <button class="premium-btn" type="submit" id="btn-upload-submit" style="width: 100%; padding: 14px; font-size: 1.05rem;">
@@ -1408,7 +1408,7 @@
           <div class="form-group">
             <label class="form-label" for="edit-video-category">Etiqueta Principal</label>
             <div style="display: flex; gap: 8px;">
-              <select class="form-select" id="edit-video-category" style="flex: 1;">
+              <select class="form-select" id="edit-video-category" required style="flex: 1;">
                 <option value="">Cargando etiquetas...</option>
               </select>
               <button class="premium-btn" type="button" id="btn-edit-add-tag-inline" style="padding: 10px 14px; white-space: nowrap; font-size: 0.8rem; background: var(--primary-gradient); border: none; border-radius: var(--radius-sm); color: white; display: flex; align-items: center; gap: 4px; height: 100%;" title="Agregar nueva etiqueta sobre la marcha">
@@ -1475,7 +1475,7 @@
 
         <div class="form-group">
           <label class="form-label" for="edit-video-description">Descripción / Anécdota</label>
-          <textarea class="form-textarea" id="edit-video-description" rows="3" required></textarea>
+          <textarea class="form-textarea" id="edit-video-description" rows="3"></textarea>
         </div>
 
         <div class="modal-buttons" style="justify-content: flex-end; margin-top: 20px;">
@@ -1539,6 +1539,6 @@
   <canvas id="thumbnail-canvas" style="display: none;"></canvas>
 
   <!-- Script del Administrador Supabase (ES Modules) -->
-  <script type="module" src="admin-app.js?v=1.8.3"></script>
+  <script type="module" src="admin-app.js?v=1.8.4"></script>
 </body>
 </html>
