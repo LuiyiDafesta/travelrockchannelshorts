@@ -27,7 +27,7 @@
   <!-- Hoja de Estilos Unificada y Minificada (Assets de Producción para Ferozo) -->
   <link rel="stylesheet" href="app.min.css?v=1.7.0">
   <!-- Hoja de Estilos UX/UI Premium de Alta Fidelidad -->
-  <link rel="stylesheet" href="custom-ux.css?v=2.1.0">
+  <link rel="stylesheet" href="custom-ux.css?v=2.2.0">
 </head>
 <body>
 
@@ -226,6 +226,21 @@
           <button class="category-chip" data-category="lifestyle"><i class="fa-solid fa-mug-hot"></i> Lifestyle</button>
           <button class="category-chip" data-category="emociones"><i class="fa-solid fa-heart"></i> Momentos Mágicos</button>
         </nav>
+        <!-- Botón de Filtro visible en móvil para abrir bottom sheet de etiquetas -->
+        <button class="filter-tags-btn" id="filter-tags-btn" aria-label="Filtrar por etiqueta">
+          <i class="fa-solid fa-sliders"></i> Filtrar
+        </button>
+      </div>
+
+      <!-- Bottom Sheet de Etiquetas (Móvil) -->
+      <div class="tags-bottom-sheet-overlay" id="tags-bottom-sheet-overlay">
+        <div class="tags-bottom-sheet" id="tags-bottom-sheet">
+          <div class="tags-sheet-handle"></div>
+          <h3 class="tags-sheet-title"><i class="fa-solid fa-tags"></i> Filtrar por Etiqueta</h3>
+          <div class="tags-sheet-grid" id="tags-sheet-grid">
+            <!-- Se llena dinámicamente desde app.js -->
+          </div>
+        </div>
       </div>
 
       <!-- Contenedor dinámico de Últimos Agregados (Tarjetas Grandes estilo Hero) -->
@@ -467,6 +482,6 @@
   </button> -->
 
   <!-- Script Principal de Base de Datos y Lógica (ES Modules) -->
-  <script type="module" src="app.js?v=2.1.0"></script>
+  <script type="module" src="app.js?v=2.2.0"></script>
 </body>
 </html>

@@ -614,7 +614,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       `;
     });
     container.innerHTML = html;
+
+    // Llenar el bottom sheet de etiquetas para móvil
+    const sheetGrid = document.getElementById('tags-sheet-grid');
+    if (sheetGrid) {
+      let sheetHtml = `<button class="tags-sheet-item active" data-category="all">⚡ Todos</button>`;
+      state.dynamicCategories.forEach(cat => {
+        const icon = iconMap[cat.key] || 'fa-solid fa-tag';
+        sheetHtml += `<button class="tags-sheet-item" data-category="${cat.key}"><i class="${icon}"></i> ${cat.label}</button>`;
+      });
+      sheetGrid.innerHTML = sheetHtml;
+    }
   }
+
+  // Configurar bottom sheet de etiquetas (móvil)
+  setupTagsBottomSheet();
 
   renderFeed();
   renderNetflixFeatured();
@@ -3309,6 +3323,80 @@ function resetFilterAndPlayVideo(videoId) {
 
   // 7. Reproducir
   setTimeout(playActiveVideo, 200);
+}
+
+// Bottom Sheet de Etiquetas para Móvil
+function setupTagsBottomSheet() {
+  const overlay = document.getElementById('tags-bottom-sheet-overlay');
+  const filterBtn = document.getElementById('filter-tags-btn');
+  const sheetGrid = document.getElementById('tags-sheet-grid');
+  if (!overlay || !filterBtn) return;
+
+  // Abrir bottom sheet
+  filterBtn.addEventListener('click', () => {
+    // Sincronizar estado activo con el filtro actual
+    overlay.querySelectorAll('.tags-sheet-item').forEach(item => {
+      if (item.getAttribute('data-category') === state.currentFilter) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+    overlay.classList.remove('closing');
+    overlay.classList.add('active');
+  });
+
+  // Cerrar al tocar el overlay (fuera del sheet)
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      closeTagsSheet();
+    }
+  });
+
+  function closeTagsSheet() {
+    overlay.classList.add('closing');
+    setTimeout(() => {
+      overlay.classList.remove('active', 'closing');
+    }, 250);
+  }
+
+  // Seleccionar etiqueta desde el bottom sheet
+  if (sheetGrid) {
+    sheetGrid.addEventListener('click', (e) => {
+      const item = e.target.closest('.tags-sheet-item');
+      if (!item) return;
+
+      const category = item.getAttribute('data-category');
+
+      // Actualizar estado visual del bottom sheet
+      sheetGrid.querySelectorAll('.tags-sheet-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+
+      // Sincronizar con los chips del catálogo (desktop)
+      document.querySelectorAll('.category-chip').forEach(chip => {
+        if (chip.getAttribute('data-category') === category) {
+          chip.classList.add('active');
+        } else {
+          chip.classList.remove('active');
+        }
+      });
+
+      // Actualizar filtro y re-renderizar
+      state.currentFilter = category;
+      updateAppOnFilterOrSearch();
+
+      // Actualizar texto del botón filtrar
+      if (category === 'all') {
+        filterBtn.innerHTML = '<i class="fa-solid fa-sliders"></i> Filtrar';
+      } else {
+        const label = item.textContent.trim();
+        filterBtn.innerHTML = `<i class="fa-solid fa-tag"></i> ${label}`;
+      }
+
+      // Cerrar el sheet con animación
+      closeTagsSheet();
+    });
+  }
 }
 
 // D. Unificar la actualización de todas las vistas tras buscar o filtrar categorías
