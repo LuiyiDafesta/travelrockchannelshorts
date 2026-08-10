@@ -587,9 +587,9 @@ async function publishShort(e) {
   }
 
   // Obtener valores del formulario
-  const titleVal = videoTitle.value.trim();
-  const schoolVal = videoSchool.value.trim();
-  const categoryVal = videoCategory.value;
+  const titleVal = videoTitle.value.trim() || 'Momento';
+  const schoolVal = videoSchool.value.trim() || 'General';
+  const categoryVal = videoCategory.value || '';
   const dateVal = videoDate.value.trim();
   const collectionVal = videoCollection.value.trim();
   const episodeVal = videoEpisode.value.trim();
@@ -1351,7 +1351,13 @@ function openVideoEditModal(video) {
   document.getElementById('edit-video-title').value = video.title || '';
   document.getElementById('edit-video-school').value = video.school || '';
   document.getElementById('edit-video-category').value = video.category || '';
-  document.getElementById('edit-video-date').value = video.date || '';
+  const validMonths = ["Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre", "Enero"];
+  let matchedMonth = "Junio";
+  if (video.date) {
+    const matched = validMonths.find(m => video.date.toLowerCase().includes(m.toLowerCase()));
+    if (matched) matchedMonth = matched;
+  }
+  document.getElementById('edit-video-date').value = matchedMonth;
   document.getElementById('edit-video-province').value = video.province || '';
   document.getElementById('edit-video-chapters').value = video.chapters || '';
   const isPremiumEdit = document.getElementById('edit-video-is-premium');
@@ -1374,9 +1380,9 @@ async function saveVideoEdit(e) {
   e.preventDefault();
   
   const idVal = document.getElementById('edit-video-id').value;
-  const titleVal = document.getElementById('edit-video-title').value.trim();
-  const schoolVal = document.getElementById('edit-video-school').value.trim();
-  const categoryVal = document.getElementById('edit-video-category').value;
+  const titleVal = document.getElementById('edit-video-title').value.trim() || 'Momento';
+  const schoolVal = document.getElementById('edit-video-school').value.trim() || 'General';
+  const categoryVal = document.getElementById('edit-video-category').value || '';
   const dateVal = document.getElementById('edit-video-date').value.trim();
   const provinceVal = document.getElementById('edit-video-province').value.trim();
   const chaptersVal = document.getElementById('edit-video-chapters').value.trim();

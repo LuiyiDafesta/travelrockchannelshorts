@@ -516,3 +516,50 @@
     box-shadow: 0 0 15px rgba(236, 72, 153, 0.5), 0 4px 15px rgba(0, 0, 0, 0.3);
   }
 }
+
+/* Estilo del buscador con el naranja TravelRock */
+.search-bar-wrapper {
+  border: 1px solid rgba(255, 102, 0, 0.25) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.3s ease !important;
+}
+
+.search-bar-wrapper:focus-within {
+  border-color: #ff6600 !important;
+  box-shadow: 0 0 15px rgba(255, 102, 0, 0.35) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.search-bar-wrapper .search-icon {
+  color: #ff6600 !important;
+}
+
+.search-bar-wrapper .search-input {
+  color: #ffffff !important;
+}
+
+.search-bar-wrapper .search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.sidebar-search {
+  border: 1px solid rgba(255, 102, 0, 0.2) !important;
+  transition: all 0.3s ease !important;
+}
+
+.sidebar-search:focus-within {
+  border-color: #ff6600 !important;
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.25) !important;
+}
+
+.sidebar-search i {
+  color: #ff6600 !important;
+}
+
+.sidebar-search input {
+  color: #ffffff !important;
+}
+
+.sidebar-search input::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}

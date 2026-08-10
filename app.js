@@ -155,14 +155,21 @@ function updateUserUI() {
   const mobileUserAvatar = document.getElementById('mobile-user-avatar');
   const premiumSidebarCard = document.querySelector('.sidebar-premium-card');
   const mobileHeaderPremiumBtn = document.getElementById('mobile-header-premium-btn');
+  const tabBtnPremium = document.getElementById('tab-btn-premium');
 
   // Elementos de administración
   const sidebarBtnAdmin = document.getElementById('sidebar-btn-admin');
   const mobileBtnAdmin = document.getElementById('mobile-btn-admin');
 
+  // Ocultar siempre elementos de login y PRO de cara al usuario común
+  if (sidebarBtnLogin) sidebarBtnLogin.classList.add('hidden');
+  if (mobileAuthBtn) mobileAuthBtn.classList.add('hidden');
+  if (premiumSidebarCard) premiumSidebarCard.style.display = 'none';
+  if (mobileHeaderPremiumBtn) mobileHeaderPremiumBtn.classList.add('hidden');
+  if (tabBtnPremium) tabBtnPremium.classList.add('hidden');
+
   if (clientSession) {
     // Usuario Logueado
-    if (sidebarBtnLogin) sidebarBtnLogin.classList.add('hidden');
     if (sidebarUserLogged) sidebarUserLogged.classList.remove('hidden');
 
     const dispName = clientSession.user_name || clientSession.email.split('@')[0];
@@ -173,41 +180,15 @@ function updateUserUI() {
       sidebarUserAvatar.style.background = generateAvatarStyle(dispName);
     }
 
-    if (mobileAuthBtn) mobileAuthBtn.classList.add('hidden');
     if (mobileUserAvatar) {
       mobileUserAvatar.classList.remove('hidden');
       mobileUserAvatar.textContent = dispName.charAt(0).toUpperCase();
       mobileUserAvatar.style.background = generateAvatarStyle(dispName);
     }
 
-    if (clientSession.is_premium) {
-      if (sidebarRoleBadge) {
-        sidebarRoleBadge.innerHTML = clientSession.role === 'admin' ? 'Admin 👑' : 'PRO 👑';
-        sidebarRoleBadge.className = 'user-badge-premium';
-      }
-      if (premiumSidebarCard) premiumSidebarCard.style.display = 'none';
-      if (mobileHeaderPremiumBtn) {
-        mobileHeaderPremiumBtn.classList.add('hidden'); // Ocultar corona premium para usuarios PRO
-      }
-      const tabBtnPremium = document.getElementById('tab-btn-premium');
-      if (tabBtnPremium) {
-        tabBtnPremium.classList.add('hidden'); // Ocultar pestaña Premium para usuarios PRO
-      }
-    } else {
-      if (sidebarRoleBadge) {
-        sidebarRoleBadge.innerHTML = clientSession.role === 'admin' ? 'Admin ⚙️' : 'Egresado 🎓';
-        sidebarRoleBadge.className = clientSession.role === 'admin' ? 'user-badge-premium' : '';
-      }
-      if (premiumSidebarCard) premiumSidebarCard.style.display = 'block';
-      if (mobileHeaderPremiumBtn) {
-        mobileHeaderPremiumBtn.classList.remove('hidden'); // Mostrar corona premium para usuarios no PRO
-        mobileHeaderPremiumBtn.style.color = '';
-        mobileHeaderPremiumBtn.style.textShadow = '';
-      }
-      const tabBtnPremium = document.getElementById('tab-btn-premium');
-      if (tabBtnPremium) {
-        tabBtnPremium.classList.remove('hidden'); // Mostrar pestaña Premium para usuarios no PRO
-      }
+    if (sidebarRoleBadge) {
+      sidebarRoleBadge.innerHTML = clientSession.role === 'admin' ? 'Admin 👑' : 'PRO 👑';
+      sidebarRoleBadge.className = 'user-badge-premium';
     }
 
     // Mostrar/ocultar enlaces de administración según rol
@@ -220,22 +201,8 @@ function updateUserUI() {
     }
   } else {
     // Invitado (No Logueado)
-    if (sidebarBtnLogin) sidebarBtnLogin.classList.remove('hidden');
     if (sidebarUserLogged) sidebarUserLogged.classList.add('hidden');
-
-    if (mobileAuthBtn) mobileAuthBtn.classList.remove('hidden');
     if (mobileUserAvatar) mobileUserAvatar.classList.add('hidden');
-    if (premiumSidebarCard) premiumSidebarCard.style.display = 'block';
-    if (mobileHeaderPremiumBtn) {
-      mobileHeaderPremiumBtn.classList.remove('hidden'); // Mostrar para invitados
-      mobileHeaderPremiumBtn.style.color = '';
-      mobileHeaderPremiumBtn.style.textShadow = '';
-    }
-    const tabBtnPremium = document.getElementById('tab-btn-premium');
-    if (tabBtnPremium) {
-      tabBtnPremium.classList.remove('hidden'); // Mostrar pestaña Premium para invitados
-    }
-
     if (sidebarBtnAdmin) sidebarBtnAdmin.classList.add('hidden');
     if (mobileBtnAdmin) mobileBtnAdmin.classList.add('hidden');
   }
