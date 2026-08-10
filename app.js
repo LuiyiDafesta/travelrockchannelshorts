@@ -1339,7 +1339,7 @@ function renderFeed() {
               <div class="showcard-info">
                 <div>
                   <span class="showcard-tags">${video.categoryLabel || 'Short'}</span>
-                  <h2 class="showcard-title">${video.title}</h2>
+                  <h2 class="showcard-title">${(video.school || video.title || '').split(' - ')[0]}</h2>
                 </div>
                 <div class="showcard-actions">
                   <button class="btn-replay-showcard">
@@ -1519,7 +1519,7 @@ function renderNetflixRows(filteredVideos = state.videos) {
             ` : ''}
             <div class="netflix-card-overlay">
               <span class="netflix-card-school">${video.categoryLabel || ''}</span>
-              <h4 class="netflix-card-title">${video.title}</h4>
+              <h4 class="netflix-card-title">${(video.school || video.title || '').split(' - ')[0]}</h4>
             </div>
           </div>
         `).join('')}
@@ -1585,7 +1585,7 @@ function renderNetflixRanking(filteredVideos = state.videos) {
               ` : ''}
               <div class="netflix-card-overlay">
                 <span class="netflix-card-school">${video.categoryLabel || ''}</span>
-                <h4 class="netflix-card-title">${video.title}</h4>
+                <h4 class="netflix-card-title">${(video.school || video.title || '').split(' - ')[0]}</h4>
               </div>
             </div>
           </div>
@@ -1636,7 +1636,7 @@ function renderNetflixFeatured(filteredVideos = state.videos) {
               <img class="featured-card-img" src="${video.thumbnailUrl}" onerror="this.src='https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60';" alt="${video.title}">
               <div class="featured-card-overlay">
                 <span class="featured-card-school">${video.categoryLabel || ''}</span>
-                <h4 class="featured-card-title-logo">${video.title}</h4>
+                <h4 class="featured-card-title-logo">${(video.school || video.title || '').split(' - ')[0]}</h4>
                 <div class="featured-card-genres">${genresList}</div>
                 <button class="featured-card-btn">
                   <i class="fa-solid fa-play"></i> Reproducir
@@ -3267,7 +3267,7 @@ function renderNetflixGrid(filteredVideos) {
       ` : ''}
       <div class="netflix-card-overlay">
         <span class="netflix-card-school">${video.categoryLabel || ''}</span>
-        <h4 class="netflix-card-title">${video.title}</h4>
+        <h4 class="netflix-card-title">${(video.school || video.title || '').split(' - ')[0]}</h4>
       </div>
     </div>
   `).join('');
@@ -3600,7 +3600,7 @@ function updateKeepWatchingSidebar() {
           </div>
         </div>
         <div class="keep-watching-details">
-          <div class="keep-watching-title">${video.title}</div>
+          <div class="keep-watching-title">${(video.school || video.title || '').split(' - ')[0]}</div>
           <div class="keep-watching-meta">${video.categoryLabel || 'Short'}</div>
         </div>
       </div>
