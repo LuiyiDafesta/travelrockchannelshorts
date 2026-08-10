@@ -622,6 +622,7 @@
 .explorer-hero-badge {
   background: linear-gradient(135deg, #ff6600 0%, #ff9e00 100%) !important;
   color: #fff !important;
+  font-weight: 800 !important;
   box-shadow: 0 4px 12px rgba(255, 102, 0, 0.4) !important;
 }
 
