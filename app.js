@@ -2987,7 +2987,7 @@ function playActiveVideo() {
   pauseAllVideos();
 
   // PRE-ROLL AD SYSTEM (YouTube Style Ad injection)
-  const isPremium = clientSession && clientSession.is_premium;
+  const isPremium = true; // Bypassed pre-roll ads
   if (state.activeVideoId >= 0 && !isPremium && state.ads && state.ads.length > 0 && Math.random() < 0.35) {
     const ad = state.ads[Math.floor(Math.random() * state.ads.length)];
     triggerPreRollAd(activeCard, video, ad, activeVideo.videoUrl);

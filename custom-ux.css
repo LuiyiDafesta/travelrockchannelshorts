@@ -563,3 +563,49 @@
 .sidebar-search input::placeholder {
   color: rgba(255, 255, 255, 0.4) !important;
 }
+
+/* Corrección de tamaño y usabilidad de las tarjetas en móviles */
+@media (max-width: 991px) {
+  .netflix-card {
+    flex: 0 0 165px !important;
+    height: 270px !important;
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
+  }
+  
+  .row-carousel {
+    gap: 14px !important;
+    padding: 8px 0 !important;
+  }
+
+  .netflix-card-overlay {
+    padding: 12px 10px !important;
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 60%, transparent 100%) !important;
+  }
+
+  .netflix-card-title {
+    font-size: 0.85rem !important;
+    line-height: 1.25 !important;
+    font-weight: 700 !important;
+  }
+
+  .netflix-card-school {
+    font-size: 0.7rem !important;
+    color: var(--neon-pink) !important;
+  }
+  
+  .row-title {
+    font-size: 1.2rem !important;
+    margin-top: 20px !important;
+    margin-bottom: 10px !important;
+    border-left: 3px solid #ff6600 !important;
+    padding-left: 8px !important;
+  }
+
+  /* Ajuste de grilla de resultados de búsqueda en móvil */
+  .explorer-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+    gap: 14px !important;
+  }
+}
