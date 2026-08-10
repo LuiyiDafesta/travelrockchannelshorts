@@ -587,15 +587,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Carga asíncrona robusta de Supabase antes de renderizar
   await fetchVideosAndComments();
 
-  // Renderizar chips de categorías dinámicos
-  const container = document.getElementById('categories-container');
+  // Renderizar chips de categorías dinámicos (Etiquetas cargadas del sistema)
+  const container = document.getElementById('categories-nav');
   if (container && state.dynamicCategories) {
     const iconMap = {
       boliche: 'fa-solid fa-music',
+      boliches: 'fa-solid fa-music',
       aventura: 'fa-solid fa-mountain',
       lifestyle: 'fa-solid fa-mug-hot',
       emociones: 'fa-solid fa-heart',
-      bienvenida: 'fa-solid fa-hand-wave'
+      bienvenida: 'fa-solid fa-hand-wave',
+      hoteles: 'fa-solid fa-hotel',
+      hotel: 'fa-solid fa-hotel',
+      comida: 'fa-solid fa-utensils',
+      excursion: 'fa-solid fa-route',
+      fiesta: 'fa-solid fa-champagne-glasses'
     };
 
     let html = `<button class="category-chip active" data-category="all">⚡ Todos los Momentos</button>`;
@@ -607,12 +613,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         </button>
       `;
     });
-    // Agregar chip especial Club PRO
-    html += `
-      <button class="category-chip special-pro-chip" data-category="pro-only" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%); border: 1px solid rgba(245, 158, 11, 0.4); color: #fde047; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-        <i class="fa-solid fa-crown" style="color: #fde047;"></i> Contenido PRO 👑
-      </button>
-    `;
     container.innerHTML = html;
   }
 
