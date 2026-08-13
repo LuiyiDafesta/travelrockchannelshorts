@@ -1148,8 +1148,8 @@ function renderFeed() {
         
         <!-- REPRODUCTOR VERTICAL -->
         <div class="player-wrapper">
-          <!-- Video Nativo -->
-          <video class="short-video" muted loop playsinline preload="metadata" src="${video.videoUrl}"></video>
+          <!-- Video Nativo Híbrido con Soporte Móvil Completo -->
+          <video class="short-video" muted loop playsinline webkit-playsinline x5-playsinline preload="auto" src="${video.videoUrl}"></video>
           
           <!-- Capa de Sombreado de UI -->
           <div class="video-overlay"></div>
@@ -1948,6 +1948,27 @@ function setupVideoControls(card, videoData) {
   // Evento play del video: Sincroniza interfaz y asegura volumen
   video.addEventListener('play', () => {
     if (unmuteBtn) unmuteBtn.classList.remove('visible');
+
+    // Auto-recuperación si el reproductor móvil entra en espera o lag de red
+    video.addEventListener('waiting', () => {
+      if (!video.paused) {
+        setTimeout(() => {
+          if (!video.paused && video.readyState < 3) {
+            video.play().catch(() => {});
+          }
+        }, 300);
+      }
+    }, { passive: true });
+
+    video.addEventListener('stalled', () => {
+      if (!video.paused && video.readyState < 3) {
+        setTimeout(() => {
+          if (!video.paused) {
+            video.play().catch(() => {});
+          }
+        }, 500);
+      }
+    }, { passive: true });
 
     // Re-aplicar velocidad guardada para evitar reseteos en bucle del navegador
     const savedSpeed = parseFloat(video.dataset.currentSpeed || '1.0');
@@ -3348,16 +3369,19 @@ function resetFilterAndPlayVideo(videoId) {
   // 5. Cambiar a vista feed
   switchView('feed');
 
-  // 6. En Desktop: marcar el card activo
+  // 6. En Desktop: marcar el card activo | En móvil: Posicionamiento instantáneo sin animación molesta de pasaje
   if (window.innerWidth >= 992) {
     document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
     const targetCard = document.getElementById(`short-card-${videoId}`);
     if (targetCard) targetCard.classList.add('active-desktop');
   } else {
-    // En móvil: Scroll hasta el elemento
     const targetCard = document.getElementById(`short-card-${videoId}`);
-    if (targetCard) {
-      targetCard.scrollIntoView({ behavior: 'smooth' });
+    const feedView = document.getElementById('shorts-feed-view');
+    if (targetCard && feedView) {
+      // Salto instantáneo directo a la posición elegida sin scroll rápido intermedio
+      feedView.scrollTop = targetCard.offsetTop;
+    } else if (targetCard) {
+      targetCard.scrollIntoView({ behavior: 'instant' });
     }
   }
 

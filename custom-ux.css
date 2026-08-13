@@ -813,3 +813,66 @@
 .tags-sheet-item i {
   font-size: 0.85rem;
 }
+
+/* ====================================================================
+   CORRECCIÓN DE USABILIDAD MÓVIL: BOTONES LATERALES DE ACCIÓN Y VIDEO
+   ==================================================================== */
+@media (max-width: 991px) {
+  /* Pegar la barra de acciones al borde derecho sin tapar el centro del video */
+  .video-actions {
+    right: 8px !important;
+    bottom: 80px !important;
+    gap: 10px !important;
+    z-index: 95 !important;
+  }
+
+  /* Reducir tamaño de los botones circulares para que no invadan el contenido del video */
+  .video-actions .action-btn {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 1.1rem !important;
+    background: rgba(0, 0, 0, 0.45) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  /* Ajustar los contadores y etiquetas debajo de cada botón */
+  .video-actions .action-count {
+    font-size: 0.65rem !important;
+    font-weight: 700 !important;
+    margin-top: 2px !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9) !important;
+    max-width: 55px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* En pantallas móviles angostas (< 480px), desplazar la barra lateral aún más a la derecha */
+  @media (max-width: 480px) {
+    .video-actions {
+      right: 4px !important;
+      bottom: 75px !important;
+      gap: 8px !important;
+    }
+    
+    .video-actions .action-btn {
+      width: 38px !important;
+      height: 38px !important;
+      font-size: 1rem !important;
+    }
+
+    .video-actions .action-count {
+      font-size: 0.6rem !important;
+    }
+  }
+
+  /* Asegurar que el video ocupe el alto completo de forma centrada */
+  .short-video {
+    object-fit: cover !important;
+  }
+}
+
