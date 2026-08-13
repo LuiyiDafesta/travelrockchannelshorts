@@ -483,8 +483,8 @@ async function fetchVideosAndComments() {
       categoryLabel: v.category_label,
       school: v.school,
       description: v.description,
-      videoUrl: v.video_url ? v.video_url.replace('https://f004.backblazeb2.com/file/', 'https://media.travelrockchannel.com.ar/') : '',
-      thumbnailUrl: v.thumbnail_url ? v.thumbnail_url.replace('https://f004.backblazeb2.com/file/', 'https://media.travelrockchannel.com.ar/') : '',
+      videoUrl: v.video_url ? v.video_url.replace(/https:\/\/(f004\.backblazeb2\.com\/file|media\.supertourchannel\.com\.ar)\//g, 'https://media.travelrockchannel.com.ar/') : '',
+      thumbnailUrl: v.thumbnail_url ? v.thumbnail_url.replace(/https:\/\/(f004\.backblazeb2\.com\/file|media\.supertourchannel\.com\.ar)\//g, 'https://media.travelrockchannel.com.ar/') : '',
       likes: v.likes,
       duration: v.duration,
       date: v.date,
@@ -562,8 +562,8 @@ async function fetchVideosAndComments() {
         state.ads = activeAds.map(ad => ({
           id: ad.id,
           title: ad.title,
-          videoUrl: ad.video_url ? ad.video_url.replace('https://f004.backblazeb2.com/file/', 'https://media.travelrockchannel.com.ar/') : '',
-          thumbnailUrl: ad.thumbnail_url ? ad.thumbnail_url.replace('https://f004.backblazeb2.com/file/', 'https://media.travelrockchannel.com.ar/') : 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60',
+          videoUrl: ad.video_url ? ad.video_url.replace(/https:\/\/(f004\.backblazeb2\.com\/file|media\.supertourchannel\.com\.ar)\//g, 'https://media.travelrockchannel.com.ar/') : '',
+          thumbnailUrl: ad.thumbnail_url ? ad.thumbnail_url.replace(/https:\/\/(f004\.backblazeb2\.com\/file|media\.supertourchannel\.com\.ar)\//g, 'https://media.travelrockchannel.com.ar/') : 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=500&auto=format&fit=crop&q=60',
           redirectUrl: ad.redirect_url || '',
           duration: ad.duration || 15,
           isAd: true // Identificador especial para anuncios

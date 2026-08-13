@@ -766,10 +766,10 @@ async function loadCatalog() {
 
     loadedVideos = (videos || []).map(video => {
       if (video.video_url) {
-        video.video_url = video.video_url.replace('https://f004.backblazeb2.com/file/', 'https://media.travelrockchannel.com.ar/');
+        video.video_url = video.video_url.replace(/https:\/\/(f004\.backblazeb2\.com\/file|media\.supertourchannel\.com\.ar)\//g, 'https://media.travelrockchannel.com.ar/');
       }
       if (video.thumbnail_url) {
-        video.thumbnail_url = video.thumbnail_url.replace('https://f004.backblazeb2.com/file/', 'https://media.travelrockchannel.com.ar/');
+        video.thumbnail_url = video.thumbnail_url.replace(/https:\/\/(f004\.backblazeb2\.com\/file|media\.supertourchannel\.com\.ar)\//g, 'https://media.travelrockchannel.com.ar/');
       }
       return video;
     });
@@ -1700,10 +1700,10 @@ async function loadAds() {
 
     loadedAds = (ads || []).map(ad => {
       if (ad.video_url) {
-        ad.video_url = ad.video_url.replace('https://f004.backblazeb2.com/file/', 'https://media.travelrockchannel.com.ar/');
+        ad.video_url = ad.video_url.replace(/https:\/\/(f004\.backblazeb2\.com\/file|media\.supertourchannel\.com\.ar)\//g, 'https://media.travelrockchannel.com.ar/');
       }
       if (ad.thumbnail_url) {
-        ad.thumbnail_url = ad.thumbnail_url.replace('https://f004.backblazeb2.com/file/', 'https://media.travelrockchannel.com.ar/');
+        ad.thumbnail_url = ad.thumbnail_url.replace(/https:\/\/(f004\.backblazeb2\.com\/file|media\.supertourchannel\.com\.ar)\//g, 'https://media.travelrockchannel.com.ar/');
       }
       return ad;
     });

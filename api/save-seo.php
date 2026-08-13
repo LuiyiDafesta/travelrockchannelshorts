@@ -26,8 +26,8 @@ if (!$data || !isset($data['id']) || !isset($data['title'])) {
 }
 
 $id = $data['id'];
-$videoUrl = isset($data['videoUrl']) ? str_replace('https://f004.backblazeb2.com/file/', 'https://media.travelrockchannel.com.ar/', $data['videoUrl']) : '';
-$thumbnailUrl = isset($data['thumbnailUrl']) ? str_replace('https://f004.backblazeb2.com/file/', 'https://media.travelrockchannel.com.ar/', $data['thumbnailUrl']) : '';
+$videoUrl = isset($data['videoUrl']) ? preg_replace('/https:\/\/(f004\.backblazeb2\.com\/file|media\.supertourchannel\.com\.ar)\//', 'https://media.travelrockchannel.com.ar/', $data['videoUrl']) : '';
+$thumbnailUrl = isset($data['thumbnailUrl']) ? preg_replace('/https:\/\/(f004\.backblazeb2\.com\/file|media\.supertourchannel\.com\.ar)\//', 'https://media.travelrockchannel.com.ar/', $data['thumbnailUrl']) : '';
 $title = $data['title'];
 $school = isset($data['school']) ? $data['school'] : '';
 $description = isset($data['description']) ? $data['description'] : '';
