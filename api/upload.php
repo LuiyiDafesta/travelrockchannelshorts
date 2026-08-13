@@ -6,7 +6,7 @@
 @set_time_limit(600);
 
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Content-Type: application/json; charset=utf-8");
 
@@ -15,16 +15,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(["error" => "Method Not Allowed. Use POST."]);
-    exit;
-}
-
 // 1. Backblaze B2 Configuration
 $bucketId = '72b91a4198da584e9cee081c';
 $keyId = '00429a18a8ece8c0000000003';
 $applicationKey = 'K004eR5sm0qof1iDJQ5nqpqsX+O+Dg8';
+
+// Acceso GET para obtener URL de carga directa a Backblaze B2 desde el navegador (Evita límites de Ferozo)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_upload_url') {
+    try {
+        $credentials = base64_encode("$keyId:$applicationKey");
+        $ch = curl_init("https://api.backblazeb2.com/b2api/v3/b2_authorize_account");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Authorization: Basic $credentials",
+            "User-Agent: B2-PHP-Uploader"
+        ]);
+        $response = curl_exec($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($status !== 200) {
+            throw new Exception("Auth B2 falló ($status)");
+        }
+
+        $authData = json_decode($response, true);
+        $authToken = $authData['authorizationToken'];
+        $apiUrl = isset($authData['apiUrl']) ? $authData['apiUrl'] : $authData['apiInfo']['storageApi']['apiUrl'];
+
+        $ch = curl_init("$apiUrl/b2api/v3/b2_get_upload_url");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "Authorization: $authToken",
+            "Content-Type: application/json",
+            "User-Agent: B2-PHP-Uploader"
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(["bucketId" => $bucketId]));
+        $response = curl_exec($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($status !== 200) {
+            throw new Exception("Get Upload URL falló ($status)");
+        }
+
+        $uploadData = json_decode($response, true);
+        echo json_encode([
+            "uploadUrl" => $uploadData['uploadUrl'],
+            "authorizationToken" => $uploadData['authorizationToken']
+        ]);
+        exit;
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(["error" => $e->getMessage()]);
+        exit;
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(["error" => "Method Not Allowed."]);
+    exit;
+}
 
 // 2. Validate Uploaded Files
 if (!isset($_FILES['video']) || $_FILES['video']['error'] !== UPLOAD_ERR_OK) {
