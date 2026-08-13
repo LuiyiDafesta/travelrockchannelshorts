@@ -637,47 +637,85 @@ async function publishShort(e) {
       videoUrl = result.videoUrl;
       thumbnailUrl = result.thumbnailUrl;
     } else {
-      // Entorno de Producción (Ferozo): Intentamos Carga Directa a B2 desde el navegador (Evita límites de Ferozo PHP)
+      // Entorno de Producción: Sistema de carga ultra-resiliente multicanal
       updateProgressBar(15, 'Generando miniatura del video desde el navegador...');
       const thumbBlob = await extractVideoThumbnail(currentSelectedFile);
 
-      let directSuccess = false;
-      try {
-        updateProgressBar(25, 'Obteniendo credenciales de carga rápida en tiempo real...');
-        const tokenRes = await fetch('/api/upload.php?action=get_upload_url');
-        if (tokenRes.ok) {
-          const { uploadUrl, authorizationToken } = await tokenRes.json();
-          const timestamp = Math.floor(Date.now() / 1000);
-          const sanitizedName = currentSelectedFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
-          const fileBase = sanitizedName.substring(0, sanitizedName.lastIndexOf('.')) || sanitizedName;
-          const b2VideoName = `shorts/${timestamp}_${fileBase}.mp4`;
-          const b2ThumbName = `thumbnails/${timestamp}_${fileBase}.jpg`;
+      const timestamp = Math.floor(Date.now() / 1000);
+      const sanitizedName = currentSelectedFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
+      const fileBase = sanitizedName.substring(0, sanitizedName.lastIndexOf('.')) || sanitizedName;
+      const videoFileName = `shorts/${timestamp}_${fileBase}.mp4`;
+      const thumbFileName = `thumbnails/${timestamp}_${fileBase}.jpg`;
 
-          updateProgressBar(30, 'Subiendo video a Backblaze B2 (0%)...');
-          await uploadFileToB2Direct(uploadUrl, authorizationToken, currentSelectedFile, b2VideoName, 'video/mp4', (percent) => {
-            const currentPercent = 30 + Math.round(percent * 0.45); // 30% a 75%
-            updateProgressBar(currentPercent, `Subiendo video a Backblaze B2 (${Math.round(percent)}%)...`);
+      let uploadSuccess = false;
+
+      // Opción A: Intentar Supabase Storage (100% libre de Cloudflare 100MB POST limit y CORS)
+      try {
+        updateProgressBar(30, 'Subiendo video a almacenamiento rápido de Supabase (0%)...');
+        const { data: sVideoData, error: sVideoErr } = await supabase.storage
+          .from('videos')
+          .upload(videoFileName, currentSelectedFile, {
+            cacheControl: '31536000',
+            upsert: true
           });
 
-          if (thumbBlob) {
-            updateProgressBar(76, 'Subiendo miniatura de portada...');
-            await uploadFileToB2Direct(uploadUrl, authorizationToken, thumbBlob, b2ThumbName, 'image/jpeg');
-          }
+        if (sVideoErr) throw sVideoErr;
 
-          videoUrl = `https://f004.backblazeb2.com/file/TravelShorts/${b2VideoName}`;
-          thumbnailUrl = thumbBlob 
-            ? `https://f004.backblazeb2.com/file/TravelShorts/${b2ThumbName}` 
-            : `https://f004.backblazeb2.com/file/TravelShorts/thumbnails/${timestamp}_${fileBase}.jpg`;
-          
-          directSuccess = true;
+        updateProgressBar(75, 'Obteniendo enlace público del video...');
+        const { data: sVideoUrl } = supabase.storage.from('videos').getPublicUrl(videoFileName);
+        videoUrl = sVideoUrl.publicUrl;
+
+        if (thumbBlob) {
+          updateProgressBar(78, 'Subiendo miniatura de portada...');
+          await supabase.storage
+            .from('videos')
+            .upload(thumbFileName, thumbBlob, {
+              contentType: 'image/jpeg',
+              cacheControl: '31536000',
+              upsert: true
+            }).catch(e => console.warn("No se pudo subir miniatura a Supabase Storage:", e));
+
+          const { data: sThumbUrl } = supabase.storage.from('videos').getPublicUrl(thumbFileName);
+          thumbnailUrl = sThumbUrl.publicUrl;
+        } else {
+          thumbnailUrl = videoUrl;
         }
-      } catch (dErr) {
-        console.warn("Falla en carga directa a B2, reintentando vía PHP multipart POST:", dErr);
+
+        uploadSuccess = true;
+      } catch (spErr) {
+        console.warn("Carga en Supabase Storage falló o bucket sin permisos públicos:", spErr);
       }
 
-      if (!directSuccess) {
-        // Fallback: Carga Multipart a través de PHP en Ferozo
-        updateProgressBar(35, 'Subiendo video a través de PHP en el servidor...');
+      // Opción B: Si Supabase Storage falló, intentar Carga Directa a Backblaze B2
+      if (!uploadSuccess) {
+        try {
+          updateProgressBar(30, 'Obteniendo credenciales de carga directa a Backblaze B2...');
+          const tokenRes = await fetch('/api/upload.php?action=get_upload_url');
+          if (tokenRes.ok) {
+            const { uploadUrl, authorizationToken } = await tokenRes.json();
+            updateProgressBar(35, 'Subiendo video a Backblaze B2 (0%)...');
+            await uploadFileToB2Direct(uploadUrl, authorizationToken, currentSelectedFile, videoFileName, 'video/mp4', (percent) => {
+              const currentPercent = 35 + Math.round(percent * 0.4);
+              updateProgressBar(currentPercent, `Subiendo video a Backblaze B2 (${Math.round(percent)}%)...`);
+            });
+
+            if (thumbBlob) {
+              updateProgressBar(77, 'Subiendo miniatura de portada...');
+              await uploadFileToB2Direct(uploadUrl, authorizationToken, thumbBlob, thumbFileName, 'image/jpeg');
+            }
+
+            videoUrl = `https://f004.backblazeb2.com/file/TravelShorts/${videoFileName}`;
+            thumbnailUrl = `https://f004.backblazeb2.com/file/TravelShorts/${thumbFileName}`;
+            uploadSuccess = true;
+          }
+        } catch (dErr) {
+          console.warn("Carga directa B2 falló, probando PHP multipart POST:", dErr);
+        }
+      }
+
+      // Opción C: Fallback final vía PHP multipart POST
+      if (!uploadSuccess) {
+        updateProgressBar(40, 'Subiendo video a través de PHP en el servidor...');
         const formData = new FormData();
         formData.append('video', currentSelectedFile);
         if (thumbBlob) {
