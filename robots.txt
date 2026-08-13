@@ -4,8 +4,12 @@
 User-agent: *
 Allow: /
 
-# Evitar indexación de archivos fuente de desarrollo
-Disallow: /_source/
+# Evitar indexación de endpoints internos y panel admin
+Disallow: /api/
+Disallow: /admin.html
+Disallow: /deploy.php
+Disallow: /scratch/
+Disallow: /node_modules/
 
-# Enlace al Sitemap si se genera en el futuro
-# Sitemap: http://tudominio.com/sitemap.xml
+# Sitemap
+Sitemap: https://shorts.travelrockchannel.com.ar/sitemap.xml

@@ -89,6 +89,12 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// Helper de seguridad: escapa HTML para prevenir XSS en contenido de usuario (comentarios, nombres)
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
 // Variable para almacenar la sesión del cliente
 let clientSession = null;
 
@@ -1746,19 +1752,24 @@ function renderCommentsHtml(videoId) {
     return `<p class="no-comments-text" style="color:var(--text-muted); font-size:0.75rem; text-align:center; padding:10px;">¡Sé el primero en comentar!</p>`;
   }
 
-  return videoComments.map(c => `
+  return videoComments.map(c => {
+    const safeUser = escapeHtml(c.user);
+    const safeText = escapeHtml(c.text);
+    const safeTime = escapeHtml(c.time);
+    return `
     <div class="comment-item">
       <div class="comment-avatar" style="background: ${getAvatarGradient(c.user)}">
-        ${c.user.charAt(0).toUpperCase()}
+        ${safeUser.charAt(0).toUpperCase()}
       </div>
       <div class="comment-content">
         <div class="comment-user">
-          ${c.user} <span>${c.time}</span>
+          ${safeUser} <span>${safeTime}</span>
         </div>
-        <div class="comment-text">${c.text}</div>
+        <div class="comment-text">${safeText}</div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function setupVideoControls(card, videoData) {
@@ -3219,24 +3230,7 @@ export function getFilteredVideos(includeAds = false, filterByCategory = false) 
   sortedList = sortedList.concat(singleVideos);
   list = sortedList;
 
-  // Deshabilitado el sistema de publicidad para reproducción de corrido sin publicidad
-  const isPremium = true;
-  if (false) {
-    let result = [];
-    let adIndex = 1; // Empezar en 1 para evitar ID de 0
-    for (let i = 0; i < list.length; i++) {
-      result.push(list[i]);
-      if ((i + 1) % 2 === 0) {
-        const ad = state.ads[(adIndex - 1) % state.ads.length];
-        result.push({
-          ...ad,
-          id: -(ad.id + (adIndex * 10000)) // ID negativo y único basado en la posición para evitar colisiones en findIndex
-        });
-        adIndex++;
-      }
-    }
-    return result;
-  }
+  // Sistema de publicidad deshabilitado (reproducción de corrido sin ads)
 
   return list;
 }
@@ -3553,7 +3547,8 @@ let recentlyPlayed = JSON.parse(localStorage.getItem('tr_recently_played') || '[
 
 // Si está vacío en primer inicio, inicializamos con los 3 primeros videos
 if (recentlyPlayed.length === 0 && state.videos.length >= 3) {
-  recentlyPlayed = [1, 2, 3];
+  // Usar los IDs reales de los primeros 3 videos cargados (en vez de [1,2,3] hardcodeado)
+  recentlyPlayed = state.videos.slice(0, 3).map(v => v.id);
   localStorage.setItem('tr_recently_played', JSON.stringify(recentlyPlayed));
 }
 
