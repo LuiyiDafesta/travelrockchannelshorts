@@ -43,7 +43,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         $authData = json_decode($response, true);
         $authToken = $authData['authorizationToken'];
+        $accountId = isset($authData['accountId']) ? $authData['accountId'] : '';
         $apiUrl = isset($authData['apiUrl']) ? $authData['apiUrl'] : $authData['apiInfo']['storageApi']['apiUrl'];
+
+        // Asegurar que el Bucket de Backblaze B2 tenga reglas CORS abiertas para permitir subidas directas desde el navegador
+        if ($accountId) {
+            $corsRules = [
+                [
+                    "corsRuleName" => "allowAllBrowserUploads",
+                    "allowedOrigins" => ["*"],
+                    "allowedOperations" => ["b2_upload_file", "b2_upload_part", "s3_read", "s3_write"],
+                    "allowedHeaders" => ["*"],
+                    "exposeHeaders" => ["x-bz-file-id", "x-bz-file-name", "x-bz-upload-timestamp"],
+                    "maxAgeSeconds" => 3600
+                ]
+            ];
+            $chCors = curl_init("$apiUrl/b2api/v3/b2_update_bucket");
+            curl_setopt($chCors, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($chCors, CURLOPT_POST, true);
+            curl_setopt($chCors, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($chCors, CURLOPT_SSL_VERIFYHOST, 0);
+            curl_setopt($chCors, CURLOPT_TIMEOUT, 30);
+            curl_setopt($chCors, CURLOPT_HTTPHEADER, [
+                "Authorization: $authToken",
+                "Content-Type: application/json",
+                "User-Agent: B2-PHP-Uploader"
+            ]);
+            curl_setopt($chCors, CURLOPT_POSTFIELDS, json_encode([
+                "accountId" => $accountId,
+                "bucketId" => $bucketId,
+                "corsRules" => $corsRules
+            ]));
+            curl_exec($chCors);
+            curl_close($chCors);
+        }
 
         $ch = curl_init("$apiUrl/b2api/v3/b2_get_upload_url");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
