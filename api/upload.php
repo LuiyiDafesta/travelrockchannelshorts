@@ -20,114 +20,148 @@ $bucketId = '72b91a4198da584e9cee081c';
 $keyId = '00429a18a8ece8c0000000003';
 $applicationKey = 'K004eR5sm0qof1iDJQ5nqpqsX+O+Dg8';
 
-// Acceso GET para obtener URL de carga directa a Backblaze B2 desde el navegador (Evita límites de Ferozo)
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get_upload_url') {
-    try {
-        $credentials = base64_encode("$keyId:$applicationKey");
-        $ch = curl_init("https://api.backblazeb2.com/b2api/v3/b2_authorize_account");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Basic $credentials",
-            "User-Agent: B2-PHP-Uploader"
-        ]);
-        $response = curl_exec($ch);
-        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+// 2. SISTEMA DE CARGA POR FRAGMENTOS (CHUNKED PROXY UPLOAD)
+// Evita el límite de 100MB de Cloudflare y los errores de CORS del navegador.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'upload_chunk') {
+    $fileId = isset($_POST['fileId']) ? preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['fileId']) : '';
+    $chunkIndex = isset($_POST['chunkIndex']) ? intval($_POST['chunkIndex']) : 0;
+    $totalChunks = isset($_POST['totalChunks']) ? intval($_POST['totalChunks']) : 1;
+    $fileName = isset($_POST['fileName']) ? $_POST['fileName'] : 'video.mp4';
+    $isThumbnail = isset($_POST['isThumbnail']) && $_POST['isThumbnail'] === 'true';
 
-        if ($status !== 200) {
-            throw new Exception("Auth B2 falló ($status)");
+    if (!$fileId || !isset($_FILES['chunk']) || $_FILES['chunk']['error'] !== UPLOAD_ERR_OK) {
+        http_response_code(400);
+        $errCode = isset($_FILES['chunk']) ? $_FILES['chunk']['error'] : -1;
+        echo json_encode(["error" => "Fragmento de archivo no válido.", "details" => "Chunk error code: $errCode"]);
+        exit;
+    }
+
+    $tmpDir = sys_get_temp_dir() . '/tr_chunks';
+    if (!file_exists($tmpDir)) {
+        @mkdir($tmpDir, 0777, true);
+    }
+
+    $targetTmpFile = $tmpDir . '/' . $fileId . '.part';
+
+    // Agregar fragmento al archivo temporal ensamblado
+    $chunkData = file_get_contents($_FILES['chunk']['tmp_name']);
+    if (file_put_contents($targetTmpFile, $chunkData, FILE_APPEND | LOCK_EX) === false) {
+        http_response_code(500);
+        echo json_encode(["error" => "No se pudo escribir el fragmento en el servidor."]);
+        exit;
+    }
+
+    // Si es el último fragmento, subir el archivo ensamblado completo a Backblaze B2 vía cURL desde PHP
+    if ($chunkIndex + 1 >= $totalChunks) {
+        $sanitizedName = preg_replace('/[^a-zA-Z0-9.]/', '_', $fileName);
+        $videoBase = pathinfo($sanitizedName, PATHINFO_FILENAME);
+        $timestamp = time();
+
+        $assembledData = file_get_contents($targetTmpFile);
+        @unlink($targetTmpFile); // Limpiar archivo temporal del servidor
+
+        if ($assembledData === false || strlen($assembledData) === 0) {
+            http_response_code(500);
+            echo json_encode(["error" => "Error al ensamblar los fragmentos del video."]);
+            exit;
         }
 
-        $authData = json_decode($response, true);
-        $authToken = $authData['authorizationToken'];
-        $accountId = isset($authData['accountId']) ? $authData['accountId'] : '';
-        $apiUrl = isset($authData['apiUrl']) ? $authData['apiUrl'] : $authData['apiInfo']['storageApi']['apiUrl'];
+        try {
+            // Autenticar cuenta en Backblaze B2
+            $credentials = base64_encode("$keyId:$applicationKey");
+            $ch = curl_init("https://api.backblazeb2.com/b2api/v3/b2_authorize_account");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "Authorization: Basic $credentials",
+                "User-Agent: B2-PHP-Uploader"
+            ]);
+            $response = curl_exec($ch);
+            $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
 
-        // Asegurar que el Bucket de Backblaze B2 tenga reglas CORS abiertas para permitir subidas directas desde el navegador
-        if ($accountId) {
-            $corsRules = [
-                [
-                    "corsRuleName" => "allowAllBrowserUploads",
-                    "allowedOrigins" => ["*"],
-                    "allowedOperations" => ["b2_upload_file", "b2_upload_part", "s3_read", "s3_write"],
-                    "allowedHeaders" => ["*"],
-                    "exposeHeaders" => ["x-bz-file-id", "x-bz-file-name", "x-bz-upload-timestamp"],
-                    "maxAgeSeconds" => 3600
-                ]
-            ];
-            $chCors = curl_init("$apiUrl/b2api/v3/b2_update_bucket");
-            curl_setopt($chCors, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($chCors, CURLOPT_POST, true);
-            curl_setopt($chCors, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($chCors, CURLOPT_SSL_VERIFYHOST, 0);
-            curl_setopt($chCors, CURLOPT_TIMEOUT, 30);
-            curl_setopt($chCors, CURLOPT_HTTPHEADER, [
+            if ($status !== 200) {
+                throw new Exception("B2 Auth failed (Status $status)");
+            }
+
+            $authData = json_decode($response, true);
+            $authToken = $authData['authorizationToken'];
+            $apiUrl = isset($authData['apiUrl']) ? $authData['apiUrl'] : $authData['apiInfo']['storageApi']['apiUrl'];
+
+            // Obtener URL de subida B2
+            $ch = curl_init("$apiUrl/b2api/v3/b2_get_upload_url");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 "Authorization: $authToken",
                 "Content-Type: application/json",
                 "User-Agent: B2-PHP-Uploader"
             ]);
-            curl_setopt($chCors, CURLOPT_POSTFIELDS, json_encode([
-                "accountId" => $accountId,
-                "bucketId" => $bucketId,
-                "corsRules" => $corsRules
-            ]));
-            curl_exec($chCors);
-            curl_close($chCors);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(["bucketId" => $bucketId]));
+            $response = curl_exec($ch);
+            $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($status !== 200) {
+                throw new Exception("B2 Get Upload URL failed (Status $status)");
+            }
+
+            $uploadData = json_decode($response, true);
+            $uploadUrl = $uploadData['uploadUrl'];
+            $uploadToken = $uploadData['authorizationToken'];
+
+            // Subir a Backblaze B2
+            $b2Folder = $isThumbnail ? "thumbnails" : "shorts";
+            $ext = $isThumbnail ? "jpg" : "mp4";
+            $b2FileName = "{$b2Folder}/{$timestamp}_{$videoBase}.{$ext}";
+            $mimeType = $isThumbnail ? "image/jpeg" : "video/mp4";
+
+            $b2PublicUrl = uploadToB2($uploadUrl, $uploadToken, $assembledData, $b2FileName, $mimeType);
+
+            echo json_encode([
+                "completed" => true,
+                "url" => $b2PublicUrl,
+                "fileName" => $b2FileName
+            ]);
+            exit;
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(["error" => "Error al subir a Backblaze B2: " . $e->getMessage()]);
+            exit;
         }
-
-        $ch = curl_init("$apiUrl/b2api/v3/b2_get_upload_url");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: $authToken",
-            "Content-Type: application/json",
-            "User-Agent: B2-PHP-Uploader"
-        ]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(["bucketId" => $bucketId]));
-        $response = curl_exec($ch);
-        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($status !== 200) {
-            throw new Exception("Get Upload URL falló ($status)");
-        }
-
-        $uploadData = json_decode($response, true);
+    } else {
+        // Fragmento recibido con éxito
         echo json_encode([
-            "uploadUrl" => $uploadData['uploadUrl'],
-            "authorizationToken" => $uploadData['authorizationToken']
+            "completed" => false,
+            "chunkIndex" => $chunkIndex,
+            "nextChunk" => $chunkIndex + 1
         ]);
-        exit;
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(["error" => $e->getMessage()]);
         exit;
     }
 }
 
+// 3. CARGA ESTÁNDAR MULTIPART EN CASO DE ARCHIVOS PEQUEÑOS
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(["error" => "Method Not Allowed."]);
     exit;
 }
 
-// 2. Validate Uploaded Files
 if (!isset($_FILES['video']) || $_FILES['video']['error'] !== UPLOAD_ERR_OK) {
     http_response_code(400);
     $errorCode = isset($_FILES['video']) ? $_FILES['video']['error'] : -1;
     $errorMessages = [
-        UPLOAD_ERR_INI_SIZE   => "El archivo excede el tamaño máximo permitido por PHP (upload_max_filesize).",
+        UPLOAD_ERR_INI_SIZE   => "El archivo excede el tamaño máximo permitido por PHP.",
         UPLOAD_ERR_FORM_SIZE  => "El archivo excede el tamaño máximo del formulario.",
         UPLOAD_ERR_PARTIAL    => "El archivo fue subido solo parcialmente.",
         UPLOAD_ERR_NO_FILE    => "No se seleccionó ningún archivo de video.",
         UPLOAD_ERR_NO_TMP_DIR => "Falta la carpeta temporal en el servidor PHP.",
-        UPLOAD_ERR_CANT_WRITE => "No se pudo escribir el archivo en el disco del servidor.",
+        UPLOAD_ERR_CANT_WRITE => "No se pudo escribir el archivo en el disco.",
         UPLOAD_ERR_EXTENSION  => "Una extensión de PHP detuvo la subida."
     ];
     $msg = isset($errorMessages[$errorCode]) ? $errorMessages[$errorCode] : "Error de subida (código $errorCode).";
@@ -140,15 +174,13 @@ $videoName = preg_replace('/[^a-zA-Z0-9.]/', '_', $videoFile['name']);
 $videoBase = pathinfo($videoName, PATHINFO_FILENAME);
 $timestamp = time();
 
-// Read video contents
 $videoData = file_get_contents($videoFile['tmp_name']);
 if ($videoData === false) {
     http_response_code(500);
-    echo json_encode(["error" => "Failed to read uploaded video data from tmp file."]);
+    echo json_encode(["error" => "Failed to read uploaded video data."]);
     exit;
 }
 
-// Read thumbnail (if provided by client-side canvas extraction)
 $hasThumbnail = false;
 $thumbData = null;
 if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_OK) {
@@ -158,15 +190,12 @@ if (isset($_FILES['thumbnail']) && $_FILES['thumbnail']['error'] === UPLOAD_ERR_
     }
 }
 
-// Fallback blank pixel thumbnail if client failed to extract one
 if (!$hasThumbnail) {
-    // 1x1 grey Jpeg pixel
     $thumbData = base64_decode('/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=');
     $hasThumbnail = true;
 }
 
 try {
-    // 3. Authorize B2 Account
     $credentials = base64_encode("$keyId:$applicationKey");
     $ch = curl_init("https://api.backblazeb2.com/b2api/v3/b2_authorize_account");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -179,18 +208,16 @@ try {
     ]);
     $response = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr = curl_error($ch);
     curl_close($ch);
 
     if ($status !== 200) {
-        throw new Exception("B2 Auth failed (Status $status): $response. Curl Err: $curlErr");
+        throw new Exception("B2 Auth failed (Status $status)");
     }
 
     $authData = json_decode($response, true);
     $authToken = $authData['authorizationToken'];
     $apiUrl = isset($authData['apiUrl']) ? $authData['apiUrl'] : $authData['apiInfo']['storageApi']['apiUrl'];
 
-    // 4. Get Upload URL
     $ch = curl_init("$apiUrl/b2api/v3/b2_get_upload_url");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -205,26 +232,22 @@ try {
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(["bucketId" => $bucketId]));
     $response = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr = curl_error($ch);
     curl_close($ch);
 
     if ($status !== 200) {
-        throw new Exception("B2 Get Upload URL failed (Status $status): $response. Curl Err: $curlErr");
+        throw new Exception("B2 Get Upload URL failed (Status $status)");
     }
 
     $uploadData = json_decode($response, true);
     $uploadUrl = $uploadData['uploadUrl'];
     $uploadToken = $uploadData['authorizationToken'];
 
-    // 5. Upload Video
     $b2VideoName = "shorts/{$timestamp}_{$videoBase}.mp4";
     $videoUrl = uploadToB2($uploadUrl, $uploadToken, $videoData, $b2VideoName, 'video/mp4');
 
-    // 6. Upload Thumbnail
     $b2ThumbName = "thumbnails/{$timestamp}_{$videoBase}.jpg";
     $thumbnailUrl = uploadToB2($uploadUrl, $uploadToken, $thumbData, $b2ThumbName, 'image/jpeg');
 
-    // 7. Return Public URLs
     echo json_encode([
         "videoUrl" => $videoUrl,
         "thumbnailUrl" => $thumbnailUrl
@@ -238,7 +261,7 @@ try {
     ]);
 }
 
-// B2 Upload Helper using cURL
+// B2 Upload Helper usando cURL
 function uploadToB2($uploadUrl, $uploadToken, $fileData, $fileName, $contentType) {
     $ch = curl_init($uploadUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -266,4 +289,3 @@ function uploadToB2($uploadUrl, $uploadToken, $fileData, $fileName, $contentType
 
     return "https://f004.backblazeb2.com/file/TravelShorts/" . $fileName;
 }
-

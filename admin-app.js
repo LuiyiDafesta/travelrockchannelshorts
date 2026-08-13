@@ -637,104 +637,23 @@ async function publishShort(e) {
       videoUrl = result.videoUrl;
       thumbnailUrl = result.thumbnailUrl;
     } else {
-      // Entorno de Producción: Sistema de carga ultra-resiliente multicanal
+      // Entorno de Producción: Carga por fragmentos de 4MB (Proxy PHP -> Backblaze B2)
+      // 0% Supabase Storage, 0% Egress por CDN Cloudflare, 0% Errores 413 de Cloudflare
       updateProgressBar(15, 'Generando miniatura del video desde el navegador...');
       const thumbBlob = await extractVideoThumbnail(currentSelectedFile);
 
-      const timestamp = Math.floor(Date.now() / 1000);
-      const sanitizedName = currentSelectedFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
-      const fileBase = sanitizedName.substring(0, sanitizedName.lastIndexOf('.')) || sanitizedName;
-      const videoFileName = `shorts/${timestamp}_${fileBase}.mp4`;
-      const thumbFileName = `thumbnails/${timestamp}_${fileBase}.jpg`;
+      updateProgressBar(25, 'Iniciando transferencia en fragmentos de 4MB a Backblaze B2...');
+      
+      videoUrl = await uploadFileInChunks(currentSelectedFile, currentSelectedFile.name, false, (percent) => {
+        const currentPercent = 25 + Math.round(percent * 0.50); // 25% a 75%
+        updateProgressBar(currentPercent, `Enviando video en fragmentos a Backblaze B2 (${percent}%)...`);
+      });
 
-      let uploadSuccess = false;
-
-      // Opción A: Intentar Supabase Storage (100% libre de Cloudflare 100MB POST limit y CORS)
-      try {
-        updateProgressBar(30, 'Subiendo video a almacenamiento rápido de Supabase (0%)...');
-        const { data: sVideoData, error: sVideoErr } = await supabase.storage
-          .from('videos')
-          .upload(videoFileName, currentSelectedFile, {
-            cacheControl: '31536000',
-            upsert: true
-          });
-
-        if (sVideoErr) throw sVideoErr;
-
-        updateProgressBar(75, 'Obteniendo enlace público del video...');
-        const { data: sVideoUrl } = supabase.storage.from('videos').getPublicUrl(videoFileName);
-        videoUrl = sVideoUrl.publicUrl;
-
-        if (thumbBlob) {
-          updateProgressBar(78, 'Subiendo miniatura de portada...');
-          await supabase.storage
-            .from('videos')
-            .upload(thumbFileName, thumbBlob, {
-              contentType: 'image/jpeg',
-              cacheControl: '31536000',
-              upsert: true
-            }).catch(e => console.warn("No se pudo subir miniatura a Supabase Storage:", e));
-
-          const { data: sThumbUrl } = supabase.storage.from('videos').getPublicUrl(thumbFileName);
-          thumbnailUrl = sThumbUrl.publicUrl;
-        } else {
-          thumbnailUrl = videoUrl;
-        }
-
-        uploadSuccess = true;
-      } catch (spErr) {
-        console.warn("Carga en Supabase Storage falló o bucket sin permisos públicos:", spErr);
-      }
-
-      // Opción B: Si Supabase Storage falló, intentar Carga Directa a Backblaze B2
-      if (!uploadSuccess) {
-        try {
-          updateProgressBar(30, 'Obteniendo credenciales de carga directa a Backblaze B2...');
-          const tokenRes = await fetch('/api/upload.php?action=get_upload_url');
-          if (tokenRes.ok) {
-            const { uploadUrl, authorizationToken } = await tokenRes.json();
-            updateProgressBar(35, 'Subiendo video a Backblaze B2 (0%)...');
-            await uploadFileToB2Direct(uploadUrl, authorizationToken, currentSelectedFile, videoFileName, 'video/mp4', (percent) => {
-              const currentPercent = 35 + Math.round(percent * 0.4);
-              updateProgressBar(currentPercent, `Subiendo video a Backblaze B2 (${Math.round(percent)}%)...`);
-            });
-
-            if (thumbBlob) {
-              updateProgressBar(77, 'Subiendo miniatura de portada...');
-              await uploadFileToB2Direct(uploadUrl, authorizationToken, thumbBlob, thumbFileName, 'image/jpeg');
-            }
-
-            videoUrl = `https://f004.backblazeb2.com/file/TravelShorts/${videoFileName}`;
-            thumbnailUrl = `https://f004.backblazeb2.com/file/TravelShorts/${thumbFileName}`;
-            uploadSuccess = true;
-          }
-        } catch (dErr) {
-          console.warn("Carga directa B2 falló, probando PHP multipart POST:", dErr);
-        }
-      }
-
-      // Opción C: Fallback final vía PHP multipart POST
-      if (!uploadSuccess) {
-        updateProgressBar(40, 'Subiendo video a través de PHP en el servidor...');
-        const formData = new FormData();
-        formData.append('video', currentSelectedFile);
-        if (thumbBlob) {
-          formData.append('thumbnail', thumbBlob, 'thumbnail.jpg');
-        }
-        
-        const uploadRes = await fetch(uploadTargetUrl, {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!uploadRes.ok) {
-          const errData = await uploadRes.json().catch(() => ({}));
-          throw new Error(errData.error || errData.details || `Error del servidor de producción: ${uploadRes.status}`);
-        }
-        
-        const result = await uploadRes.json();
-        videoUrl = result.videoUrl;
-        thumbnailUrl = result.thumbnailUrl;
+      if (thumbBlob) {
+        updateProgressBar(78, 'Subiendo miniatura de portada...');
+        thumbnailUrl = await uploadFileInChunks(thumbBlob, 'thumbnail.jpg', true);
+      } else {
+        thumbnailUrl = videoUrl;
       }
     }
     
@@ -814,36 +733,48 @@ async function publishShort(e) {
   }
 }
 
-// Helper para subir archivos directamente a Backblaze B2 usando XHR con progreso real
-function uploadFileToB2Direct(uploadUrl, uploadToken, fileOrBlob, fileName, contentType, onProgress) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', uploadUrl, true);
-    xhr.setRequestHeader('Authorization', uploadToken);
-    xhr.setRequestHeader('X-Bz-File-Name', encodeURIComponent(fileName));
-    xhr.setRequestHeader('Content-Type', contentType);
-    xhr.setRequestHeader('X-Bz-Content-Sha1', 'do_not_verify');
+// Helper para subir archivos pesados divididos en fragmentos de 4MB hacia el proxy PHP de Ferozo y Backblaze B2
+async function uploadFileInChunks(fileOrBlob, fileName, isThumbnail, onProgress) {
+  const CHUNK_SIZE = 4 * 1024 * 1024; // 4 MB por fragmento (Pasa holgadamente Cloudflare 100MB y PHP)
+  const totalChunks = Math.ceil(fileOrBlob.size / CHUNK_SIZE);
+  const fileId = 'tr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
 
-    if (onProgress && xhr.upload) {
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable && e.total > 0) {
-          const percent = (e.loaded / e.total) * 100;
-          onProgress(percent);
-        }
-      };
+  for (let index = 0; index < totalChunks; index++) {
+    const start = index * CHUNK_SIZE;
+    const end = Math.min(fileOrBlob.size, start + CHUNK_SIZE);
+    const chunkBlob = fileOrBlob.slice(start, end);
+
+    const formData = new FormData();
+    formData.append('fileId', fileId);
+    formData.append('chunkIndex', index.toString());
+    formData.append('totalChunks', totalChunks.toString());
+    formData.append('fileName', fileName);
+    formData.append('isThumbnail', isThumbnail ? 'true' : 'false');
+    formData.append('chunk', chunkBlob, 'chunk.part');
+
+    const res = await fetch('/api/upload.php?action=upload_chunk', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || err.details || `Error al subir fragmento ${index + 1}/${totalChunks}`);
     }
 
-    xhr.onload = () => {
-      if (xhr.status === 200) {
-        resolve();
-      } else {
-        reject(new Error(`Almacenamiento B2 devolvió error (${xhr.status}): ${xhr.responseText}`));
-      }
-    };
+    const data = await res.json();
 
-    xhr.onerror = () => reject(new Error("Error de conexión al transferir video a Backblaze B2."));
-    xhr.send(fileOrBlob);
-  });
+    if (onProgress) {
+      const percent = Math.round(((index + 1) / totalChunks) * 100);
+      onProgress(percent);
+    }
+
+    if (data.completed) {
+      return data.url;
+    }
+  }
+
+  throw new Error("El archivo no se completó correctamente.");
 }
 
 // Helper para actualizar barra de progreso
