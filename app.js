@@ -61,6 +61,34 @@ const state = {
   comments: {}
 };
 
+// Estado global de drag en la barra de progreso (singleton para evitar 4 window listeners × N cards)
+let globalTimelineDrag = { active: false, seekFn: null };
+
+// Listeners globales ÚNICOS para drag-to-seek de la timeline (registrados una sola vez)
+window.addEventListener('mousemove', (e) => {
+  if (globalTimelineDrag.active && globalTimelineDrag.seekFn) {
+    globalTimelineDrag.seekFn(e);
+  }
+});
+window.addEventListener('touchmove', (e) => {
+  if (globalTimelineDrag.active && globalTimelineDrag.seekFn) {
+    globalTimelineDrag.seekFn(e);
+  }
+}, { passive: true });
+window.addEventListener('mouseup', () => {
+  globalTimelineDrag.active = false;
+});
+window.addEventListener('touchend', () => {
+  globalTimelineDrag.active = false;
+});
+
+// Listener global ÚNICO para cerrar popovers de ajustes al hacer clic fuera
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.settings-menu-wrapper')) {
+    document.querySelectorAll('.settings-popover').forEach(p => p.classList.add('hidden'));
+  }
+});
+
 // Variable para almacenar la sesión del cliente
 let clientSession = null;
 
@@ -713,8 +741,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     syncSessionWithDatabase();
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
+    if (document.hidden) {
+      // Pausar toda reproducción cuando el usuario sale de la pestaña / minimiza el navegador
+      pauseAllVideos();
+    } else {
       syncSessionWithDatabase();
+      // Re-iniciar reproducción del video activo al volver
+      setTimeout(playActiveVideo, 200);
     }
   });
 
@@ -1149,7 +1182,7 @@ function renderFeed() {
         <!-- REPRODUCTOR VERTICAL -->
         <div class="player-wrapper">
           <!-- Video Nativo Híbrido con Soporte Móvil Completo -->
-          <video class="short-video" muted loop playsinline webkit-playsinline x5-playsinline preload="auto" src="${video.videoUrl}"></video>
+          <video class="short-video" muted loop playsinline webkit-playsinline x5-playsinline preload="none" src="${video.videoUrl}"></video>
           
           <!-- Capa de Sombreado de UI -->
           <div class="video-overlay"></div>
@@ -1945,30 +1978,30 @@ function setupVideoControls(card, videoData) {
 
   // A. Eventos de Reproducción y Mute
 
+  // Auto-recuperación si el reproductor móvil entra en espera o lag de red (registrado UNA SOLA VEZ, fuera del handler play)
+  video.addEventListener('waiting', () => {
+    if (!video.paused && video.readyState < 3) {
+      setTimeout(() => {
+        if (!video.paused && video.readyState < 3) {
+          video.play().catch(() => {});
+        }
+      }, 800);
+    }
+  }, { passive: true });
+
+  video.addEventListener('stalled', () => {
+    if (!video.paused && video.readyState < 3) {
+      setTimeout(() => {
+        if (!video.paused) {
+          video.play().catch(() => {});
+        }
+      }, 1000);
+    }
+  }, { passive: true });
+
   // Evento play del video: Sincroniza interfaz y asegura volumen
   video.addEventListener('play', () => {
     if (unmuteBtn) unmuteBtn.classList.remove('visible');
-
-    // Auto-recuperación si el reproductor móvil entra en espera o lag de red
-    video.addEventListener('waiting', () => {
-      if (!video.paused) {
-        setTimeout(() => {
-          if (!video.paused && video.readyState < 3) {
-            video.play().catch(() => {});
-          }
-        }, 300);
-      }
-    }, { passive: true });
-
-    video.addEventListener('stalled', () => {
-      if (!video.paused && video.readyState < 3) {
-        setTimeout(() => {
-          if (!video.paused) {
-            video.play().catch(() => {});
-          }
-        }, 500);
-      }
-    }, { passive: true });
 
     // Re-aplicar velocidad guardada para evitar reseteos en bucle del navegador
     const savedSpeed = parseFloat(video.dataset.currentSpeed || '1.0');
@@ -2035,12 +2068,7 @@ function setupVideoControls(card, videoData) {
     });
   });
 
-  // Cerrar popover si se hace clic afuera del wrapper de ajustes
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.settings-menu-wrapper')) {
-      settingsPopoverList.forEach(popover => popover.classList.add('hidden'));
-    }
-  });
+  // Cerrar popover: gestionado por listener global único (evita N duplicados por card)
 
   // Abrir submenú de velocidad
   speedRows.forEach(row => {
@@ -2153,7 +2181,7 @@ function setupVideoControls(card, videoData) {
   });
 
   // C. Barra de Progreso y Drag-to-Seek Móvil/Desktop Híbrido
-  let isDraggingTimeline = false;
+  // isDraggingTimeline: gestionado por globalTimelineDrag (singleton global)
 
   const premiumLockOverlay = card.querySelector('.premium-lock-overlay');
   const previewIndicator = card.querySelector('.preview-indicator-badge');
@@ -2199,7 +2227,7 @@ function setupVideoControls(card, videoData) {
     if (video.duration) {
       const percentage = (video.currentTime / video.duration) * 100;
 
-      if (!isDraggingTimeline) {
+      if (!globalTimelineDrag.active) {
         if (timelineFill) {
           timelineFill.style.width = `${percentage}%`;
         }
@@ -2252,35 +2280,18 @@ function setupVideoControls(card, videoData) {
 
   if (timelineWrapper) {
     timelineWrapper.addEventListener('mousedown', (e) => {
-      isDraggingTimeline = true;
+      globalTimelineDrag = { active: true, seekFn: seek };
       seek(e);
     });
 
     timelineWrapper.addEventListener('touchstart', (e) => {
-      isDraggingTimeline = true;
+      globalTimelineDrag = { active: true, seekFn: seek };
       seek(e);
     }, { passive: true });
   }
 
-  window.addEventListener('mousemove', (e) => {
-    if (isDraggingTimeline) {
-      seek(e);
-    }
-  });
-
-  window.addEventListener('touchmove', (e) => {
-    if (isDraggingTimeline) {
-      seek(e);
-    }
-  }, { passive: true });
-
-  window.addEventListener('mouseup', () => {
-    isDraggingTimeline = false;
-  });
-
-  window.addEventListener('touchend', () => {
-    isDraggingTimeline = false;
-  });
+  // ELIMINADO: 4 window.addEventListener por card que acumulaban 80+ listeners globales.
+  // Ahora gestionados por el singleton globalTimelineDrag registrado una sola vez al inicio del módulo.
 
   // C. Interacciones de Like (Corazón)
   const likeBtnMobile = card.querySelector('.btn-like');
@@ -2678,7 +2689,7 @@ function setupVideoControls(card, videoData) {
         video.play().catch(err => console.log("Autoplay post-seek bloqueado:", err));
 
         // Reset controls display/timer
-        resetMobileControlsTimer();
+        if (typeof resetControlsTimer === 'function') resetControlsTimer();
 
         // Highlight active chapter
         chapterItems.forEach(ci => ci.classList.remove('active'));
@@ -2774,162 +2785,105 @@ function updateMuteIconGlobally() {
   });
 }
 
-// Setup de seguimiento híbrido (Matemático de Scroll + Observer Fallback) para máxima fidelidad
-let scrollTimeout = null;
+// Setup de detección de video activo — Motor Único basado en IntersectionObserver
+// ELIMINADO: trackScrollFocus() + scroll listener dual que causaba race conditions play/pause
 let lastFocusedCardId = null;
+let ioDebounceTimer = null;
 
 function setupIntersectionObserver() {
   const feedView = document.getElementById('shorts-feed-view');
   if (!feedView) return;
 
-  // 1. Escuchar eventos de Scroll en el reproductor (El método de cálculo matemático más robusto y compatible)
-  feedView.addEventListener('scroll', () => {
-    if (scrollTimeout) clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(trackScrollFocus, 60);
-  }, { passive: true });
+  // UN SOLO mecanismo de detección: IntersectionObserver con debounce para evitar
+  // llamadas play/pause repetidas que destruyen el decoder de hardware en móviles
+  const observerOptions = {
+    root: feedView,
+    rootMargin: '0px',
+    threshold: [0.5, 0.75] // Disparar al 50% y 75% de visibilidad
+  };
 
-  // 2. Ejecutar un track inicial al configurar
-  setTimeout(trackScrollFocus, 150);
+  const observer = new IntersectionObserver((entries) => {
+    // Buscar el entry con mayor ratio de intersección (el más visible)
+    let bestEntry = null;
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        if (!bestEntry || entry.intersectionRatio > bestEntry.intersectionRatio) {
+          bestEntry = entry;
+        }
+      }
+    });
 
-  // 3. Fallback / Soporte complementario de IntersectionObserver para navegadores modernos
-  try {
-    const observerOptions = {
-      root: feedView,
-      rootMargin: '0px',
-      threshold: 0.6 // Disparar cuando esté el 60% en foco
-    };
-
-    const observer = new IntersectionObserver((entries) => {
+    if (!bestEntry) {
+      // Si ningún entry está intersectando, pausar los que salieron de vista
       entries.forEach(entry => {
-        const card = entry.target;
-        const video = card.querySelector('.short-video');
-        const id = parseInt(card.getAttribute('data-video-id'));
-
-        if (entry.isIntersecting) {
-          if (id !== lastFocusedCardId && !isNaN(id)) {
-            state.activeVideoId = id;
-            lastFocusedCardId = id;
-
-            logRecentlyPlayed(id);
-            pauseAllVideos();
-
-            const isAd = id < 0;
-            if (isAd) {
-              feedView.style.overflowY = 'hidden';
-              feedView.style.touchAction = 'none';
-            } else {
-              feedView.style.overflowY = 'scroll';
-              feedView.style.touchAction = 'pan-y';
-            }
-
-            if (video) {
-              video.muted = state.isMuted;
-              video.play().catch(err => {
-                video.muted = true;
-                video.play().catch(e => console.log("Play fallido:", e));
-              });
-            }
-
-            if (window.innerWidth >= 992) {
-              document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
-              card.classList.add('active-desktop');
-            }
-
-            preloadNextVideo(id);
-          }
-        } else {
-          // Si deja de intersecarse por completo, pausar
-          if (video && id !== state.activeVideoId) {
+        if (!entry.isIntersecting) {
+          const video = entry.target.querySelector('.short-video');
+          if (video && !video.paused) {
             video.pause();
           }
         }
       });
-    }, observerOptions);
-
-    document.querySelectorAll('.short-card').forEach(card => observer.observe(card));
-  } catch (e) {
-    console.warn("IntersectionObserver no soportado. Usando motor matemático de scroll.");
-  }
-}
-
-// Función matemática de detección de foco central (Calcula cuál es la tarjeta más cercana al centro del contenedor)
-function trackScrollFocus() {
-  const feedView = document.getElementById('shorts-feed-view');
-  if (!feedView || feedView.classList.contains('hidden')) return;
-
-  const cards = feedView.querySelectorAll('.short-card');
-  if (cards.length === 0) return;
-
-  const containerHeight = feedView.clientHeight;
-  const scrollTop = feedView.scrollTop;
-  const viewportCenter = scrollTop + containerHeight / 2;
-
-  let focusedCard = null;
-  let minDistance = Infinity;
-
-  cards.forEach(card => {
-    const cardTop = card.offsetTop;
-    const cardHeight = card.clientHeight;
-    const cardCenter = cardTop + cardHeight / 2;
-
-    const distance = Math.abs(cardCenter - viewportCenter);
-    if (distance < minDistance) {
-      minDistance = distance;
-      focusedCard = card;
+      return;
     }
-  });
 
-  if (focusedCard) {
-    const id = parseInt(focusedCard.getAttribute('data-video-id'));
-    if (id !== lastFocusedCardId && !isNaN(id)) {
+    const card = bestEntry.target;
+    const id = parseInt(card.getAttribute('data-video-id'));
+
+    if (id === lastFocusedCardId || isNaN(id)) return;
+
+    // Debounce de 150ms: evita que micro-scrolls generen pausas/plays rápidos
+    if (ioDebounceTimer) clearTimeout(ioDebounceTimer);
+    ioDebounceTimer = setTimeout(() => {
+      // Verificar que este card siga siendo el más visible después del debounce
       lastFocusedCardId = id;
       state.activeVideoId = id;
 
       logRecentlyPlayed(id);
-      pauseAllVideos();
 
-      const isAd = id < 0;
-      if (isAd) {
-        feedView.style.overflowY = 'hidden';
-        feedView.style.touchAction = 'none';
-      } else {
-        feedView.style.overflowY = 'scroll';
-        feedView.style.touchAction = 'pan-y';
-      }
+      // Pausar SOLO los otros videos (no el activo)
+      document.querySelectorAll('.short-video').forEach(v => {
+        const parentCard = v.closest('.short-card');
+        const parentId = parentCard ? parseInt(parentCard.getAttribute('data-video-id')) : -999;
+        if (parentId !== id && !v.paused) {
+          v.pause();
+        }
+      });
 
-      const video = focusedCard.querySelector('.short-video');
+      const video = card.querySelector('.short-video');
       if (video) {
+        // Asegurar que el video tenga preload activo para buffering
+        if (video.getAttribute('preload') !== 'auto') {
+          video.setAttribute('preload', 'auto');
+        }
         video.muted = state.isMuted;
         video.play().catch(err => {
           video.muted = true;
-          video.play().catch(e => console.log("Play fallido scroll:", e));
+          video.play().catch(e => console.log("Play fallido:", e));
         });
       }
 
       if (window.innerWidth >= 992) {
         document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
-        focusedCard.classList.add('active-desktop');
+        card.classList.add('active-desktop');
       }
 
       preloadNextVideo(id);
-    }
-  }
+    }, 150);
+  }, observerOptions);
+
+  document.querySelectorAll('.short-card').forEach(card => observer.observe(card));
 }
 
-// Pausar absolutamente todos los videos
-function pauseAllVideos() {
+// Pausar todos los videos excepto el activo (evita interrumpir la reproducción del video en foco)
+function pauseAllVideos(exceptId = null) {
   document.querySelectorAll('.short-video').forEach(video => {
-    video.pause();
-    if (video.dataset.prerollPlaying === 'true') {
-      video.src = video.dataset.originalSrc;
-      delete video.dataset.prerollPlaying;
-      delete video.dataset.originalSrc;
-      const overlay = video.parentElement.querySelector('.preroll-ad-overlay');
-      if (overlay) overlay.remove();
-      if (video.prerollInterval) {
-        clearInterval(video.prerollInterval);
-        delete video.prerollInterval;
-      }
+    if (exceptId !== null) {
+      const parentCard = video.closest('.short-card');
+      const parentId = parentCard ? parseInt(parentCard.getAttribute('data-video-id')) : -999;
+      if (parentId === exceptId) return; // No pausar el video activo
+    }
+    if (!video.paused) {
+      video.pause();
     }
   });
 }
@@ -2942,37 +2896,21 @@ function playActiveVideo() {
     return;
   }
 
-  // BLOQUEO DE SWIPE EN PUBLICIDADES (Las publicidades se quedan para obligarte a verlas)
-  const isAdVideo = state.activeVideoId < 0;
-  if (feedView) {
-    if (isAdVideo) {
-      feedView.style.overflowY = 'hidden';
-      feedView.style.touchAction = 'none';
-    } else {
-      feedView.style.overflowY = 'scroll';
-      feedView.style.touchAction = 'pan-y';
-    }
-  }
-
   const activeCard = document.getElementById(`short-card-${state.activeVideoId}`);
   if (!activeCard) return;
 
   // Actualizar metadatos de SEO y Open Graph dinámicamente para los buscadores/IAs del cliente
-  const activeVideo = state.activeVideoId < 0
-    ? state.ads.find(ad => ad.id === (Math.abs(state.activeVideoId) % 10000))
-    : state.videos.find(v => v.id === state.activeVideoId);
+  const activeVideo = state.videos.find(v => v.id === state.activeVideoId);
 
   if (activeVideo) {
-    const cleanSchool = activeVideo.school ? activeVideo.school.split(' - ')[0] : 'ANUNCIO';
-    document.title = activeVideo.isAd
-      ? `Patrocinado: ${activeVideo.title} | TravelRock`
-      : `${activeVideo.title} | ${cleanSchool} | TravelRock Channel`;
+    const cleanSchool = activeVideo.school ? activeVideo.school.split(' - ')[0] : 'TravelRock';
+    document.title = `${activeVideo.title} | ${cleanSchool} | TravelRock Channel`;
 
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) metaDesc.setAttribute('content', activeVideo.description || activeVideo.title || '');
 
     const ogTitle = document.querySelector('meta[property="og:title"]');
-    if (ogTitle) ogTitle.setAttribute('content', activeVideo.isAd ? `Patrocinado: ${activeVideo.title}` : `${activeVideo.title} - ${cleanSchool}`);
+    if (ogTitle) ogTitle.setAttribute('content', `${activeVideo.title} - ${cleanSchool}`);
 
     const ogDesc = document.querySelector('meta[property="og:description"]');
     if (ogDesc) ogDesc.setAttribute('content', activeVideo.description || activeVideo.title || '');
@@ -2981,13 +2919,12 @@ function playActiveVideo() {
     if (ogImage) ogImage.setAttribute('content', activeVideo.thumbnailUrl || '');
 
     // URL dinámica por video para tracking en analytics (Google Analytics, etc.)
-    if (!activeVideo.isAd && state.activeVideoId >= 0) {
+    if (state.activeVideoId >= 0) {
       const videoSlug = (activeVideo.school || activeVideo.title || 'video').split(' - ')[0].toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       const newUrl = `/video/${state.activeVideoId}/${videoSlug}`;
       if (window.location.pathname !== newUrl) {
         history.pushState({ videoId: state.activeVideoId }, document.title, newUrl);
       }
-      // Actualizar og:url dinámico
       const ogUrl = document.querySelector('meta[property="og:url"]');
       if (ogUrl) ogUrl.setAttribute('content', `https://shorts.travelrockchannel.com.ar${newUrl}`);
     }
@@ -2996,27 +2933,30 @@ function playActiveVideo() {
   // Registrar en "Continuar Viendo"
   logRecentlyPlayed(state.activeVideoId);
 
-  // Sincronizar la sesión en segundo plano al reproducir para asegurar el estado premium más actualizado
+  // Sincronizar la sesión en segundo plano
   syncSessionWithDatabase().catch(err => console.log("Error syncSession:", err));
 
   const video = activeCard.querySelector('.short-video');
-  const unmuteBtn = activeCard.querySelector('.unmute-overlay-btn');
 
-  pauseAllVideos();
+  // Pausar todos los otros videos SIN pausar el activo
+  pauseAllVideos(state.activeVideoId);
 
-  // PRE-ROLL AD SYSTEM (YouTube Style Ad injection)
-  const isPremium = true; // Bypassed pre-roll ads
-  if (state.activeVideoId >= 0 && !isPremium && state.ads && state.ads.length > 0 && Math.random() < 0.35) {
-    const ad = state.ads[Math.floor(Math.random() * state.ads.length)];
-    triggerPreRollAd(activeCard, video, ad, activeVideo.videoUrl);
-    return;
+  // Activar preload dinámico del video activo
+  if (video.getAttribute('preload') !== 'auto') {
+    video.setAttribute('preload', 'auto');
   }
 
   video.muted = state.isMuted;
-  video.currentTime = 0; // Iniciar desde el principio
+
+  // Solo resetear currentTime si es un video DIFERENTE al que ya estaba sonando
+  // (evita re-seek innecesario que provoca micro-freeze del decoder)
+  if (video.paused || video.ended) {
+    video.currentTime = 0;
+  }
+
   video.play()
     .catch(err => {
-      console.warn("Autoplay con sonido bloqueado en inicio. Intentando reproducir silenciado...", err);
+      console.warn("Autoplay con sonido bloqueado. Intentando silenciado...", err);
       video.muted = true;
       video.play().catch(e => console.error("Autoplay silenciado también falló:", e));
     });
@@ -3160,24 +3100,23 @@ function triggerPreRollAd(card, video, ad, originalSrc) {
   }
 }
 
-// Precarga del siguiente video (Prefetch inteligente y buffer agresivo)
+// Precarga inteligente del siguiente video (sin .load() agresivo que compite por ancho de banda)
 function preloadNextVideo(currentId) {
   const filtered = getFilteredVideos(true);
   const currentIndex = filtered.findIndex(v => v.id === currentId);
   if (currentIndex !== -1) {
-    // Precargar los siguientes 2 videos para tener un colchón de buffering
-    for (let offset = 1; offset <= 2; offset++) {
-      const targetIndex = currentIndex + offset;
-      if (targetIndex < filtered.length) {
-        const nextVideoData = filtered[targetIndex];
-        const nextCard = document.getElementById(`short-card-${nextVideoData.id}`);
-        if (nextCard) {
-          const nextVideoElement = nextCard.querySelector('.short-video');
-          if (nextVideoElement && !nextVideoElement.dataset.preloaded) {
-            nextVideoElement.setAttribute('preload', 'auto');
-            nextVideoElement.load(); // Fuerza al navegador a comenzar la descarga y almacenamiento en buffer inmediatamente
-            nextVideoElement.dataset.preloaded = 'true';
-          }
+    // Precargar SOLO el siguiente video (no 2) para no saturar la red móvil
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < filtered.length) {
+      const nextVideoData = filtered[nextIndex];
+      const nextCard = document.getElementById(`short-card-${nextVideoData.id}`);
+      if (nextCard) {
+        const nextVideoElement = nextCard.querySelector('.short-video');
+        if (nextVideoElement && !nextVideoElement.dataset.preloaded) {
+          // Solo cambiar el atributo preload — NO llamar .load() que fuerza re-descarga
+          // y compite con el video activo por ancho de banda
+          nextVideoElement.setAttribute('preload', 'metadata');
+          nextVideoElement.dataset.preloaded = 'true';
         }
       }
     }
@@ -3834,10 +3773,14 @@ ambilightCanvas.height = 10;
 const ambilightCtx = ambilightCanvas.getContext('2d');
 
 function startAmbilightEngine() {
+  // DESACTIVAR en móviles: drawImage + getImageData compiten con el GPU video decoder
+  // y causan micro-freezes de 50-100ms cada 1.4 segundos en celulares
+  if (window.innerWidth < 992) return;
+
   if (ambilightInterval) clearInterval(ambilightInterval);
 
+  // En desktop: ejecutar cada 3 segundos (antes era 1.4s, demasiado agresivo)
   ambilightInterval = setInterval(() => {
-    // Buscar el video activo en reproducción
     const activeCard = document.getElementById(`short-card-${state.activeVideoId}`);
     if (!activeCard) return;
 
@@ -3845,7 +3788,6 @@ function startAmbilightEngine() {
     if (!video || video.paused || video.ended || document.hidden) return;
 
     try {
-      // Dibujar frame en canvas miniatura para calcular promedio
       ambilightCtx.drawImage(video, 0, 0, 10, 10);
       const frameData = ambilightCtx.getImageData(0, 0, 10, 10).data;
 
@@ -3861,20 +3803,17 @@ function startAmbilightEngine() {
       b = Math.max(10, Math.floor(b / count));
 
       const root = document.documentElement;
-      // Proyectar color primario
       root.style.setProperty('--neon-purple', `rgb(${r}, ${g}, ${b})`);
 
-      // Proyectar color complementario o desplazado para aurora 2
       const r2 = Math.min(255, r + 45);
       const g2 = Math.max(0, g - 25);
       const b2 = Math.min(255, b + 55);
       root.style.setProperty('--neon-pink', `rgb(${r2}, ${g2}, ${b2})`);
 
-      // Proyectar color invertido en baja opacidad para aurora 3
       root.style.setProperty('--neon-orange', `rgb(${b}, ${g}, ${r})`);
     } catch (e) {
       // Captura silenciosa para evitar bloqueos CORS si hay urls externas
     }
-  }, 1400);
+  }, 3000);
 }
 
