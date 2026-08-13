@@ -607,8 +607,8 @@ async function publishShort(e) {
 
   try {
     // Determinar los endpoints del backend según el entorno
-    let uploadTargetUrl = 'api/upload.php';
-    let seoTargetUrl = 'api/save-seo.php';
+    let uploadTargetUrl = '/api/upload.php';
+    let seoTargetUrl = '/api/save-seo.php';
     
     const isLocal = window.location.hostname === 'localhost' || 
                     window.location.hostname === '127.0.0.1' || 
@@ -1430,7 +1430,7 @@ async function saveVideoEdit(e) {
       const isLocal = window.location.hostname === 'localhost' || 
                       window.location.hostname === '127.0.0.1' || 
                       window.location.port !== '';
-      const seoEndpoint = isLocal ? '/api/save-seo' : 'api/save-seo.php';
+      const seoEndpoint = isLocal ? '/api/save-seo' : '/api/save-seo.php';
       await fetch(seoEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1981,7 +1981,7 @@ async function publishAd(e) {
   updateAdProgressBar(10, 'Iniciando subida de la campaña...');
 
   try {
-    let uploadTargetUrl = 'api/upload.php';
+    let uploadTargetUrl = '/api/upload.php';
     const isLocal = window.location.hostname === 'localhost' || 
                     window.location.hostname === '127.0.0.1' || 
                     window.location.port !== '';

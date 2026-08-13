@@ -1,4 +1,10 @@
 <?php
+@ini_set('memory_limit', '512M');
+@ini_set('max_execution_time', '600');
+@ini_set('upload_max_filesize', '512M');
+@ini_set('post_max_size', '512M');
+@set_time_limit(600);
+
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
@@ -23,8 +29,18 @@ $applicationKey = 'K004eR5sm0qof1iDJQ5nqpqsX+O+Dg8';
 // 2. Validate Uploaded Files
 if (!isset($_FILES['video']) || $_FILES['video']['error'] !== UPLOAD_ERR_OK) {
     http_response_code(400);
-    $errorMsg = isset($_FILES['video']) ? "Upload error code: " . $_FILES['video']['error'] : "Missing video file.";
-    echo json_encode(["error" => "No video file received.", "details" => $errorMsg]);
+    $errorCode = isset($_FILES['video']) ? $_FILES['video']['error'] : -1;
+    $errorMessages = [
+        UPLOAD_ERR_INI_SIZE   => "El archivo excede el tamaño máximo permitido por PHP (upload_max_filesize).",
+        UPLOAD_ERR_FORM_SIZE  => "El archivo excede el tamaño máximo del formulario.",
+        UPLOAD_ERR_PARTIAL    => "El archivo fue subido solo parcialmente.",
+        UPLOAD_ERR_NO_FILE    => "No se seleccionó ningún archivo de video.",
+        UPLOAD_ERR_NO_TMP_DIR => "Falta la carpeta temporal en el servidor PHP.",
+        UPLOAD_ERR_CANT_WRITE => "No se pudo escribir el archivo en el disco del servidor.",
+        UPLOAD_ERR_EXTENSION  => "Una extensión de PHP detuvo la subida."
+    ];
+    $msg = isset($errorMessages[$errorCode]) ? $errorMessages[$errorCode] : "Error de subida (código $errorCode).";
+    echo json_encode(["error" => $msg, "details" => "Upload error code: " . $errorCode]);
     exit;
 }
 
@@ -37,7 +53,7 @@ $timestamp = time();
 $videoData = file_get_contents($videoFile['tmp_name']);
 if ($videoData === false) {
     http_response_code(500);
-    echo json_encode(["error" => "Failed to read uploaded video data."]);
+    echo json_encode(["error" => "Failed to read uploaded video data from tmp file."]);
     exit;
 }
 
@@ -63,16 +79,20 @@ try {
     $credentials = base64_encode("$keyId:$applicationKey");
     $ch = curl_init("https://api.backblazeb2.com/b2api/v3/b2_authorize_account");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "Authorization: Basic $credentials",
         "User-Agent: B2-PHP-Uploader"
     ]);
     $response = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
     curl_close($ch);
 
     if ($status !== 200) {
-        throw new Exception("B2 Auth failed (Status $status): $response");
+        throw new Exception("B2 Auth failed (Status $status): $response. Curl Err: $curlErr");
     }
 
     $authData = json_decode($response, true);
@@ -83,6 +103,9 @@ try {
     $ch = curl_init("$apiUrl/b2api/v3/b2_get_upload_url");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "Authorization: $authToken",
         "Content-Type: application/json",
@@ -91,10 +114,11 @@ try {
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(["bucketId" => $bucketId]));
     $response = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
     curl_close($ch);
 
     if ($status !== 200) {
-        throw new Exception("B2 Get Upload URL failed (Status $status): $response");
+        throw new Exception("B2 Get Upload URL failed (Status $status): $response. Curl Err: $curlErr");
     }
 
     $uploadData = json_decode($response, true);
@@ -128,6 +152,9 @@ function uploadToB2($uploadUrl, $uploadToken, $fileData, $fileName, $contentType
     $ch = curl_init($uploadUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 600);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "Authorization: $uploadToken",
         "X-Bz-File-Name: " . rawurlencode($fileName),
@@ -139,11 +166,13 @@ function uploadToB2($uploadUrl, $uploadToken, $fileData, $fileName, $contentType
     curl_setopt($ch, CURLOPT_POSTFIELDS, $fileData);
     $response = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
     curl_close($ch);
 
     if ($status !== 200) {
-        throw new Exception("Upload of $fileName failed with status $status: $response");
+        throw new Exception("Upload of $fileName failed with status $status: $response. Curl Err: $curlErr");
     }
 
     return "https://f004.backblazeb2.com/file/TravelShorts/" . $fileName;
 }
+

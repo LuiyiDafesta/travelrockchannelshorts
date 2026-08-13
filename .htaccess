@@ -86,11 +86,31 @@ ServerSignature Off
     Header always append X-Frame-Options SAMEORIGIN
 </IfModule>
 
-# 7. SPA ROUTING (Single Page Application)
+# 7. AUMENTAR LÍMITES DE SUBIDA DE PHP (hosting Ferozo / Apache)
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 512M
+    php_value post_max_size 512M
+    php_value max_execution_time 600
+    php_value max_input_time 600
+    php_value memory_limit 512M
+</IfModule>
+<IfModule mod_php.c>
+    php_value upload_max_filesize 512M
+    php_value post_max_size 512M
+    php_value max_execution_time 600
+    php_value max_input_time 600
+    php_value memory_limit 512M
+</IfModule>
+
+# 8. SPA ROUTING (Single Page Application)
 # Redirige todas las rutas /video/* a index.html para deep links y tracking por video
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
+
+    # No reescribir peticiones directas a archivos estáticos o scripts PHP
+    RewriteCond %{REQUEST_URI} \.(css|js|jpg|jpeg|png|gif|webp|svg|ico|woff|woff2|ttf|eot|mp4|json|xml|php)$ [NC]
+    RewriteRule ^ - [L]
 
     # No reescribir archivos o directorios que existen fisicamente
     RewriteCond %{REQUEST_FILENAME} !-f
