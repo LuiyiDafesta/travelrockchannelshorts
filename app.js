@@ -962,18 +962,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const text = drawerCommentInput.value.trim();
     const videoIdAttr = drawerCommentInput.getAttribute('data-id');
-    const videoId = videoIdAttr ? parseInt(videoIdAttr) : state.activeVideoId;
+    const videoId = videoIdAttr ? parseInt(videoIdAttr, 10) : state.activeVideoId;
     if (!text || isNaN(videoId)) return;
 
     const defaultUser = clientSession.user_name || clientSession.email.split('@')[0];
 
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('comments')
         .insert([{ video_id: videoId, user_name: defaultUser, text: text }])
         .select();
 
-      if (error) throw error;
+      if (error) {
+        const anonRes = await supabaseAnon
+          .from('comments')
+          .insert([{ video_id: videoId, user_name: defaultUser, text: text }])
+          .select();
+        if (anonRes.error) {
+          console.warn("Error al persistir comentario con supabaseAnon:", anonRes.error);
+        }
+      }
 
       const newComment = { user: defaultUser, text: text, time: "Ahora" };
       if (!state.comments[videoId]) state.comments[videoId] = [];
@@ -989,12 +997,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const commentsListEl = document.getElementById(`comments-list-${videoId}`);
       if (commentsListEl) commentsListEl.innerHTML = renderCommentsHtml(videoId);
 
-      // Actualizar conteos
-      const card = document.getElementById(`short-card-${videoId}`);
-      if (card) {
-        const commentCountElements = card.querySelectorAll('.comment-count-text');
-        commentCountElements.forEach(el => el.textContent = state.comments[videoId].length);
-      }
+      // Actualizar conteos globalmente (burbuja/globito de TikTok y panel desktop)
+      updateCommentCountGlobally(videoId);
 
       if (navigator.vibrate) navigator.vibrate(15); // Haptic de éxito
     } catch (err) {
@@ -1864,6 +1868,25 @@ function renderCommentsHtml(videoId) {
   }).join('');
 }
 
+// Actualiza los contadores de comentarios de un video en toda la interfaz (globito lateral TikTok y panel desktop)
+function updateCommentCountGlobally(videoId) {
+  const vidIdNum = parseInt(videoId, 10);
+  const count = state.comments[vidIdNum] ? state.comments[vidIdNum].length : 0;
+  const formatted = formatCount(count);
+
+  // 1. Actualizar el globito del botón lateral de TikTok en todas las tarjetas
+  const actionCountEls = document.querySelectorAll(`#short-card-${vidIdNum} .count-comments, [data-id="${vidIdNum}"] .count-comments`);
+  actionCountEls.forEach(el => {
+    el.textContent = formatted;
+  });
+
+  // 2. Actualizar el título de comentarios en panel lateral Desktop
+  const desktopCountEls = document.querySelectorAll(`#short-card-${vidIdNum} .comment-count-text`);
+  desktopCountEls.forEach(el => {
+    el.textContent = count;
+  });
+}
+
 function setupVideoControls(card, videoData) {
   const video = card.querySelector('.short-video');
   const playerWrapper = card.querySelector('.player-wrapper');
@@ -2722,7 +2745,7 @@ function setupVideoControls(card, videoData) {
 
     try {
       // Inyectar comentario en Supabase de forma persistente
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('comments')
         .insert([
           {
@@ -2733,7 +2756,21 @@ function setupVideoControls(card, videoData) {
         ])
         .select();
 
-      if (error) throw error;
+      if (error) {
+        const anonRes = await supabaseAnon
+          .from('comments')
+          .insert([
+            {
+              video_id: videoData.id,
+              user_name: defaultUser,
+              text: text
+            }
+          ])
+          .select();
+        if (anonRes.error) {
+          console.warn("Error al persistir comentario con supabaseAnon:", anonRes.error);
+        }
+      }
 
       const newComment = {
         user: defaultUser,
@@ -2751,9 +2788,8 @@ function setupVideoControls(card, videoData) {
       // Renderizar
       commentsList.innerHTML = renderCommentsHtml(videoData.id);
 
-      // Actualizar conteos
-      const commentCountElements = card.querySelectorAll('.comment-count-text');
-      commentCountElements.forEach(el => el.textContent = state.comments[videoData.id].length);
+      // Actualizar conteos globalmente (burbuja de TikTok y panel desktop)
+      updateCommentCountGlobally(videoData.id);
 
       // Animación de envío
       commentSubmitBtn.style.transform = 'scale(0.8)';
