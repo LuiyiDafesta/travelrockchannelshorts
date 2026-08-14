@@ -56,7 +56,7 @@ const state = {
   videos: [],
   ads: [], // Anuncios activos cargados desde Supabase
   activeVideoId: 1,
-  isMuted: true, // Por defecto silenciado para cumplir con autoplay de navegadores
+  isMuted: false, // Por defecto intentar reproducir con sonido (solicitud del usuario)
   currentFilter: 'all',
   comments: {}
 };
@@ -1188,7 +1188,7 @@ function renderFeed() {
         <!-- REPRODUCTOR VERTICAL -->
         <div class="player-wrapper">
           <!-- Video Nativo Híbrido con Soporte Móvil Completo -->
-          <video class="short-video" muted loop playsinline webkit-playsinline x5-playsinline preload="none" src="${video.videoUrl}"></video>
+          <video class="short-video" loop playsinline webkit-playsinline x5-playsinline preload="none" src="${video.videoUrl}"></video>
           
           <!-- Capa de Sombreado de UI -->
           <div class="video-overlay"></div>
@@ -2869,6 +2869,8 @@ function setupIntersectionObserver() {
         video.muted = state.isMuted;
         video.play().catch(err => {
           video.muted = true;
+          state.isMuted = true;
+          updateMuteIconGlobally();
           video.play().catch(e => console.log("Play fallido:", e));
         });
       }
@@ -2969,6 +2971,8 @@ function playActiveVideo() {
     .catch(err => {
       console.warn("Autoplay con sonido bloqueado. Intentando silenciado...", err);
       video.muted = true;
+      state.isMuted = true;
+      updateMuteIconGlobally();
       video.play().catch(e => console.error("Autoplay silenciado también falló:", e));
     });
 
