@@ -2845,41 +2845,10 @@ function setupIntersectionObserver() {
     // Debounce de 150ms: evita que micro-scrolls generen pausas/plays rápidos
     if (ioDebounceTimer) clearTimeout(ioDebounceTimer);
     ioDebounceTimer = setTimeout(() => {
-      // Verificar que este card siga siendo el más visible después del debounce
       lastFocusedCardId = id;
       state.activeVideoId = id;
 
-      logRecentlyPlayed(id);
-
-      // Pausar SOLO los otros videos (no el activo)
-      document.querySelectorAll('.short-video').forEach(v => {
-        const parentCard = v.closest('.short-card');
-        const parentId = parentCard ? parseInt(parentCard.getAttribute('data-video-id')) : -999;
-        if (parentId !== id && !v.paused) {
-          v.pause();
-        }
-      });
-
-      const video = card.querySelector('.short-video');
-      if (video) {
-        // Asegurar que el video tenga preload activo para buffering
-        if (video.getAttribute('preload') !== 'auto') {
-          video.setAttribute('preload', 'auto');
-        }
-        video.muted = state.isMuted;
-        video.play().catch(err => {
-          video.muted = true;
-          state.isMuted = true;
-          updateMuteIconGlobally();
-          video.play().catch(e => console.log("Play fallido:", e));
-        });
-      }
-
-      if (window.innerWidth >= 992) {
-        document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
-        card.classList.add('active-desktop');
-      }
-
+      playActiveVideo();
       preloadNextVideo(id);
     }, 150);
   }, observerOptions);
