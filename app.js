@@ -1220,7 +1220,7 @@ function renderFeed() {
         <!-- REPRODUCTOR VERTICAL -->
         <div class="player-wrapper">
           <!-- Video Nativo Híbrido con Soporte Móvil Completo -->
-          <video class="short-video" loop playsinline webkit-playsinline x5-playsinline preload="none" src="${video.videoUrl}"></video>
+          <video class="short-video" loop playsinline webkit-playsinline x5-playsinline preload="none" poster="${video.thumbnailUrl}" src="${video.videoUrl}"></video>
           
           <!-- Capa de Sombreado de UI -->
           <div class="video-overlay"></div>
@@ -2897,10 +2897,25 @@ function pauseAllVideos(exceptId = null) {
       const parentId = parentCard ? parseInt(parentCard.getAttribute('data-video-id')) : -999;
       if (parentId === exceptId) return; // No pausar el video activo
     }
-    if (!video.paused) {
-      video.pause();
-    }
+    pauseVideoSafely(video);
   });
+}
+
+// Pausa segura de video respetando promesas pendientes en navegadores móviles
+function pauseVideoSafely(video) {
+  try {
+    video.pause();
+  } catch (e) {}
+
+  if (video._playPromise && typeof video._playPromise.then === 'function') {
+    video._playPromise
+      .then(() => {
+        try { video.pause(); } catch (e) {}
+      })
+      .catch(() => {
+        try { video.pause(); } catch (e) {}
+      });
+  }
 }
 
 // Reproducir activamente el video seleccionado en el estado
@@ -2973,40 +2988,50 @@ function playActiveVideo() {
   if (video.dataset.loadingPlay === 'true') return;
   video.dataset.loadingPlay = 'true';
 
-  video.play()
-    .then(() => {
-      delete video.dataset.loadingPlay;
-    })
-    .catch(err => {
-      delete video.dataset.loadingPlay;
-      
-      // Si fue abortado porque el usuario scrolleó o pausó el video, no intentar re-play
-      if (err.name === 'AbortError') {
-        return;
-      }
+  const mainPromise = video.play();
+  video._playPromise = mainPromise;
 
-      console.warn("Autoplay con sonido bloqueado. Intentando silenciado...", err);
-      video.muted = true;
-      state.isMuted = true;
-      updateMuteIconGlobally();
+  if (mainPromise !== undefined) {
+    mainPromise
+      .then(() => {
+        delete video.dataset.loadingPlay;
+      })
+      .catch(err => {
+        delete video.dataset.loadingPlay;
+        
+        // Si fue abortado porque el usuario scrolleó o pausó el video, no intentar re-play
+        if (err.name === 'AbortError') {
+          return;
+        }
 
-      // Solo re-intentar reproducir silenciado si esta tarjeta sigue siendo la activa
-      const parentCard = video.closest('.short-card');
-      const parentId = parentCard ? parseInt(parentCard.getAttribute('data-video-id')) : -999;
-      if (state.activeVideoId === parentId) {
-        video.dataset.loadingPlay = 'true';
-        video.play()
-          .then(() => {
-            delete video.dataset.loadingPlay;
-          })
-          .catch(e => {
-            delete video.dataset.loadingPlay;
-            if (e.name !== 'AbortError') {
-              console.error("Autoplay silenciado también falló:", e);
-            }
-          });
-      }
-    });
+        console.warn("Autoplay con sonido bloqueado. Intentando silenciado...", err);
+        video.muted = true;
+        state.isMuted = true;
+        updateMuteIconGlobally();
+
+        // Solo re-intentar reproducir silenciado si esta tarjeta sigue siendo la activa
+        const parentCard = video.closest('.short-card');
+        const parentId = parentCard ? parseInt(parentCard.getAttribute('data-video-id')) : -999;
+        if (state.activeVideoId === parentId) {
+          video.dataset.loadingPlay = 'true';
+          const fallbackPromise = video.play();
+          video._playPromise = fallbackPromise;
+
+          if (fallbackPromise !== undefined) {
+            fallbackPromise
+              .then(() => {
+                delete video.dataset.loadingPlay;
+              })
+              .catch(e => {
+                delete video.dataset.loadingPlay;
+                if (e.name !== 'AbortError') {
+                  console.error("Autoplay silenciado también falló:", e);
+                }
+              });
+          }
+        }
+      });
+  }
 
   // Actualizar UI activa en desktop
   if (window.innerWidth >= 992) {
