@@ -2837,59 +2837,66 @@ function setupIntersectionObserver() {
   const feedView = document.getElementById('shorts-feed-view');
   if (!feedView) return;
 
-  // En móviles, el contenedor .feed-view tiene overflow-y:scroll y scroll-snap.
-  // El root DEBE ser feedView porque es el contenedor scrollable real.
-  // Con root:null (viewport), las tarjetas dentro del div con overflow no reportan
-  // cambios de intersección correctamente en iOS Safari y Android Chrome.
-  const observerOptions = {
-    root: feedView,
-    rootMargin: '0px',
-    threshold: [0.3, 0.5, 0.7]
-  };
+  // ===================================================================
+  // DETECCIÓN DE VIDEO ACTIVO POR EVENTO SCROLL (estilo TikTok/Reels)
+  // ===================================================================
+  // IntersectionObserver es poco fiable dentro de contenedores con
+  // overflow-y:scroll + scroll-snap en navegadores móviles (iOS Safari,
+  // Chrome Android). El evento 'scroll' nativo es 100% compatible.
+  //
+  // Funcionamiento:
+  // 1. El usuario desliza (scroll-snap mueve a la siguiente tarjeta)
+  // 2. Esperamos 200ms para que el snap termine de acomodar la tarjeta
+  // 3. Calculamos cuál tarjeta está más centrada en la pantalla
+  // 4. Si es diferente a la actual, pausamos la anterior y reproducimos la nueva
+  // ===================================================================
 
-  const observer = new IntersectionObserver((entries) => {
-    // Buscar el entry con mayor ratio de intersección (el más visible)
-    let bestEntry = null;
-    entries.forEach(entry => {
-      if (entry.isIntersecting && entry.intersectionRatio >= 0.3) {
-        if (!bestEntry || entry.intersectionRatio > bestEntry.intersectionRatio) {
-          bestEntry = entry;
-        }
+  let scrollDebounce = null;
+
+  function detectActiveCard() {
+    const cards = feedView.querySelectorAll('.short-card');
+    if (!cards.length) return;
+
+    const feedRect = feedView.getBoundingClientRect();
+    const feedCenterY = feedRect.top + feedRect.height / 2;
+
+    let bestCard = null;
+    let bestDistance = Infinity;
+
+    cards.forEach(card => {
+      const cardRect = card.getBoundingClientRect();
+      const cardCenterY = cardRect.top + cardRect.height / 2;
+      const distance = Math.abs(cardCenterY - feedCenterY);
+
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestCard = card;
       }
     });
 
-    if (!bestEntry) {
-      // Si ningún entry está intersectando, pausar los que salieron de vista
-      entries.forEach(entry => {
-        if (!entry.isIntersecting) {
-          const video = entry.target.querySelector('.short-video');
-          if (video) {
-            pauseVideoSafely(video);
-          }
-        }
-      });
-      return;
-    }
+    if (!bestCard) return;
 
-    const card = bestEntry.target;
-    const id = card.getAttribute('data-video-id');
-
+    const id = bestCard.getAttribute('data-video-id');
     if (!id || String(id) === String(lastFocusedCardId)) return;
 
-    console.log('[Observer] Nuevo video en foco:', id, 'ratio:', bestEntry.intersectionRatio.toFixed(2));
+    console.log('[Scroll] Cambio detectado → video:', id, '(anterior:', lastFocusedCardId, ')');
 
-    // Debounce de 120ms: evita que micro-scrolls generen pausas/plays rápidos
-    if (ioDebounceTimer) clearTimeout(ioDebounceTimer);
-    ioDebounceTimer = setTimeout(() => {
-      lastFocusedCardId = id;
-      state.activeVideoId = id;
+    lastFocusedCardId = id;
+    state.activeVideoId = id;
 
-      playActiveVideo();
-      preloadNextVideo(id);
-    }, 120);
-  }, observerOptions);
+    playActiveVideo();
+    preloadNextVideo(id);
+  }
 
-  document.querySelectorAll('.short-card').forEach(card => observer.observe(card));
+  feedView.addEventListener('scroll', () => {
+    if (scrollDebounce) clearTimeout(scrollDebounce);
+    scrollDebounce = setTimeout(detectActiveCard, 200);
+  }, { passive: true });
+
+  // También detectar al primer render (para activar el primer video)
+  setTimeout(detectActiveCard, 300);
+
+  console.log('[Setup] Detector de scroll móvil inicializado sobre feedView');
 }
 
 // Pausar todos los videos excepto el activo (evita interrumpir la reproducción del video en foco)
