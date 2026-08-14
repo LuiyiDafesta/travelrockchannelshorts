@@ -57,12 +57,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
         $videoBase = pathinfo($sanitizedName, PATHINFO_FILENAME);
         $timestamp = time();
 
-        $assembledData = file_get_contents($targetTmpFile);
-        @unlink($targetTmpFile); // Limpiar archivo temporal del servidor
+        $assembledData = '';
+        $compressedFile = $targetTmpFile . '.compressed.mp4';
+        $compressionSuccess = false;
+        
+        if (!$isThumbnail) {
+            $compressionSuccess = compressVideoFFmpeg($targetTmpFile, $compressedFile);
+        }
+        
+        if ($compressionSuccess && file_exists($compressedFile) && filesize($compressedFile) > 0) {
+            $assembledData = file_get_contents($compressedFile);
+            @unlink($compressedFile);
+            @unlink($targetTmpFile);
+        } else {
+            $assembledData = file_get_contents($targetTmpFile);
+            @unlink($targetTmpFile);
+        }
 
         if ($assembledData === false || strlen($assembledData) === 0) {
             http_response_code(500);
-            echo json_encode(["error" => "Error al ensamblar los fragmentos del video."]);
+            echo json_encode(["error" => "Error al ensamblar u optimizar los fragmentos del video."]);
             exit;
         }
 
@@ -126,7 +140,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
             echo json_encode([
                 "completed" => true,
                 "url" => $b2PublicUrl,
-                "fileName" => $b2FileName
+                "fileName" => $b2FileName,
+                "compressed" => $compressionSuccess
             ]);
             exit;
         } catch (Exception $e) {
@@ -174,7 +189,17 @@ $videoName = preg_replace('/[^a-zA-Z0-9.]/', '_', $videoFile['name']);
 $videoBase = pathinfo($videoName, PATHINFO_FILENAME);
 $timestamp = time();
 
-$videoData = file_get_contents($videoFile['tmp_name']);
+$inputPath = $videoFile['tmp_name'];
+$outputPath = $inputPath . '.compressed.mp4';
+$compressionSuccess = compressVideoFFmpeg($inputPath, $outputPath);
+
+if ($compressionSuccess && file_exists($outputPath) && filesize($outputPath) > 0) {
+    $videoData = file_get_contents($outputPath);
+    @unlink($outputPath);
+} else {
+    $videoData = file_get_contents($inputPath);
+}
+
 if ($videoData === false) {
     http_response_code(500);
     echo json_encode(["error" => "Failed to read uploaded video data."]);
@@ -250,7 +275,8 @@ try {
 
     echo json_encode([
         "videoUrl" => $videoUrl,
-        "thumbnailUrl" => $thumbnailUrl
+        "thumbnailUrl" => $thumbnailUrl,
+        "compressed" => $compressionSuccess
     ]);
 
 } catch (Exception $e) {
@@ -288,4 +314,89 @@ function uploadToB2($uploadUrl, $uploadToken, $fileData, $fileName, $contentType
     }
 
     return "https://f004.backblazeb2.com/file/TravelShorts/" . $fileName;
+}
+
+// Helper para obtener la ruta de FFmpeg
+function getFFmpegPath() {
+    if (!function_exists('exec')) {
+        return false;
+    }
+    
+    // Comprobar si exec está en disable_functions
+    $disabled = explode(',', ini_get('disable_functions'));
+    $disabled = array_map('trim', $disabled);
+    if (in_array('exec', $disabled)) {
+        return false;
+    }
+
+    // 1. Probar comando global
+    $output = [];
+    $return_var = -1;
+    @exec('ffmpeg -version 2>&1', $output, $return_var);
+    if ($return_var === 0) {
+        return 'ffmpeg';
+    }
+
+    // 2. Probar command system/which
+    $output = [];
+    $return_var = -1;
+    @exec('which ffmpeg 2>&1', $output, $return_var);
+    if ($return_var === 0 && !empty($output[0])) {
+        $path = trim($output[0]);
+        if (file_exists($path)) {
+            return $path;
+        }
+    }
+
+    // 3. Probar rutas absolutas comunes
+    $paths = [
+        '/usr/bin/ffmpeg',
+        '/usr/local/bin/ffmpeg',
+        '/usr/bin/ffmpeg6',
+        '/usr/local/bin/ffmpeg6',
+        '/opt/ffmpeg/bin/ffmpeg',
+        '/bin/ffmpeg',
+        __DIR__ . '/bin/ffmpeg' // Binario estático en el proyecto
+    ];
+
+    foreach ($paths as $path) {
+        $output = [];
+        $return_var = -1;
+        @exec(escapeshellcmd($path) . ' -version 2>&1', $output, $return_var);
+        if ($return_var === 0) {
+            return $path;
+        }
+    }
+
+    return false;
+}
+
+// Función para comprimir video con FFmpeg
+function compressVideoFFmpeg($inputPath, $outputPath) {
+    $ffmpegPath = getFFmpegPath();
+    if (!$ffmpegPath) {
+        return false;
+    }
+
+    // Parámetros de compresión optimizados para móviles:
+    // -y: Sobrescribir
+    // -i: Archivo de entrada
+    // -c:v libx264: H.264
+    // -crf 28: Calidad web equilibrada
+    // -preset fast: Rapidez de conversión
+    // -vf "scale=-2:'min(1280,ih)'": Redimensionar a 720p vertical (alto 1280px máx) manteniendo relación de aspecto y dimensiones pares
+    // -pix_fmt yuv420p: Pixel format web compatible
+    // -c:a aac -b:a 96k: Audio AAC estéreo
+    // -movflags +faststart: Permite progressive web playback
+    $cmd = escapeshellcmd($ffmpegPath) . ' -y -i ' . escapeshellarg($inputPath) . ' -c:v libx264 -crf 28 -preset fast -vf "scale=-2:\'min(1280,ih)\'" -pix_fmt yuv420p -c:a aac -b:a 96k -movflags +faststart ' . escapeshellarg($outputPath) . ' 2>&1';
+
+    $output = [];
+    $return_var = -1;
+    @exec($cmd, $output, $return_var);
+
+    if ($return_var === 0 && file_exists($outputPath) && filesize($outputPath) > 0) {
+        return true;
+    }
+
+    return false;
 }
