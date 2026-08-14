@@ -2936,13 +2936,43 @@ function playActiveVideo() {
     video.currentTime = 0;
   }
 
+  // Evitar llamadas duplicadas concurrentes si ya se está cargando/reproduciendo
+  if (video.dataset.loadingPlay === 'true') return;
+  video.dataset.loadingPlay = 'true';
+
   video.play()
+    .then(() => {
+      delete video.dataset.loadingPlay;
+    })
     .catch(err => {
+      delete video.dataset.loadingPlay;
+      
+      // Si fue abortado porque el usuario scrolleó o pausó el video, no intentar re-play
+      if (err.name === 'AbortError') {
+        return;
+      }
+
       console.warn("Autoplay con sonido bloqueado. Intentando silenciado...", err);
       video.muted = true;
       state.isMuted = true;
       updateMuteIconGlobally();
-      video.play().catch(e => console.error("Autoplay silenciado también falló:", e));
+
+      // Solo re-intentar reproducir silenciado si esta tarjeta sigue siendo la activa
+      const parentCard = video.closest('.short-card');
+      const parentId = parentCard ? parseInt(parentCard.getAttribute('data-video-id')) : -999;
+      if (state.activeVideoId === parentId) {
+        video.dataset.loadingPlay = 'true';
+        video.play()
+          .then(() => {
+            delete video.dataset.loadingPlay;
+          })
+          .catch(e => {
+            delete video.dataset.loadingPlay;
+            if (e.name !== 'AbortError') {
+              console.error("Autoplay silenciado también falló:", e);
+            }
+          });
+      }
     });
 
   // Actualizar UI activa en desktop
