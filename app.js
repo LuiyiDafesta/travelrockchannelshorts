@@ -567,11 +567,22 @@ async function fetchVideosAndComments() {
       }));
     }
 
-    // Establecer video inicial activo si está disponible (priorizando parámetro v en URL)
+    // Establecer video inicial activo si está disponible (priorizando parámetro v en URL o ruta /video/ID)
     if (state.videos.length > 0) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const queryVid = urlParams.get('v');
-      const parsedQueryVid = queryVid ? parseInt(queryVid) : null;
+      let parsedQueryVid = null;
+      
+      // 1. Intentar desde pathname (ej: /video/42/slug)
+      const pathMatches = window.location.pathname.match(/\/video\/(\d+)/i);
+      if (pathMatches && pathMatches[1]) {
+        parsedQueryVid = parseInt(pathMatches[1]);
+      }
+      
+      // 2. Intentar desde query params como fallback (ej: ?v=42)
+      if (!parsedQueryVid) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryVid = urlParams.get('v');
+        parsedQueryVid = queryVid ? parseInt(queryVid) : null;
+      }
 
       if (parsedQueryVid && state.videos.some(v => v.id === parsedQueryVid)) {
         state.activeVideoId = parsedQueryVid;
@@ -669,6 +680,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderNetflixRanking();
   renderNetflixRows();
   renderNetflixGrid(state.videos); // Renderizar grilla de catálogo inicial
+
+  // Si entramos por un deep link o parámetro de video, ir al feed y posicionar de inmediato
+  const pathMatches = window.location.pathname.match(/\/video\/(\d+)/i);
+  const urlParams = new URLSearchParams(window.location.search);
+  const queryVid = urlParams.get('v');
+  const deepLinkId = pathMatches && pathMatches[1] ? parseInt(pathMatches[1]) : (queryVid ? parseInt(queryVid) : null);
+
+  if (deepLinkId && state.videos.some(v => v.id === deepLinkId)) {
+    state.activeVideoId = deepLinkId;
+    switchView('feed');
+    const targetCard = document.getElementById(`short-card-${deepLinkId}`);
+    const feedView = document.getElementById('shorts-feed-view');
+    if (targetCard && feedView) {
+      feedView.scrollTop = targetCard.offsetTop;
+    }
+    if (window.innerWidth >= 992 && targetCard) {
+      document.querySelectorAll('.short-card').forEach(c => c.classList.remove('active-desktop'));
+      targetCard.classList.add('active-desktop');
+    }
+    setTimeout(playActiveVideo, 250);
+  }
 
   // Inicializar navegación de UI
   initNavigation((action, data) => {
