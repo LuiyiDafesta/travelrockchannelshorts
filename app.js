@@ -2837,12 +2837,13 @@ function setupIntersectionObserver() {
   const feedView = document.getElementById('shorts-feed-view');
   if (!feedView) return;
 
-  // UN SOLO mecanismo de detección: IntersectionObserver con debounce para evitar
-  // llamadas play/pause repetidas que destruyen el decoder de hardware en móviles
+  // Usar root: null para utilizar el viewport del dispositivo.
+  // Esto garantiza máxima compatibilidad en iOS Safari y Android Chrome,
+  // evitando fallos donde el contenedor con scroll snap no reporta la intersección.
   const observerOptions = {
-    root: feedView,
+    root: null,
     rootMargin: '0px',
-    threshold: [0.5, 0.75] // Disparar al 50% y 75% de visibilidad
+    threshold: 0.5 // Umbral del 50% para cambio de tarjeta
   };
 
   const observer = new IntersectionObserver((entries) => {
