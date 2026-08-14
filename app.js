@@ -112,6 +112,15 @@ function generateAvatarStyle(name) {
   return `linear-gradient(135deg, hsl(${h}, 80%, 60%) 0%, hsl(${(h + 40) % 360}, 85%, 50%) 100%)`;
 }
 
+// Formatear contadores numéricos al estilo TikTok (ej: 1.2k, 45.8k)
+function formatCount(num) {
+  if (!num || isNaN(num)) return '0';
+  const n = parseInt(num, 10);
+  if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+
 // Cargar la sesión del cliente al inicio
 async function loadClientSession() {
   const local = localStorage.getItem('tr_client_session');
@@ -1031,6 +1040,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  // Soporte para evitar solapamiento con teclado virtual en móviles (iOS / Android)
+  if (window.visualViewport && drawer) {
+    window.visualViewport.addEventListener('resize', () => {
+      if (drawer.classList.contains('open')) {
+        const offset = window.innerHeight - window.visualViewport.height;
+        if (offset > 50) {
+          drawer.style.bottom = `${offset}px`;
+        } else {
+          drawer.style.bottom = '0px';
+        }
+      }
+    });
+  }
+
   // Cerrar drawer al hacer tap fuera
   document.addEventListener('click', (e) => {
     if (drawer && drawer.classList.contains('open') && !drawer.contains(e.target) && !e.target.closest('.btn-comments-mobile') && !e.target.closest('#mobile-comments-drawer') && !e.target.closest('.comment-submit-btn')) {
@@ -1214,10 +1237,11 @@ function renderFeed() {
         </div>
       `;
     } else {
-      // Layout inmersivo híbrido
       card.innerHTML = `
-      <div class="desktop-layout">
-        
+      <div class="desktop-layout" style="position: relative;">
+        <!-- Canvas Ambilight Dinámico para Cine Desktop -->
+        <canvas class="ambilight-backdrop" id="ambilight-canvas-${video.id}"></canvas>
+
         <!-- REPRODUCTOR VERTICAL -->
         <div class="player-wrapper">
           <!-- Video Nativo Híbrido con Soporte Móvil Completo -->
@@ -1226,6 +1250,12 @@ function renderFeed() {
           <!-- Capa de Sombreado de UI -->
           <div class="video-overlay"></div>
           
+          <!-- Píldora Flotante "Tap to Unmute" Inteligente -->
+          <div class="unmute-floating-pill ${state.isMuted ? '' : 'hidden'}" id="unmute-pill-${video.id}">
+            <i class="fa-solid fa-volume-high"></i>
+            <span>Toca para activar sonido 🔊</span>
+          </div>
+
           <!-- Micro-animación de Doble Tap -->
           <div class="double-tap-heart"><i class="fa-solid fa-heart"></i></div>
           
@@ -1261,38 +1291,51 @@ function renderFeed() {
             </div>
           ` : ''}
 
-          <!-- Acciones Flotantes (Visibles en móvil, ocultas en desktop cine) -->
+          <!-- Acciones Flotantes Estilo TikTok (Columna Lateral) -->
           <div class="video-actions">
+            <!-- 1. Avatar del Colegio con Botón Follow (+) -->
+            <div class="avatar-action-wrapper">
+              <div class="action-avatar-circle" style="background: ${generateAvatarStyle(video.school || 'TravelRock')}">
+                ${(video.school || 'TR').charAt(0).toUpperCase()}
+              </div>
+              <button class="avatar-follow-badge" title="Seguir momentos de este colegio">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+
+            <!-- 2. Botón Me Gusta (Like) -->
             <div class="action-btn-wrapper">
-              <button class="action-btn btn-like ${video.hasLiked ? 'liked' : ''}" data-id="${video.id}">
+              <button class="action-btn btn-like ${video.hasLiked ? 'liked' : ''}" data-id="${video.id}" title="Me Gusta">
                 <i class="fa-solid fa-heart"></i>
               </button>
-              <span class="action-count count-like">${video.likes}</span>
+              <span class="action-count count-like">${formatCount(video.likes)}</span>
             </div>
             
+            <!-- 3. Botón Comentarios -->
             <div class="action-btn-wrapper">
-              <button class="action-btn btn-comments-mobile" data-id="${video.id}">
-                <i class="fa-solid fa-comment"></i>
+              <button class="action-btn btn-comments-mobile" data-id="${video.id}" title="Comentarios">
+                <i class="fa-solid fa-comment-dots"></i>
               </button>
-              <span class="action-count">${state.comments[video.id] ? state.comments[video.id].length : 0}</span>
+              <span class="action-count count-comments">${formatCount(state.comments[video.id] ? state.comments[video.id].length : 0)}</span>
             </div>
             
+            <!-- 4. Botón Compartir -->
             <div class="action-btn-wrapper">
-              <button class="action-btn btn-share" data-id="${video.id}">
+              <button class="action-btn btn-share" data-id="${video.id}" title="Compartir">
                 <i class="fa-solid fa-share-nodes"></i>
               </button>
               <span class="action-count">Compartir</span>
             </div>
 
-            <!-- Botón Mute para Móvil (Siempre visible en barra lateral) -->
+            <!-- 5. Botón Mute para Móvil -->
             <div class="action-btn-wrapper mobile-only-action">
               <button class="action-btn btn-embedded-mute" title="Sonido/Silencio">
                 <i class="fa-solid ${state.isMuted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i>
               </button>
-              <span class="action-count">Sonido</span>
+              <span class="action-count">${state.isMuted ? 'Mute' : 'Sonido'}</span>
             </div>
 
-            <!-- Botón Ajustes para Móvil (Siempre visible en barra lateral) -->
+            <!-- 6. Botón Ajustes para Móvil -->
             <div class="action-btn-wrapper mobile-only-action settings-menu-wrapper">
               <button class="action-btn btn-embedded-settings" title="Ajustes">
                 <i class="fa-solid fa-gear"></i>
@@ -1341,6 +1384,13 @@ function renderFeed() {
               </div>
             </div>
 
+            <!-- 7. Disco de Vinilo Giratorio TikTok -->
+            <div class="tiktok-music-disc-wrapper" title="Audio Original">
+              <div class="tiktok-music-disc spinning">
+                <div class="tiktok-music-disc-center"></div>
+              </div>
+            </div>
+
             <div class="action-btn-wrapper desktop-only-action">
               <button class="action-btn btn-fullscreen">
                 <i class="fa-solid fa-expand"></i>
@@ -1348,22 +1398,30 @@ function renderFeed() {
             </div>
           </div>
 
-          <!-- Info Flotante Rediseñada Estilo Canal Egresados (TikTok/Screenshot style) -->
+          <!-- Info Flotante Rediseñada Estilo TikTok / Reels -->
           <div class="video-info-panel">
-            <!-- Fila del Canal/Egresados con su avatar circular -->
+            <!-- Fila del Colegio/Egresados con insignia oficial -->
             <div class="video-info-channel-row">
-              <div class="channel-avatar">TR</div>
-              <div class="channel-meta">
-                <span class="channel-name">TravelRock Channel</span>
-                <span class="video-episode-number">${video.collection_name ? `E${video.episode_number || 1}` : 'Short'}</span>
-              </div>
+              <span class="school-badge" style="background: var(--primary-gradient); box-shadow: var(--neon-glow-pink); font-size: 0.65rem; padding: 3px 8px; font-weight: 800; border-radius: var(--radius-full);">
+                <i class="fa-solid fa-graduation-cap"></i> ${(video.school || 'TravelRock').split(' - ')[0]}
+              </span>
+              ${video.collection_name ? `<span class="video-episode-number">E${video.episode_number || 1}</span>` : ''}
               ${video.is_premium ? `
-                <span class="school-badge" style="background: var(--primary-gradient); box-shadow: var(--neon-glow-pink); margin-left: 2px; text-transform: uppercase; font-size: 0.6rem; padding: 2px 6px;"><i class="fa-solid fa-crown" style="color: #fde047; font-size: 0.65rem;"></i> PRO</span>
+                <span class="school-badge" style="background: linear-gradient(135deg, #fde047 0%, #f97316 100%); color:#000; font-size: 0.6rem; padding: 2px 6px;"><i class="fa-solid fa-crown" style="font-size: 0.65rem;"></i> PRO</span>
               ` : ''}
             </div>
             
             <h3 class="video-title-text">${video.title}</h3>
-            <p class="video-desc-text">${video.description}</p>
+            <p class="video-desc-text">${video.description || 'Testimonios reales del viaje de tu vida en Bariloche. #TravelRock #Bariloche2026'}</p>
+
+            <!-- Ticker de Audio Marquee Estilo TikTok -->
+            <div class="audio-marquee-container">
+              <i class="fa-solid fa-music"></i>
+              <div class="audio-marquee-track">
+                <span class="audio-marquee-text">♫ Sonido Original - TravelRock Bariloche 2026</span>
+                <span class="audio-marquee-text">♫ Sonido Original - TravelRock Bariloche 2026</span>
+              </div>
+            </div>
           </div>
 
           <!-- Barra de Control Integrada Estilo Netflix (Siempre Visible) -->
@@ -2044,9 +2102,84 @@ function setupVideoControls(card, videoData) {
     }
   }, { passive: true });
 
+  // 1. Píldora Flotante Inteligente "Tap to Unmute"
+  const floatingUnmutePill = card.querySelector('.unmute-floating-pill');
+  if (floatingUnmutePill) {
+    floatingUnmutePill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.isMuted = false;
+      updateMuteIconGlobally();
+      if (video.paused) {
+        video.play().catch(err => console.log("Unmute play:", err));
+      }
+    });
+  }
+
+  // 2. Botón Follow en Avatar
+  const followBadge = card.querySelector('.avatar-follow-badge');
+  if (followBadge) {
+    followBadge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      followBadge.classList.toggle('followed');
+      if (followBadge.classList.contains('followed')) {
+        followBadge.innerHTML = '<i class="fa-solid fa-check"></i>';
+        if (navigator.vibrate) navigator.vibrate(15);
+      } else {
+        followBadge.innerHTML = '<i class="fa-solid fa-plus"></i>';
+      }
+    });
+  }
+
+  // 3. Disco de Vinilo Giratorio y Emisión de Notas Musicales
+  const musicDisc = card.querySelector('.tiktok-music-disc');
+  let musicNoteInterval = null;
+
+  function emitMusicNote() {
+    if (!playerWrapper || video.paused) return;
+    const discWrapper = card.querySelector('.tiktok-music-disc-wrapper');
+    if (!discWrapper) return;
+    
+    const note = document.createElement('div');
+    note.className = 'music-note-particle';
+    const symbols = ['♪', '♫', '♬', '♩'];
+    note.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+    
+    const rect = discWrapper.getBoundingClientRect();
+    const parentRect = playerWrapper.getBoundingClientRect();
+    
+    note.style.left = `${Math.max(10, rect.left - parentRect.left + 15)}px`;
+    note.style.top = `${Math.max(10, rect.top - parentRect.top + 10)}px`;
+    
+    playerWrapper.appendChild(note);
+    setTimeout(() => note.remove(), 2200);
+  }
+
+  // 4. Canvas Ambilight Dinámico para Desktop Cinema
+  const ambilightCanvas = card.querySelector('.ambilight-backdrop');
+  let ambilightCtx = null;
+  if (ambilightCanvas) {
+    ambilightCanvas.width = 32;
+    ambilightCanvas.height = 18;
+    ambilightCtx = ambilightCanvas.getContext('2d');
+  }
+
+  function updateAmbilight() {
+    if (ambilightCtx && window.innerWidth >= 992 && !video.paused && video.readyState >= 2) {
+      try {
+        ambilightCtx.drawImage(video, 0, 0, 32, 18);
+      } catch (e) {}
+    }
+  }
+
   // Evento play del video: Sincroniza interfaz y asegura volumen
   video.addEventListener('play', () => {
     if (unmuteBtn) unmuteBtn.classList.remove('visible');
+    if (floatingUnmutePill && !state.isMuted) floatingUnmutePill.classList.add('hidden');
+
+    if (musicDisc) musicDisc.classList.add('spinning');
+    if (!musicNoteInterval) {
+      musicNoteInterval = setInterval(emitMusicNote, 1800);
+    }
 
     // Re-aplicar velocidad guardada para evitar reseteos en bucle del navegador
     const savedSpeed = parseFloat(video.dataset.currentSpeed || '1.0');
@@ -2063,6 +2196,12 @@ function setupVideoControls(card, videoData) {
 
   // Evento pause del video: Sincroniza interfaz
   video.addEventListener('pause', () => {
+    if (musicDisc) musicDisc.classList.remove('spinning');
+    if (musicNoteInterval) {
+      clearInterval(musicNoteInterval);
+      musicNoteInterval = null;
+    }
+
     // HUD Animación: Pause
     if (playPauseHud) {
       playPauseHud.querySelector('i').className = 'fa-solid fa-pause';
@@ -2278,6 +2417,9 @@ function setupVideoControls(card, videoData) {
         }
       }
 
+      // Actualizar resplandor Ambilight dinámico en escritorio
+      updateAmbilight();
+
       // Resaltado dinámico del capítulo activo basado en el tiempo actual de reproducción
       let activeChapter = null;
       chapterItems.forEach(item => {
@@ -2335,9 +2477,6 @@ function setupVideoControls(card, videoData) {
     }, { passive: true });
   }
 
-  // ELIMINADO: 4 window.addEventListener por card que acumulaban 80+ listeners globales.
-  // Ahora gestionados por el singleton globalTimelineDrag registrado una sola vez al inicio del módulo.
-
   // C. Interacciones de Like (Corazón)
   const likeBtnMobile = card.querySelector('.btn-like');
   const likeBtnDesktop = card.querySelector('.btn-like-desktop');
@@ -2360,15 +2499,15 @@ function setupVideoControls(card, videoData) {
         localStorage.setItem('tr_liked_videos', JSON.stringify(likedVideos));
       }
 
-      // Actualizar interfaz
-      likeCountTextMobile.textContent = videoObj.likes;
-      if (likeCountTextDesktop) likeCountTextDesktop.textContent = videoObj.likes;
+      // Actualizar interfaz con formato abreviado estilo TikTok
+      likeCountTextMobile.textContent = formatCount(videoObj.likes);
+      if (likeCountTextDesktop) likeCountTextDesktop.textContent = formatCount(videoObj.likes);
 
       // Clases activas de Like
       likeBtnMobile.classList.add('liked');
       if (likeBtnDesktop) {
         likeBtnDesktop.classList.add('liked');
-        likeBtnDesktop.innerHTML = `<i class="fa-solid fa-heart"></i> <strong class="desktop-like-count">${videoObj.likes}</strong>`;
+        likeBtnDesktop.innerHTML = `<i class="fa-solid fa-heart"></i> <strong class="desktop-like-count">${formatCount(videoObj.likes)}</strong>`;
       }
 
       triggerLikeAnimation(likeBtnMobile);
@@ -2391,15 +2530,15 @@ function setupVideoControls(card, videoData) {
       const updatedLikedVideos = likedVideos.filter(id => id !== videoData.id);
       localStorage.setItem('tr_liked_videos', JSON.stringify(updatedLikedVideos));
 
-      // Actualizar interfaz
-      likeCountTextMobile.textContent = videoObj.likes;
-      if (likeCountTextDesktop) likeCountTextDesktop.textContent = videoObj.likes;
+      // Actualizar interfaz con formato abreviado estilo TikTok
+      likeCountTextMobile.textContent = formatCount(videoObj.likes);
+      if (likeCountTextDesktop) likeCountTextDesktop.textContent = formatCount(videoObj.likes);
 
       // Remover clases activas
       likeBtnMobile.classList.remove('liked');
       if (likeBtnDesktop) {
         likeBtnDesktop.classList.remove('liked');
-        likeBtnDesktop.innerHTML = `<i class="fa-solid fa-heart"></i> <strong class="desktop-like-count">${videoObj.likes}</strong>`;
+        likeBtnDesktop.innerHTML = `<i class="fa-solid fa-heart"></i> <strong class="desktop-like-count">${formatCount(videoObj.likes)}</strong>`;
       }
 
       // Persistir en Supabase usando el cliente anon
@@ -2826,6 +2965,15 @@ function updateMuteIconGlobally() {
       } else {
         icon.className = 'fa-solid fa-volume-high';
       }
+    }
+  });
+
+  const floatingPills = document.querySelectorAll('.unmute-floating-pill');
+  floatingPills.forEach(pill => {
+    if (state.isMuted) {
+      pill.classList.remove('hidden');
+    } else {
+      pill.classList.add('hidden');
     }
   });
 }

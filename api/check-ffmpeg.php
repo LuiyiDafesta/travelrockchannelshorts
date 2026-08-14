@@ -6,6 +6,13 @@
  * tiene las funciones de ejecución y el binario FFmpeg listos para optimizar videos.
  */
 
+// Verificación de clave de seguridad de diagnóstico
+$accessKey = $_GET['key'] ?? '';
+if ($accessKey !== 'tr_ferozo_deploy_2026' && php_sapi_name() !== 'cli' && (!isset($_SERVER['REMOTE_ADDR']) || !in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1']))) {
+    http_response_code(403);
+    die("Error 403: Acceso denegado al panel de diagnóstico. Clave de seguridad requerida (?key=...).");
+}
+
 // 1. Manejo de la acción AJAX para pruebas de compresión
 if (isset($_GET['action']) && $_GET['action'] === 'test_compress') {
     header('Content-Type: application/json; charset=utf-8');

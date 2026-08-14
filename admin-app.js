@@ -245,35 +245,37 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// Manejo de Inicio de Sesión (Supabase Auth con Fallback Local)
+// Manejo de Inicio de Sesión Seguro mediante Supabase Auth
 async function handleLogin(e) {
   e.preventDefault();
-  showAlert(loginAlertContainer, 'info', '<i class="fa-solid fa-spinner fa-spin"></i> Validando credenciales seguro...');
+  showAlert(loginAlertContainer, 'info', '<i class="fa-solid fa-spinner fa-spin"></i> Validando credenciales seguras en Supabase...');
   
   const email = loginEmailInput.value.trim();
   const password = loginPasswordInput.value.trim();
 
-  // Intentar iniciar sesión real en Supabase Auth
+  if (!email || !password) {
+    showAlert(loginAlertContainer, 'error', '<i class="fa-solid fa-triangle-exclamation"></i> Por favor, ingresa tu correo y contraseña.');
+    return;
+  }
+
+  // Iniciar sesión real y segura en Supabase Auth
   try {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     
-    if (!error && data.user) {
+    if (error) {
+      console.warn("Error de autenticación en Supabase:", error.message);
+      showAlert(loginAlertContainer, 'error', `<i class="fa-solid fa-triangle-exclamation"></i> Acceso denegado: ${error.message || 'Credenciales incorrectas.'}`);
+      return;
+    }
+
+    if (data && data.user) {
       session = { user: data.user, email: data.user.email };
       localStorage.setItem('tr_admin_session', JSON.stringify(session));
       showDashboard();
-      return;
     }
   } catch (err) {
-    console.log("Error de conexión Supabase Auth:", err);
-  }
-
-  // Fallback Local de Emergencia (Permite un acceso inmediato y robusto con los datos provistos)
-  if (email === 'lsnetinformatica2024@gmail.com' && password === 'Luiyi260879@') {
-    session = { user: { id: 'local-admin' }, email: email, isLocalFallback: true };
-    localStorage.setItem('tr_admin_session', JSON.stringify(session));
-    showDashboard();
-  } else {
-    showAlert(loginAlertContainer, 'error', '<i class="fa-solid fa-triangle-exclamation"></i> Credenciales incorrectas. Verifica tu email y contraseña.');
+    console.error("Error de conexión al autenticar:", err);
+    showAlert(loginAlertContainer, 'error', '<i class="fa-solid fa-triangle-exclamation"></i> Error de conexión con el servidor de autenticación. Intenta nuevamente.');
   }
 }
 

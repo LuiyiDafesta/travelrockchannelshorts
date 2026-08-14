@@ -38,10 +38,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
 
     $tmpDir = __DIR__ . '/tmp_chunks';
     if (!file_exists($tmpDir)) {
-        @mkdir($tmpDir, 0777, true);
+        @mkdir($tmpDir, 0755, true);
+    }
+    // Asegurar que no se pueda acceder directamente a los fragmentos vía HTTP
+    $htaccessFile = $tmpDir . '/.htaccess';
+    if (!file_exists($htaccessFile)) {
+        @file_put_contents($htaccessFile, "<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nOrder allow,deny\nDeny from all\n</IfModule>\n");
     }
 
-    $targetTmpFile = $tmpDir . '/' . $fileId . '.part';
+    // Limpieza oportunista de archivos huérfanos con más de 2 horas de antigüedad
+    if (rand(1, 20) === 1) {
+        $now = time();
+        foreach (glob($tmpDir . '/*.part') as $oldPart) {
+            if (is_file($oldPart) && ($now - filemtime($oldPart) > 7200)) {
+                @unlink($oldPart);
+            }
+        }
+    }
+
+    $targetTmpFile = $tmpDir . '/' . basename($fileId) . '.part';
 
     // Agregar fragmento al archivo temporal ensamblado
     $chunkData = file_get_contents($_FILES['chunk']['tmp_name']);
@@ -81,16 +96,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
         }
 
         try {
-            // Autenticar cuenta en Backblaze B2
+            // Autenticar cuenta en Backblaze B2 con verificación TLS
             $credentials = base64_encode("$keyId:$applicationKey");
             $ch = curl_init("https://api.backblazeb2.com/b2api/v3/b2_authorize_account");
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
             curl_setopt($ch, CURLOPT_TIMEOUT, 60);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 "Authorization: Basic $credentials",
-                "User-Agent: B2-PHP-Uploader"
+                "User-Agent: TravelRock-Shorts-Uploader"
             ]);
             $response = curl_exec($ch);
             $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -108,13 +123,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
             $ch = curl_init("$apiUrl/b2api/v3/b2_get_upload_url");
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
             curl_setopt($ch, CURLOPT_TIMEOUT, 60);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 "Authorization: $authToken",
                 "Content-Type: application/json",
-                "User-Agent: B2-PHP-Uploader"
+                "User-Agent: TravelRock-Shorts-Uploader"
             ]);
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(["bucketId" => $bucketId]));
             $response = curl_exec($ch);
@@ -224,12 +239,12 @@ try {
     $credentials = base64_encode("$keyId:$applicationKey");
     $ch = curl_init("https://api.backblazeb2.com/b2api/v3/b2_authorize_account");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
     curl_setopt($ch, CURLOPT_TIMEOUT, 60);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "Authorization: Basic $credentials",
-        "User-Agent: B2-PHP-Uploader"
+        "User-Agent: TravelRock-Shorts-Uploader"
     ]);
     $response = curl_exec($ch);
     $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -246,13 +261,13 @@ try {
     $ch = curl_init("$apiUrl/b2api/v3/b2_get_upload_url");
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
     curl_setopt($ch, CURLOPT_TIMEOUT, 60);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "Authorization: $authToken",
         "Content-Type: application/json",
-        "User-Agent: B2-PHP-Uploader"
+        "User-Agent: TravelRock-Shorts-Uploader"
     ]);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(["bucketId" => $bucketId]));
     $response = curl_exec($ch);
@@ -292,8 +307,8 @@ function uploadToB2($uploadUrl, $uploadToken, $fileData, $fileName, $contentType
     $ch = curl_init($uploadUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
     curl_setopt($ch, CURLOPT_TIMEOUT, 600);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         "Authorization: $uploadToken",
@@ -301,7 +316,7 @@ function uploadToB2($uploadUrl, $uploadToken, $fileData, $fileName, $contentType
         "Content-Type: $contentType",
         "Content-Length: " . strlen($fileData),
         "X-Bz-Content-Sha1: do_not_verify",
-        "User-Agent: B2-PHP-Uploader"
+        "User-Agent: TravelRock-Shorts-Uploader"
     ]);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $fileData);
     $response = curl_exec($ch);
