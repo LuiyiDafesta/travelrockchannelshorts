@@ -56,7 +56,7 @@ const state = {
   videos: [],
   ads: [], // Anuncios activos cargados desde Supabase
   activeVideoId: 1,
-  isMuted: false, // Por defecto siempre activado (solicitud del usuario)
+  isMuted: true, // Por defecto silenciado para cumplir con autoplay de navegadores
   currentFilter: 'all',
   comments: {}
 };
