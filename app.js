@@ -2871,9 +2871,9 @@ function setupIntersectionObserver() {
     }
 
     const card = bestEntry.target;
-    const id = parseInt(card.getAttribute('data-video-id'));
+    const id = card.getAttribute('data-video-id');
 
-    if (id === lastFocusedCardId || isNaN(id)) return;
+    if (!id || String(id) === String(lastFocusedCardId)) return;
 
     // Debounce de 150ms: evita que micro-scrolls generen pausas/plays rápidos
     if (ioDebounceTimer) clearTimeout(ioDebounceTimer);
@@ -2894,8 +2894,8 @@ function pauseAllVideos(exceptId = null) {
   document.querySelectorAll('.short-video').forEach(video => {
     if (exceptId !== null) {
       const parentCard = video.closest('.short-card');
-      const parentId = parentCard ? parseInt(parentCard.getAttribute('data-video-id')) : -999;
-      if (parentId === exceptId) return; // No pausar el video activo
+      const parentId = parentCard ? parentCard.getAttribute('data-video-id') : null;
+      if (parentId !== null && String(parentId) === String(exceptId)) return; // No pausar el video activo
     }
     pauseVideoSafely(video);
   });
@@ -2930,7 +2930,7 @@ function playActiveVideo() {
   if (!activeCard) return;
 
   // Actualizar metadatos de SEO y Open Graph dinámicamente para los buscadores/IAs del cliente
-  const activeVideo = state.videos.find(v => v.id === state.activeVideoId);
+  const activeVideo = state.videos.find(v => String(v.id) === String(state.activeVideoId));
 
   if (activeVideo) {
     const cleanSchool = activeVideo.school ? activeVideo.school.split(' - ')[0] : 'TravelRock';
@@ -3011,8 +3011,8 @@ function playActiveVideo() {
 
         // Solo re-intentar reproducir silenciado si esta tarjeta sigue siendo la activa
         const parentCard = video.closest('.short-card');
-        const parentId = parentCard ? parseInt(parentCard.getAttribute('data-video-id')) : -999;
-        if (state.activeVideoId === parentId) {
+        const parentId = parentCard ? parentCard.getAttribute('data-video-id') : null;
+        if (parentId !== null && String(state.activeVideoId) === String(parentId)) {
           video.dataset.loadingPlay = 'true';
           const fallbackPromise = video.play();
           video._playPromise = fallbackPromise;
