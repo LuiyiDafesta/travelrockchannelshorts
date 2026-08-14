@@ -2837,20 +2837,21 @@ function setupIntersectionObserver() {
   const feedView = document.getElementById('shorts-feed-view');
   if (!feedView) return;
 
-  // Usar root: null para utilizar el viewport del dispositivo.
-  // Esto garantiza máxima compatibilidad en iOS Safari y Android Chrome,
-  // evitando fallos donde el contenedor con scroll snap no reporta la intersección.
+  // En móviles, el contenedor .feed-view tiene overflow-y:scroll y scroll-snap.
+  // El root DEBE ser feedView porque es el contenedor scrollable real.
+  // Con root:null (viewport), las tarjetas dentro del div con overflow no reportan
+  // cambios de intersección correctamente en iOS Safari y Android Chrome.
   const observerOptions = {
-    root: null,
+    root: feedView,
     rootMargin: '0px',
-    threshold: 0.5 // Umbral del 50% para cambio de tarjeta
+    threshold: [0.3, 0.5, 0.7]
   };
 
   const observer = new IntersectionObserver((entries) => {
     // Buscar el entry con mayor ratio de intersección (el más visible)
     let bestEntry = null;
     entries.forEach(entry => {
-      if (entry.isIntersecting) {
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.3) {
         if (!bestEntry || entry.intersectionRatio > bestEntry.intersectionRatio) {
           bestEntry = entry;
         }
@@ -2862,8 +2863,8 @@ function setupIntersectionObserver() {
       entries.forEach(entry => {
         if (!entry.isIntersecting) {
           const video = entry.target.querySelector('.short-video');
-          if (video && !video.paused) {
-            video.pause();
+          if (video) {
+            pauseVideoSafely(video);
           }
         }
       });
@@ -2875,7 +2876,9 @@ function setupIntersectionObserver() {
 
     if (!id || String(id) === String(lastFocusedCardId)) return;
 
-    // Debounce de 150ms: evita que micro-scrolls generen pausas/plays rápidos
+    console.log('[Observer] Nuevo video en foco:', id, 'ratio:', bestEntry.intersectionRatio.toFixed(2));
+
+    // Debounce de 120ms: evita que micro-scrolls generen pausas/plays rápidos
     if (ioDebounceTimer) clearTimeout(ioDebounceTimer);
     ioDebounceTimer = setTimeout(() => {
       lastFocusedCardId = id;
@@ -2883,7 +2886,7 @@ function setupIntersectionObserver() {
 
       playActiveVideo();
       preloadNextVideo(id);
-    }, 150);
+    }, 120);
   }, observerOptions);
 
   document.querySelectorAll('.short-card').forEach(card => observer.observe(card));
@@ -2971,66 +2974,101 @@ function playActiveVideo() {
   // Pausar todos los otros videos SIN pausar el activo
   pauseAllVideos(state.activeVideoId);
 
-  // Activar preload dinámico del video activo
-  if (video.getAttribute('preload') !== 'auto') {
-    video.setAttribute('preload', 'auto');
-  }
-
   video.muted = state.isMuted;
-
-  // Solo resetear currentTime si es un video DIFERENTE al que ya estaba sonando
-  // (evita re-seek innecesario que provoca micro-freeze del decoder)
-  if (video.paused || video.ended) {
-    video.currentTime = 0;
-  }
 
   // Evitar llamadas duplicadas concurrentes si ya se está cargando/reproduciendo
   if (video.dataset.loadingPlay === 'true') return;
   video.dataset.loadingPlay = 'true';
 
-  const mainPromise = video.play();
-  video._playPromise = mainPromise;
+  console.log('[Play] Intentando reproducir video:', state.activeVideoId, 'readyState:', video.readyState, 'preload:', video.getAttribute('preload'));
 
-  if (mainPromise !== undefined) {
-    mainPromise
-      .then(() => {
-        delete video.dataset.loadingPlay;
-      })
-      .catch(err => {
-        delete video.dataset.loadingPlay;
-        
-        // Si fue abortado porque el usuario scrolleó o pausó el video, no intentar re-play
-        if (err.name === 'AbortError') {
-          return;
-        }
+  // Función interna para ejecutar el play con manejo de errores
+  function executePlay() {
+    // Solo resetear currentTime si el video estaba pausado o terminó
+    if (video.paused || video.ended) {
+      video.currentTime = 0;
+    }
 
-        console.warn("Autoplay con sonido bloqueado. Intentando silenciado...", err);
-        video.muted = true;
-        state.isMuted = true;
-        updateMuteIconGlobally();
+    const mainPromise = video.play();
+    video._playPromise = mainPromise;
 
-        // Solo re-intentar reproducir silenciado si esta tarjeta sigue siendo la activa
-        const parentCard = video.closest('.short-card');
-        const parentId = parentCard ? parentCard.getAttribute('data-video-id') : null;
-        if (parentId !== null && String(state.activeVideoId) === String(parentId)) {
-          video.dataset.loadingPlay = 'true';
-          const fallbackPromise = video.play();
-          video._playPromise = fallbackPromise;
+    if (mainPromise !== undefined) {
+      mainPromise
+        .then(() => {
+          delete video.dataset.loadingPlay;
+          console.log('[Play] Video reproduciendo OK:', state.activeVideoId);
+        })
+        .catch(err => {
+          delete video.dataset.loadingPlay;
 
-          if (fallbackPromise !== undefined) {
-            fallbackPromise
-              .then(() => {
-                delete video.dataset.loadingPlay;
-              })
-              .catch(e => {
-                delete video.dataset.loadingPlay;
-                if (e.name !== 'AbortError') {
-                  console.error("Autoplay silenciado también falló:", e);
-                }
-              });
+          if (err.name === 'AbortError') {
+            console.log('[Play] AbortError (scroll rápido), ignorando');
+            return;
           }
-        }
-      });
+
+          console.warn('[Play] Autoplay con sonido bloqueado, reintentando silenciado...', err.name);
+          video.muted = true;
+          state.isMuted = true;
+          updateMuteIconGlobally();
+
+          const parentCard = video.closest('.short-card');
+          const parentId = parentCard ? parentCard.getAttribute('data-video-id') : null;
+          if (parentId !== null && String(state.activeVideoId) === String(parentId)) {
+            video.dataset.loadingPlay = 'true';
+            const fallbackPromise = video.play();
+            video._playPromise = fallbackPromise;
+
+            if (fallbackPromise !== undefined) {
+              fallbackPromise
+                .then(() => {
+                  delete video.dataset.loadingPlay;
+                  console.log('[Play] Video reproduciendo silenciado OK:', state.activeVideoId);
+                })
+                .catch(e => {
+                  delete video.dataset.loadingPlay;
+                  if (e.name !== 'AbortError') {
+                    console.error('[Play] Autoplay silenciado también falló:', e);
+                  }
+                });
+            }
+          }
+        });
+    } else {
+      delete video.dataset.loadingPlay;
+    }
+  }
+
+  // Si el video necesita cargarse (preload era 'none' y no hay datos cargados),
+  // llamar a video.load() y esperar al evento 'canplay' antes de reproducir.
+  // En móviles, cambiar el atributo preload vía JS no dispara la descarga.
+  const needsLoad = video.readyState < 2; // HAVE_CURRENT_DATA = 2
+
+  if (needsLoad) {
+    video.setAttribute('preload', 'auto');
+    
+    console.log('[Play] Video necesita cargarse, llamando load()...');
+    
+    // Listener de una sola vez para cuando el video esté listo
+    const onReady = () => {
+      video.removeEventListener('canplay', onReady);
+      video.removeEventListener('error', onError);
+      console.log('[Play] Video cargado, ejecutando play...');
+      executePlay();
+    };
+
+    const onError = (e) => {
+      video.removeEventListener('canplay', onReady);
+      video.removeEventListener('error', onError);
+      delete video.dataset.loadingPlay;
+      console.error('[Play] Error al cargar video:', e);
+    };
+
+    video.addEventListener('canplay', onReady, { once: true });
+    video.addEventListener('error', onError, { once: true });
+    video.load();
+  } else {
+    // Video ya tiene datos suficientes, reproducir directamente
+    executePlay();
   }
 
   // Actualizar UI activa en desktop
