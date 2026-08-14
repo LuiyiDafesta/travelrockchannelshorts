@@ -39,3 +39,6 @@ out/
 # Temporales de desarrollo y pruebas locales
 scratch/
 .gemini/
+
+# Temporales de producción
+api/tmp_chunks/

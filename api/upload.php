@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
         exit;
     }
 
-    $tmpDir = sys_get_temp_dir() . '/tr_chunks';
+    $tmpDir = __DIR__ . '/tmp_chunks';
     if (!file_exists($tmpDir)) {
         @mkdir($tmpDir, 0777, true);
     }
