@@ -528,6 +528,7 @@ async function fetchVideosAndComments() {
       chapters: v.chapters,
       is_premium: v.is_premium,
       tags: v.tags,
+      views: v.views || 0,
       hasLiked: likedVideos.includes(v.id) // Cargar estado de Like persistente
     }));
 
@@ -1656,9 +1657,10 @@ function renderNetflixRanking(filteredVideos = state.videos) {
 
   rankingContainer.innerHTML = '';
 
-  // Obtener los top 5 videos más vistos/populares (ordenados por likes de mayor a menor)
+  // Obtener los top 5 videos más vistos (ordenados por reproducciones de mayor a menor)
   const popularVideos = [...filteredVideos]
-    .sort((a, b) => (b.likes || 0) - (a.likes || 0))
+    .filter(v => !v.isAd)
+    .sort((a, b) => (b.views || 0) - (a.views || 0))
     .slice(0, 5);
 
   if (popularVideos.length === 0) {
@@ -2973,6 +2975,9 @@ function playActiveVideo() {
   // Registrar en "Continuar Viendo"
   logRecentlyPlayed(state.activeVideoId);
 
+  // Incrementar contador de vistas del video en Supabase
+  incrementVideoViews(state.activeVideoId);
+
   // Sincronizar la sesión en segundo plano
   syncSessionWithDatabase().catch(err => console.log("Error syncSession:", err));
 
@@ -3672,6 +3677,37 @@ function logRecentlyPlayed(id) {
 
   localStorage.setItem('tr_recently_played', JSON.stringify(recentlyPlayed));
   updateKeepWatchingSidebar();
+}
+
+// Incrementar el contador de reproducciones (views) en Supabase
+// Usa debounce por video para no contar múltiples veces si el observer rebota
+const viewedInSession = new Set();
+
+async function incrementVideoViews(videoId) {
+  if (!videoId || Number(videoId) < 0) return; // Ignorar anuncios (IDs negativos)
+
+  const idStr = String(videoId);
+
+  // Solo contar UNA reproducción por video por sesión del navegador
+  if (viewedInSession.has(idStr)) return;
+  viewedInSession.add(idStr);
+
+  // Incrementar en el estado local del frontend
+  const videoObj = state.videos.find(v => String(v.id) === idStr);
+  if (videoObj) {
+    videoObj.views = (videoObj.views || 0) + 1;
+  }
+
+  // Persistir en Supabase (fire-and-forget, no bloquea la UI)
+  try {
+    const currentViews = videoObj ? videoObj.views : 1;
+    await supabaseAnon
+      .from('videos')
+      .update({ views: currentViews })
+      .eq('id', videoId);
+  } catch (err) {
+    console.warn('Error al incrementar vistas en Supabase:', err);
+  }
 }
 
 // Renderizar dinámicamente la lista de "Continuar Viendo" en la barra lateral
