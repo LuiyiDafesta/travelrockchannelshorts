@@ -1248,8 +1248,8 @@ function renderFeed() {
 
         <!-- REPRODUCTOR VERTICAL -->
         <div class="player-wrapper">
-          <!-- Video Nativo Híbrido con Soporte Móvil Completo -->
-          <video class="short-video" loop playsinline webkit-playsinline x5-playsinline preload="none" poster="${video.thumbnailUrl}" src="${video.videoUrl}"></video>
+          <!-- Video Nativo Híbrido con Soporte Móvil Completo y Precarga Rápida -->
+          <video class="short-video" loop playsinline webkit-playsinline x5-playsinline preload="${index < 2 ? 'auto' : 'metadata'}" poster="${video.thumbnailUrl}" src="${video.videoUrl}"></video>
           
           <!-- Capa de Sombreado de UI -->
           <div class="video-overlay"></div>
@@ -3076,11 +3076,11 @@ function setupIntersectionObserver() {
 
   feedView.addEventListener('scroll', () => {
     if (scrollDebounce) clearTimeout(scrollDebounce);
-    scrollDebounce = setTimeout(detectActiveCard, 200);
+    scrollDebounce = setTimeout(detectActiveCard, 60);
   }, { passive: true });
 
   // También detectar al primer render (para activar el primer video)
-  setTimeout(detectActiveCard, 300);
+  setTimeout(detectActiveCard, 100);
 
   console.log('[Setup] Detector de scroll móvil inicializado sobre feedView');
 }
@@ -3166,6 +3166,7 @@ function playActiveVideo() {
   syncSessionWithDatabase().catch(err => console.log("Error syncSession:", err));
 
   const video = activeCard.querySelector('.short-video');
+  if (!video) return;
 
   // Pausar todos los otros videos SIN pausar el activo
   pauseAllVideos(state.activeVideoId);
@@ -3176,12 +3177,17 @@ function playActiveVideo() {
   if (video.dataset.loadingPlay === 'true') return;
   video.dataset.loadingPlay = 'true';
 
-  console.log('[Play] Intentando reproducir video:', state.activeVideoId, 'readyState:', video.readyState, 'preload:', video.getAttribute('preload'));
+  // Asegurar que el video tenga preload activo
+  if (video.getAttribute('preload') !== 'auto') {
+    video.setAttribute('preload', 'auto');
+  }
+
+  console.log('[Play] Iniciando reproducción instantánea video:', state.activeVideoId, 'readyState:', video.readyState);
 
   // Función interna para ejecutar el play con manejo de errores
   function executePlay() {
-    // Solo resetear currentTime si el video estaba pausado o terminó
-    if (video.paused || video.ended) {
+    // Solo resetear currentTime si el video terminó
+    if (video.ended) {
       video.currentTime = 0;
     }
 
@@ -3234,38 +3240,11 @@ function playActiveVideo() {
     }
   }
 
-  // Si el video necesita cargarse (preload era 'none' y no hay datos cargados),
-  // llamar a video.load() y esperar al evento 'canplay' antes de reproducir.
-  // En móviles, cambiar el atributo preload vía JS no dispara la descarga.
-  const needsLoad = video.readyState < 2; // HAVE_CURRENT_DATA = 2
+  // Reproducción instantánea directa sin bloqueos
+  executePlay();
 
-  if (needsLoad) {
-    video.setAttribute('preload', 'auto');
-    
-    console.log('[Play] Video necesita cargarse, llamando load()...');
-    
-    // Listener de una sola vez para cuando el video esté listo
-    const onReady = () => {
-      video.removeEventListener('canplay', onReady);
-      video.removeEventListener('error', onError);
-      console.log('[Play] Video cargado, ejecutando play...');
-      executePlay();
-    };
-
-    const onError = (e) => {
-      video.removeEventListener('canplay', onReady);
-      video.removeEventListener('error', onError);
-      delete video.dataset.loadingPlay;
-      console.error('[Play] Error al cargar video:', e);
-    };
-
-    video.addEventListener('canplay', onReady, { once: true });
-    video.addEventListener('error', onError, { once: true });
-    video.load();
-  } else {
-    // Video ya tiene datos suficientes, reproducir directamente
-    executePlay();
-  }
+  // Precargar proactivamente el siguiente y anterior video en segundo plano
+  preloadNextVideo(state.activeVideoId);
 
   // Actualizar UI activa en desktop
   if (window.innerWidth >= 992) {
@@ -3406,12 +3385,12 @@ function triggerPreRollAd(card, video, ad, originalSrc) {
   }
 }
 
-// Precarga inteligente del siguiente video (sin .load() agresivo que compite por ancho de banda)
+// Precarga inteligente del siguiente y anterior video para arranque instantáneo (estilo TikTok/Reels)
 function preloadNextVideo(currentId) {
   const filtered = getFilteredVideos(true);
-  const currentIndex = filtered.findIndex(v => v.id === currentId);
+  const currentIndex = filtered.findIndex(v => String(v.id) === String(currentId));
   if (currentIndex !== -1) {
-    // Precargar SOLO el siguiente video (no 2) para no saturar la red móvil
+    // 1. Precargar el siguiente video
     const nextIndex = currentIndex + 1;
     if (nextIndex < filtered.length) {
       const nextVideoData = filtered[nextIndex];
@@ -3419,10 +3398,24 @@ function preloadNextVideo(currentId) {
       if (nextCard) {
         const nextVideoElement = nextCard.querySelector('.short-video');
         if (nextVideoElement && !nextVideoElement.dataset.preloaded) {
-          // Solo cambiar el atributo preload — NO llamar .load() que fuerza re-descarga
-          // y compite con el video activo por ancho de banda
-          nextVideoElement.setAttribute('preload', 'metadata');
+          nextVideoElement.preload = 'auto';
+          try { nextVideoElement.load(); } catch (e) {}
           nextVideoElement.dataset.preloaded = 'true';
+        }
+      }
+    }
+
+    // 2. Precargar el anterior video si existe (para scroll hacia atrás sin lag)
+    const prevIndex = currentIndex - 1;
+    if (prevIndex >= 0) {
+      const prevVideoData = filtered[prevIndex];
+      const prevCard = document.getElementById(`short-card-${prevVideoData.id}`);
+      if (prevCard) {
+        const prevVideoElement = prevCard.querySelector('.short-video');
+        if (prevVideoElement && !prevVideoElement.dataset.preloaded) {
+          prevVideoElement.preload = 'auto';
+          try { prevVideoElement.load(); } catch (e) {}
+          prevVideoElement.dataset.preloaded = 'true';
         }
       }
     }
@@ -3613,8 +3606,8 @@ function resetFilterAndPlayVideo(videoId) {
     }
   }
 
-  // 7. Reproducir
-  setTimeout(playActiveVideo, 200);
+  // 7. Reproducir al instante sin demoras
+  playActiveVideo();
 }
 
 // Bottom Sheet de Etiquetas para Móvil
