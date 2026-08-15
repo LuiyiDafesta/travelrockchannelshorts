@@ -815,15 +815,85 @@
 }
 
 /* ====================================================================
-   CORRECCIÓN DE USABILIDAD MÓVIL: BOTONES LATERALES DE ACCIÓN Y VIDEO
+   CORRECCIÓN DE USABILIDAD MÓVIL: REPRODUCTOR INMERSIVO Y ACCIONES
    ==================================================================== */
 @media (max-width: 991px) {
+  /* Eliminar todo padding/gap para que el video ocupe 100% de la pantalla en móviles */
+  .desktop-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+  }
+
+  .player-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+    aspect-ratio: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .short-card {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+  }
+
+  .main-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100dvh !important;
+    width: 100% !important;
+  }
+
+  .feed-view {
+    width: 100% !important;
+    height: 100dvh !important;
+    top: 0 !important;
+    left: 0 !important;
+  }
+
+  /* Header y Tab Bar flotantes semi-transparentes sobre el video en móviles */
+  .mobile-header {
+    background: linear-gradient(to bottom, rgba(8, 8, 10, 0.75) 0%, transparent 100%) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    border-bottom: none !important;
+  }
+
+  .mobile-tab-bar {
+    background: linear-gradient(to top, rgba(8, 8, 10, 0.85) 0%, rgba(8, 8, 10, 0.4) 70%, transparent 100%) !important;
+    backdrop-filter: blur(12px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
   /* Pegar la barra de acciones al borde derecho sin tapar el centro del video */
   .video-actions {
     right: 8px !important;
-    bottom: 80px !important;
+    bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
     gap: 10px !important;
     z-index: 95 !important;
+  }
+
+  .video-info-panel {
+    left: 16px !important;
+    right: 75px !important;
+    bottom: calc(75px + env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 90 !important;
   }
 
   /* Reducir tamaño de los botones circulares para que no invadan el contenido del video */
@@ -855,7 +925,7 @@
   @media (max-width: 480px) {
     .video-actions {
       right: 4px !important;
-      bottom: 75px !important;
+      bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
       gap: 8px !important;
     }
     
@@ -868,10 +938,22 @@
     .video-actions .action-count {
       font-size: 0.6rem !important;
     }
+
+    .action-avatar-circle {
+      width: 38px !important;
+      height: 38px !important;
+      min-width: 38px !important;
+      min-height: 38px !important;
+      max-width: 38px !important;
+      max-height: 38px !important;
+      font-size: 0.9rem !important;
+    }
   }
 
   /* Asegurar que el video ocupe el alto completo de forma centrada */
   .short-video {
+    width: 100% !important;
+    height: 100% !important;
     object-fit: cover !important;
   }
 }
@@ -931,23 +1013,31 @@
   flex-direction: column;
   align-items: center;
   margin-bottom: 6px;
+  flex-shrink: 0;
 }
 
 .action-avatar-circle {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 2px solid #ffffff;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  max-width: 44px !important;
+  max-height: 44px !important;
+  border-radius: 50% !important;
+  -webkit-border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  border: 2px solid #ffffff !important;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   font-family: var(--font-display);
   font-weight: 800;
   font-size: 1rem;
   color: #ffffff;
   background: linear-gradient(135deg, #ff9e00 0%, #ff6600 100%);
-  overflow: hidden;
+  overflow: hidden !important;
   cursor: pointer;
   transition: transform 0.2s ease;
 }
